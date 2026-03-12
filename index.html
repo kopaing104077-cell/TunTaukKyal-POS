@@ -228,7 +228,7 @@
         <div class="modal-card" style="width:auto; padding:10px;">
             <div id="receipt-box"></div>
             <div style="margin-top:15px; display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
-                <button class="btn btn-dark" onclick="window.print()">Print</button>
+                <button class="btn btn-dark" onclick="printViaRawBT()"><i class="fas fa-print"></i> Print</button>
                 <button class="btn btn-red" onclick="closeOverlay('receipt-overlay')">ပိတ်မည်</button>
             </div>
         </div>
@@ -495,6 +495,17 @@
             document.getElementById('del-btn').style.display = 'none'; document.getElementById('add-overlay').style.display = 'flex';
         }
         function closeOverlay(id) { document.getElementById(id).style.display = 'none'; }
+
+        // --- RawBT Printing Function ---
+        function printViaRawBT() {
+            const receiptContent = document.getElementById('receipt-box').innerHTML;
+            if (!receiptContent) {
+                alert("Print ထုတ်ရန် အချက်အလက် မရှိပါ");
+                return;
+            }
+            // RawBT App ကို HTML format နဲ့ data ပေးပို့ခြင်း
+            window.location.href = "rawbt:html:" + encodeURIComponent(receiptContent);
+        }
     </script>
 </body>
 </html>
