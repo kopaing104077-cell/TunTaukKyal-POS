@@ -44,16 +44,16 @@
         .cat-btn { white-space: nowrap; padding: 8px 15px; border-radius: 20px; border: 1px solid #cbd5e1; background: white; font-size: 12px; cursor: pointer; }
         .cat-btn.active { background: var(--midnight); color: white; border-color: var(--midnight); }
 
-        /* Product Grid - STRICTLY CONFIGURED TO PREVENT SQUISHING */
+        /* Product Grid */
         .grid-area { 
             flex: 1; 
-            overflow-y: auto; /* Allow vertical scrolling */
-            padding: 5px 10px 80px 10px; /* Space for bottom nav */
+            overflow-y: auto; 
+            padding: 5px 10px 80px 10px; 
             display: grid; 
-            grid-template-columns: repeat(2, 1fr); /* 2 Columns Always */
-            grid-auto-rows: max-content; /* Cards take the height they need, NO squishing */
+            grid-template-columns: repeat(2, 1fr); 
+            grid-auto-rows: max-content; 
             gap: 12px; 
-            align-content: start; /* Align to top */
+            align-content: start; 
             -webkit-overflow-scrolling: touch;
         }
         
@@ -65,15 +65,15 @@
             display: flex;
             flex-direction: column;
             box-shadow: 0 2px 5px rgba(0,0,0,0.02);
-            min-height: 170px; /* FIXED MINIMUM HEIGHT */
+            min-height: 170px; 
         }
         
         .img-wrap {
             width: 100%;
-            height: 110px; /* FIXED IMAGE HEIGHT */
+            height: 110px; 
             background: #e2e8f0;
             position: relative;
-            flex-shrink: 0; /* Prevent image box from shrinking */
+            flex-shrink: 0; 
         }
         
         .img-wrap img { 
@@ -320,12 +320,11 @@
             const qS = document.getElementById('search-box').value.toLowerCase();
             const qI = document.getElementById('inv-search') ? document.getElementById('inv-search').value.toLowerCase() : "";
 
-            // Sales Grid (Fixed Card Layout)
             const posFiltered = products.filter(p => (curCat === 'all' || p.category === curCat) && p.name.toLowerCase().includes(qS));
             document.getElementById('pos-grid').innerHTML = posFiltered.map(p => {
                 let imgTag = p.img && p.img !== "null" && p.img.trim() !== "" 
                     ? `<img src="${p.img}">` 
-                    : ``; // If no image, keep it grey background
+                    : ``;
                 
                 return `
                 <div class="p-card" onclick="addToCart(${p.id})">
@@ -340,12 +339,10 @@
                 </div>`;
             }).join('');
 
-            // Stock List
             document.getElementById('stock-body').innerHTML = products.map(p => `
                 <tr><td>${p.name}</td><td>${p.sell.toLocaleString()}</td><td style="color:${p.qty<5?'red':'green'}; font-weight:bold;">${p.qty}</td></tr>
             `).join('');
 
-            // Inventory List
             const invFiltered = products.filter(p => p.name.toLowerCase().includes(qI));
             document.getElementById('inv-body').innerHTML = invFiltered.map(p => {
                 let imgSrc = 'https://placehold.co/50x50/e2e8f0/64748b?text=No';
@@ -431,17 +428,46 @@
             } catch (err) { alert("Error: " + err.message); }
         }
 
+        /* ဘောင်ချာ တစ်စောင်တည်းသာ ထုတ်ရန် ပြင်ဆင်ထားသော အပိုင်း */
         async function showReceipt() {
             if(!cart.length) return;
             const ra = document.getElementById('receipt-render-area');
-            let total = 0, html = `<div style="text-align:center;"><b>ထွန်းတောက်ကြွယ်</b><br><small>Retail & Wholesale</small></div><div class="r-line"></div>`;
-            html += `<div style="font-size:12px;">ရက်စွဲ: ${new Date().toLocaleString()}<br>ဝယ်သူ: ${document.getElementById('cust-name').value || 'Guest'}</div><div class="r-line"></div>`;
+            let total = 0;
+            let html = `
+                <div style="text-align:center;">
+                    <b>ထွန်းတောက်ကြွယ်</b><br>
+                    <small>Retail & Wholesale</small>
+                </div>
+                <div class="r-line"></div>
+                <div style="font-size:12px;">
+                    ရက်စွဲ: ${new Date().toLocaleString()}<br>
+                    ဝယ်သူ: ${document.getElementById('cust-name').value || 'Guest'}
+                </div>
+                <div class="r-line"></div>`;
+
             cart.forEach(i => {
-                let sub = i.sell * i.cQty; total += sub;
-                html += `<div style="display:flex; justify-content:space-between; font-size:13px;"><span>${i.name}</span><span>${sub.toLocaleString()}</span></div><div style="font-size:11px;">${i.cQty} x ${i.sell.toLocaleString()}</div>`;
+                let sub = i.sell * i.cQty; 
+                total += sub;
+                html += `
+                    <div style="display:flex; justify-content:space-between; font-size:13px;">
+                        <span>${i.name}</span>
+                        <span>${sub.toLocaleString()}</span>
+                    </div>
+                    <div style="font-size:11px; margin-bottom: 5px;">${i.cQty} x ${i.sell.toLocaleString()}</div>`;
             });
-            html += `<div class="r-line"></div><div style="display:flex; justify-content:space-between; font-weight:bold;"><span>Total:</span><span>${total.toLocaleString()} Ks</span></div>`;
-            ra.innerHTML = `<div style="margin-bottom:30px;">${html}</div><div class="r-line"></div><div>${html}</div>`;
+
+            html += `
+                <div class="r-line"></div>
+                <div style="display:flex; justify-content:space-between; font-weight:bold;">
+                    <span>Total:</span>
+                    <span>${total.toLocaleString()} Ks</span>
+                </div>
+                <div style="text-align:center; margin-top:15px; font-size:11px;">
+                    ကျေးဇူးတင်ပါသည်။
+                </div>`;
+
+            ra.innerHTML = html; // စာနှစ်ခါ မထပ်စေရန် ဤနေရာတွင် html တစ်ကြိမ်သာ သုံးထားသည်
+
             const canvas = await html2canvas(ra, { scale: 2 });
             document.getElementById('print-preview-img').src = canvas.toDataURL("image/png");
             document.getElementById('receipt-overlay').style.display = 'flex';
