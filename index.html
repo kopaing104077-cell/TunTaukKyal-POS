@@ -23,7 +23,7 @@
         .container { flex: 1; overflow: hidden; display: none; width: 100%; max-width: 900px; margin: auto; position: relative; }
         .container.active { display: flex; flex-direction: column; }
         
-        /* Sales Tab - Top Area */
+        /* Sales Tab */
         .sales-sticky { flex-shrink: 0; background: var(--bg); padding: 8px 10px 4px 10px; z-index: 10; }
         .input-group { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 6px; }
         .input-style { width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 13px; outline: none; background: white; }
@@ -112,7 +112,7 @@
         .nav-item.active { color: var(--midnight); font-weight: bold; border-top: 3px solid var(--midnight); }
         .nav-item i { font-size: 18px; margin-bottom: 4px; }
 
-        /* Tables & Inputs */
+        /* Tables */
         .table-wrap { flex: 1; overflow-y: auto; background: white; margin: 10px; border-radius: 12px; border: 1px solid #e2e8f0; }
         table { width: 100%; border-collapse: collapse; min-width: 400px; }
         th { background: #f8fafc; padding: 12px; font-size: 13px; text-align: left; position: sticky; top: 0; border-bottom: 2px solid #e2e8f0; }
@@ -180,7 +180,6 @@
                 <button class="cat-btn" onclick="setCategory('အခြား', this)">အခြား</button>
             </div>
         </div>
-
         <div id="pos-grid" class="grid-area"></div>
     </main>
 
@@ -267,7 +266,6 @@
                 <input type="number" id="p-new-qty" class="input-style" value="0" style="margin-bottom: 0; margin-top: 5px;">
             </div>
             <input type="file" accept="image/*" class="input-style" onchange="handleImg(event)" style="margin-bottom: 10px;">
-            
             <button class="btn btn-green" onclick="saveProduct()">သိမ်းမည်</button>
             <button id="del-btn" class="btn btn-red" style="margin-top:10px; display:none;" onclick="deleteProduct()">ဖျက်မည်</button>
             <button class="btn" onclick="closeOverlay('add-overlay')" style="margin-top:10px; background: #e2e8f0; color: black;">မလုပ်တော့ပါ</button>
@@ -322,10 +320,7 @@
 
             const posFiltered = products.filter(p => (curCat === 'all' || p.category === curCat) && p.name.toLowerCase().includes(qS));
             document.getElementById('pos-grid').innerHTML = posFiltered.map(p => {
-                let imgTag = p.img && p.img !== "null" && p.img.trim() !== "" 
-                    ? `<img src="${p.img}">` 
-                    : ``;
-                
+                let imgTag = p.img && p.img !== "null" && p.img.trim() !== "" ? `<img src="${p.img}">` : ``;
                 return `
                 <div class="p-card" onclick="addToCart(${p.id})">
                     <div class="img-wrap">
@@ -345,9 +340,7 @@
 
             const invFiltered = products.filter(p => p.name.toLowerCase().includes(qI));
             document.getElementById('inv-body').innerHTML = invFiltered.map(p => {
-                let imgSrc = 'https://placehold.co/50x50/e2e8f0/64748b?text=No';
-                if(p.img && p.img !== "null" && p.img.trim() !== "") imgSrc = p.img;
-
+                let imgSrc = (p.img && p.img !== "null" && p.img.trim() !== "") ? p.img : 'https://placehold.co/50x50/e2e8f0/64748b?text=No';
                 return `
                 <tr>
                     <td><img src="${imgSrc}" onerror="this.src='https://placehold.co/50x50/e2e8f0/64748b?text=No'" style="width:35px;height:35px;border-radius:4px;object-fit:cover;"></td>
@@ -428,20 +421,24 @@
             } catch (err) { alert("Error: " + err.message); }
         }
 
-        /* ဘောင်ချာ တစ်စောင်တည်းသာ ထုတ်ရန် ပြင်ဆင်ထားသော အပိုင်း */
+        /* ဘောင်ချာအပိုင်း - အရောင်းစာရေးအမည် ထည့်သွင်းထားသည် */
         async function showReceipt() {
             if(!cart.length) return;
             const ra = document.getElementById('receipt-render-area');
+            const staff = document.getElementById('staff-name').value || "-";
+            const cust = document.getElementById('cust-name').value || "Guest";
             let total = 0;
+            
             let html = `
                 <div style="text-align:center;">
-                    <b>ထွန်းတောက်ကြွယ်</b><br>
+                    <b style="font-size:18px;">ထွန်းတောက်ကြွယ်</b><br>
                     <small>Retail & Wholesale</small>
                 </div>
                 <div class="r-line"></div>
-                <div style="font-size:12px;">
+                <div style="font-size:12px; line-height:1.6;">
                     ရက်စွဲ: ${new Date().toLocaleString()}<br>
-                    ဝယ်သူ: ${document.getElementById('cust-name').value || 'Guest'}
+                    ဝယ်သူ: ${cust}<br>
+                    <b>အရောင်းစာရေး: ${staff}</b>
                 </div>
                 <div class="r-line"></div>`;
 
@@ -453,20 +450,20 @@
                         <span>${i.name}</span>
                         <span>${sub.toLocaleString()}</span>
                     </div>
-                    <div style="font-size:11px; margin-bottom: 5px;">${i.cQty} x ${i.sell.toLocaleString()}</div>`;
+                    <div style="font-size:11px; margin-bottom: 5px; color:#555;">${i.cQty} x ${i.sell.toLocaleString()}</div>`;
             });
 
             html += `
                 <div class="r-line"></div>
-                <div style="display:flex; justify-content:space-between; font-weight:bold;">
-                    <span>Total:</span>
+                <div style="display:flex; justify-content:space-between; font-weight:bold; font-size:15px;">
+                    <span>စုစုပေါင်း:</span>
                     <span>${total.toLocaleString()} Ks</span>
                 </div>
-                <div style="text-align:center; margin-top:15px; font-size:11px;">
-                    ကျေးဇူးတင်ပါသည်။
+                <div style="text-align:center; margin-top:20px; font-size:11px;">
+                    ကျေးဇူးတင်ပါသည်။ နောက်လည်း ကြွခဲ့ပါဦး။
                 </div>`;
 
-            ra.innerHTML = html; // စာနှစ်ခါ မထပ်စေရန် ဤနေရာတွင် html တစ်ကြိမ်သာ သုံးထားသည်
+            ra.innerHTML = html;
 
             const canvas = await html2canvas(ra, { scale: 2 });
             document.getElementById('print-preview-img').src = canvas.toDataURL("image/png");
@@ -537,8 +534,7 @@
         async function deleteProduct() { 
             if(confirm("ဖျက်မှာလား?")) { 
                 await _sb.from('products').delete().eq('id', document.getElementById('edit-id').value); 
-                closeOverlay('add-overlay'); 
-                loadProducts(); 
+                closeOverlay('add-overlay'); loadProducts(); 
             } 
         }
 
@@ -583,13 +579,11 @@
         }
 
         function setCategory(c, b) { curCat = c; document.querySelectorAll('.cat-btn').forEach(x => x.classList.remove('active')); b.classList.add('active'); refreshUI(); }
-        
         function openAddModal() {
             document.getElementById('edit-id').value = ""; document.getElementById('p-name').value = ""; 
             document.getElementById('p-qty').disabled = false; document.getElementById('st-add-area').style.display = 'none';
             document.getElementById('del-btn').style.display = 'none'; document.getElementById('add-overlay').style.display = 'flex';
         }
-        
         function closeOverlay(id) { document.getElementById(id).style.display = 'none'; }
     </script>
 </body>
