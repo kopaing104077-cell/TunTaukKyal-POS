@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ထွန်းတောက်ကြွယ် POS - v59 (Fixed Layout)</title>
+    <title>ထွန်းတောက်ကြွယ် POS - v60 (Cart at Top)</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -11,7 +11,6 @@
         :root { --midnight: #020617; --primary: #1e293b; --green: #10b981; --red: #ef4444; --gold: #fbbf24; --bg: #f3f4f6; }
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', 'Pyidaungsu', sans-serif; }
         
-        /* Body Layout Fixes */
         body { background: var(--bg); height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
 
         .header { background: var(--midnight); color: white; height: 60px; padding: 0 15px; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; z-index: 1000; }
@@ -24,38 +23,36 @@
         .nav-item.active { color: var(--midnight); font-weight: bold; }
         .nav-item i { font-size: 1.3rem; margin-bottom: 4px; }
 
-        /* Container & Tabs */
         .container { flex: 1; overflow: hidden; display: none; padding: 10px; max-width: 900px; margin: auto; width: 100%; }
         .container.active { display: flex; flex-direction: column; }
         
         .card { background: white; padding: 12px; border-radius: 12px; margin-bottom: 10px; border: 1px solid #e2e8f0; }
         .input-style { width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px; margin-bottom: 8px; outline: none; }
 
-        /* Special Layout for Sales Tab */
-        #sales-top-fixed { flex-shrink: 0; }
-        #pos-grid-container { flex: 1; overflow-y: auto; padding-bottom: 10px; -webkit-overflow-scrolling: touch; }
-        #sales-bottom-fixed { flex-shrink: 0; background: white; padding: 10px; border-top: 3px solid var(--midnight); border-radius: 15px 15px 0 0; box-shadow: 0 -5px 10px rgba(0,0,0,0.05); }
-
-        /* Categories */
-        .cat-scroll { display: flex; overflow-x: auto; gap: 6px; padding-bottom: 5px; scrollbar-width: none; }
-        .cat-scroll::-webkit-scrollbar { display: none; }
-        .cat-btn { white-space: nowrap; padding: 8px 14px; border-radius: 20px; border: 1px solid #cbd5e1; background: white; font-size: 12px; }
-        .cat-btn.active { background: var(--midnight); color: white; border-color: var(--midnight); }
-
-        /* Grid & Cards */
-        #pos-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; }
-        .p-card { background: white; border-radius: 10px; border: 1px solid #e2e8f0; text-align: center; overflow: hidden; position: relative; }
-        .p-card img { width: 100%; height: 90px; object-fit: cover; background: #eee; }
-        .stock-tag { position: absolute; top: 4px; right: 4px; background: rgba(0,0,0,0.6); color: white; font-size: 9px; padding: 2px 5px; border-radius: 4px; }
-
-        /* Cart List */
-        #cart-list { max-height: 100px; overflow-y: auto; margin-bottom: 8px; }
+        /* SALES TAB LAYOUT - CART AT TOP */
+        #sales-header-area { flex-shrink: 0; }
+        
+        /* Cart Area Styling (Now at Top) */
+        .cart-top-section { background: #fff; border-radius: 12px; border: 2px solid var(--midnight); margin-bottom: 10px; padding: 10px; display: flex; flex-direction: column; max-height: 250px; }
+        #cart-list { flex: 1; overflow-y: auto; margin-bottom: 8px; border-bottom: 1px solid #eee; }
         .cart-item { display: flex; justify-content: space-between; align-items: center; background: #f8fafc; padding: 8px; border-radius: 8px; margin-bottom: 5px; font-size: 12px; }
 
-        /* Stock & Report Tables */
+        /* Product Grid Area */
+        #pos-grid-container { flex: 1; overflow-y: auto; padding-bottom: 10px; -webkit-overflow-scrolling: touch; }
+        #pos-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 10px; }
+
+        .cat-scroll { display: flex; overflow-x: auto; gap: 6px; padding: 5px 0; scrollbar-width: none; flex-shrink: 0; }
+        .cat-scroll::-webkit-scrollbar { display: none; }
+        .cat-btn { white-space: nowrap; padding: 8px 14px; border-radius: 20px; border: 1px solid #cbd5e1; background: white; font-size: 11px; }
+        .cat-btn.active { background: var(--midnight); color: white; border-color: var(--midnight); }
+
+        .p-card { background: white; border-radius: 10px; border: 1px solid #e2e8f0; text-align: center; overflow: hidden; position: relative; }
+        .p-card img { width: 100%; height: 85px; object-fit: cover; background: #eee; }
+        .stock-tag { position: absolute; top: 4px; right: 4px; background: rgba(0,0,0,0.6); color: white; font-size: 9px; padding: 2px 5px; border-radius: 4px; }
+
         .table-area { flex: 1; overflow-y: auto; background: white; border-radius: 12px; border: 1px solid #e2e8f0; }
         table { width: 100%; border-collapse: collapse; min-width: 400px; }
-        th { background: #f8fafc; padding: 12px; text-align: left; position: sticky; top: 0; border-bottom: 2px solid #e2e8f0; font-size: 13px; }
+        th { background: #f8fafc; padding: 12px; text-align: left; position: sticky; top: 0; border-bottom: 2px solid #e2e8f0; font-size: 13px; z-index: 10; }
         td { padding: 12px; border-bottom: 1px solid #f1f5f9; font-size: 13px; }
 
         .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 2001; align-items: center; justify-content: center; padding: 15px; }
@@ -66,8 +63,7 @@
         .btn-dark { background: var(--midnight); color: white; }
         .btn-red { background: var(--red); color: white; }
 
-        /* Receipt Rendering */
-        #receipt-render-area { position: absolute; left: -9999px; width: 380px; padding: 20px; color: #000; }
+        #receipt-render-area { position: absolute; left: -9999px; width: 380px; padding: 20px; background: white; color: #000; }
         #print-preview-img { width: 100%; border: 1px solid #ddd; margin-bottom: 10px; display: block; }
         .r-line { border-top: 1px dashed #000; margin: 8px 0; }
 
@@ -94,38 +90,41 @@
     <div id="receipt-render-area"></div>
 
     <main id="tab-sales" class="container active">
-        <div id="sales-top-fixed">
-            <div class="card">
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px;">
-                    <input type="text" id="cust-name" class="input-style" placeholder="ဝယ်သူအမည်">
-                    <input type="text" id="staff-name" class="input-style" placeholder="အရောင်းသမား">
+        <div id="sales-header-area">
+            <div class="card" style="margin-bottom: 8px; padding: 8px;">
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:6px;">
+                    <input type="text" id="cust-name" class="input-style" placeholder="ဝယ်သူအမည်" style="margin-bottom:4px;">
+                    <input type="text" id="staff-name" class="input-style" placeholder="အရောင်းသမား" style="margin-bottom:4px;">
                 </div>
-                <input type="text" id="search-box" class="input-style" placeholder="ပစ္စည်းအမည်ဖြင့် ရှာရန်..." onkeyup="refreshUI()">
-                <div class="cat-scroll">
-                    <button class="cat-btn active" onclick="setCategory('all', this)">အားလုံး</button>
-                    <button class="cat-btn" onclick="setCategory('အအေး', this)">အအေး</button>
-                    <button class="cat-btn" onclick="setCategory('ကော်ဖီ', this)">ကော်ဖီ</button>
-                    <button class="cat-btn" onclick="setCategory('ခေါက်ဆွဲ', this)">ခေါက်ဆွဲ</button>
-                    <button class="cat-btn" onclick="setCategory('လူသုံးကုန်', this)">လူသုံးကုန်</button>
-                    <button class="cat-btn" onclick="setCategory('မီးဖိုချောင်သုံး', this)">မီးဖိုချောင်သုံး</button>
-                    <button class="cat-btn" onclick="setCategory('အခြား', this)">အခြား</button>
+                <input type="text" id="search-box" class="input-style" placeholder="ပစ္စည်းရှာရန်..." onkeyup="refreshUI()" style="margin-bottom:0;">
+            </div>
+
+            <div class="cart-top-section">
+                <div id="cart-list">
+                    <div style="text-align:center; color:#94a3b8; padding-top:10px; font-size:12px;">ခြင်းတောင်းထဲတွင် ပစ္စည်းမရှိသေးပါ</div>
                 </div>
+                <div style="display:flex; justify-content:space-between; align-items:center; padding: 5px 0;">
+                    <div style="font-weight:bold; font-size:1rem;">Total: <span id="cart-total" style="color:var(--red);">0 Ks</span></div>
+                    <div style="display:flex; gap:5px;">
+                        <button class="btn btn-dark" onclick="showReceipt()" style="width:auto; padding:8px 15px; font-size:12px;"><i class="fas fa-file-invoice"></i> Preview</button>
+                        <button class="btn btn-green" onclick="processSale()" style="width:auto; padding:8px 15px; font-size:12px;"><i class="fas fa-check"></i> သိမ်းမည်</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="cat-scroll">
+                <button class="cat-btn active" onclick="setCategory('all', this)">အားလုံး</button>
+                <button class="cat-btn" onclick="setCategory('အအေး', this)">အအေး</button>
+                <button class="cat-btn" onclick="setCategory('ကော်ဖီ', this)">ကော်ဖီ</button>
+                <button class="cat-btn" onclick="setCategory('ခေါက်ဆွဲ', this)">ခေါက်ဆွဲ</button>
+                <button class="cat-btn" onclick="setCategory('လူသုံးကုန်', this)">လူသုံးကုန်</button>
+                <button class="cat-btn" onclick="setCategory('မီးဖိုချောင်သုံး', this)">မီးဖိုချောင်သုံး</button>
+                <button class="cat-btn" onclick="setCategory('အခြား', this)">အခြား</button>
             </div>
         </div>
 
         <div id="pos-grid-container">
             <div id="pos-grid"></div>
-        </div>
-
-        <div id="sales-bottom-fixed">
-            <div id="cart-list"></div>
-            <div style="display:flex; justify-content:space-between; font-weight:bold; font-size:1.1rem; padding: 5px 0;">
-                <span>စုစုပေါင်း:</span><span id="cart-total" style="color:var(--red);">0 Ks</span>
-            </div>
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:5px;">
-                <button class="btn btn-dark" onclick="showReceipt()"><i class="fas fa-file-invoice"></i> Preview</button>
-                <button class="btn btn-green" onclick="processSale()"><i class="fas fa-check-circle"></i> သိမ်းမည်</button>
-            </div>
         </div>
     </main>
 
@@ -258,7 +257,6 @@
             const qS = document.getElementById('search-box').value.toLowerCase();
             const qI = document.getElementById('inv-search').value.toLowerCase();
 
-            // Sales Grid
             const posFiltered = products.filter(p => (curCat === 'all' || p.category === curCat) && p.name.toLowerCase().includes(qS));
             document.getElementById('pos-grid').innerHTML = posFiltered.map(p => `
                 <div class="p-card" onclick="addToCart(${p.id})">
@@ -267,12 +265,10 @@
                     <div style="padding:6px; font-size:11px;"><b>${p.name}</b><br><span style="color:var(--red)">${p.sell.toLocaleString()} Ks</span></div>
                 </div>`).join('');
 
-            // Stock Table
             document.getElementById('stock-body').innerHTML = products.map(p => `
                 <tr><td>${p.name}</td><td>${p.sell.toLocaleString()}</td><td style="color:${p.qty<5?'red':'green'}; font-weight:bold;">${p.qty}</td></tr>
             `).join('');
 
-            // Inventory Table
             const invFiltered = products.filter(p => p.name.toLowerCase().includes(qI));
             document.getElementById('inv-body').innerHTML = invFiltered.map(p => `
                 <tr>
@@ -293,21 +289,26 @@
 
         function renderCart() {
             let total = 0;
-            document.getElementById('cart-list').innerHTML = cart.map(i => {
-                total += i.sell * i.cQty;
-                return `
-                <div class="cart-item">
-                    <div style="flex:1;"><b>${i.name}</b><br>${i.cQty} x ${i.sell.toLocaleString()}</div>
-                    <div style="display:flex; align-items:center; gap:5px;">
-                        <button onclick="adjustQty(${i.id}, -1)" style="width:22px; height:22px;">-</button>
-                        <b>${i.cQty}</b>
-                        <button onclick="adjustQty(${i.id}, 1)" style="width:22px; height:22px;">+</button>
-                    </div>
-                    <div style="width:60px; text-align:right;">${(i.sell*i.cQty).toLocaleString()}</div>
-                </div>`;
-            }).join('');
+            const cl = document.getElementById('cart-list');
+            if(cart.length === 0) {
+                cl.innerHTML = `<div style="text-align:center; color:#94a3b8; padding-top:10px; font-size:12px;">ခြင်းတောင်းထဲတွင် ပစ္စည်းမရှိသေးပါ</div>`;
+            } else {
+                cl.innerHTML = cart.map(i => {
+                    total += i.sell * i.cQty;
+                    return `
+                    <div class="cart-item">
+                        <div style="flex:1;"><b>${i.name}</b><br>${i.cQty} x ${i.sell.toLocaleString()}</div>
+                        <div style="display:flex; align-items:center; gap:5px;">
+                            <button onclick="adjustQty(${i.id}, -1)" style="width:22px; height:22px;">-</button>
+                            <b>${i.cQty}</b>
+                            <button onclick="adjustQty(${i.id}, 1)" style="width:22px; height:22px;">+</button>
+                        </div>
+                        <div style="width:60px; text-align:right;">${(i.sell*i.cQty).toLocaleString()}</div>
+                    </div>`;
+                }).join('');
+            }
             document.getElementById('cart-total').innerText = total.toLocaleString() + " Ks";
-            const cl = document.getElementById('cart-list'); cl.scrollTop = cl.scrollHeight;
+            cl.scrollTop = cl.scrollHeight;
         }
 
         function adjustQty(id, d) {
@@ -321,7 +322,7 @@
         }
 
         async function showReceipt() {
-            if(!cart.length) return;
+            if(!cart.length) return alert("ပစ္စည်းအရင်ရွေးပါ");
             const ra = document.getElementById('receipt-render-area');
             let total = 0, html = `<div style="text-align:center;"><b>ထွန်းတောက်ကြွယ်</b><br><small>ရောင်းဝယ်ရေး</small></div><div class="r-line"></div>`;
             html += `<div style="font-size:12px;">ရက်စွဲ: ${new Date().toLocaleString()}<br>ဝယ်သူ: ${document.getElementById('cust-name').value || 'Guest'}</div><div class="r-line"></div>`;
@@ -375,7 +376,6 @@
             document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
             document.getElementById(tid).classList.add('active');
             btn.classList.add('active');
-            // Tab ပြောင်းတိုင်း Stock စာရင်းတွေ ပြန် Render လုပ်ဖို့
             refreshUI();
             if(tid === 'tab-rep') runReport();
         }
