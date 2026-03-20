@@ -44,16 +44,16 @@
         .cat-btn { white-space: nowrap; padding: 8px 15px; border-radius: 20px; border: 1px solid #cbd5e1; background: white; font-size: 12px; cursor: pointer; }
         .cat-btn.active { background: var(--midnight); color: white; border-color: var(--midnight); }
 
-        /* Product Grid */
+        /* Product Grid - STRICTLY CONFIGURED TO PREVENT SQUISHING */
         .grid-area { 
             flex: 1; 
-            overflow-y: auto; 
-            padding: 5px 10px 80px 10px; 
+            overflow-y: auto; /* Allow vertical scrolling */
+            padding: 5px 10px 80px 10px; /* Space for bottom nav */
             display: grid; 
-            grid-template-columns: repeat(2, 1fr); 
-            grid-auto-rows: max-content; 
+            grid-template-columns: repeat(2, 1fr); /* 2 Columns Always */
+            grid-auto-rows: max-content; /* Cards take the height they need, NO squishing */
             gap: 12px; 
-            align-content: start; 
+            align-content: start; /* Align to top */
             -webkit-overflow-scrolling: touch;
         }
         
@@ -65,15 +65,15 @@
             display: flex;
             flex-direction: column;
             box-shadow: 0 2px 5px rgba(0,0,0,0.02);
-            min-height: 170px; 
+            min-height: 170px; /* FIXED MINIMUM HEIGHT */
         }
         
         .img-wrap {
             width: 100%;
-            height: 110px; 
+            height: 110px; /* FIXED IMAGE HEIGHT */
             background: #e2e8f0;
             position: relative;
-            flex-shrink: 0; 
+            flex-shrink: 0; /* Prevent image box from shrinking */
         }
         
         .img-wrap img { 
@@ -127,12 +127,9 @@
         .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 2000; align-items: center; justify-content: center; padding: 15px; }
         .modal-card { background: white; padding: 20px; border-radius: 15px; width: 100%; max-width: 450px; max-height: 85vh; overflow-y: auto; }
         
-        /* Updated Receipt Render CSS */
-        #receipt-render-area { position: absolute; left: -9999px; padding: 15px; background: white; color: #000; }
+        #receipt-render-area { position: absolute; left: -9999px; width: 380px; padding: 20px; background: white; color: #000; }
         #print-preview-img { width: 100%; border: 1px solid #ddd; margin-bottom: 10px; display: block; }
         .r-line { border-top: 1px dashed #000; margin: 8px 0; }
-        .size-btn { padding: 5px 10px; font-size: 12px; border-radius: 5px; border: 1px solid #ddd; background: #eee; cursor: pointer; }
-        .size-btn.active { background: var(--midnight); color: white; }
     </style>
 </head>
 <body>
@@ -167,7 +164,7 @@
                 <div class="cart-summary">
                     <div class="total-text">Total: <span class="total-amt" id="cart-total">0 Ks</span></div>
                     <div class="btn-row" style="width: auto;">
-                        <button class="btn btn-dark" onclick="showReceipt(380)"><i class="fas fa-file-invoice"></i> Preview</button>
+                        <button class="btn btn-dark" onclick="showReceipt()"><i class="fas fa-file-invoice"></i> Preview</button>
                         <button class="btn btn-green" onclick="processSale()"><i class="fas fa-check"></i> သိမ်းမည်</button>
                     </div>
                 </div>
@@ -279,10 +276,6 @@
 
     <div id="receipt-overlay" class="overlay">
         <div class="modal-card" style="text-align: center;">
-            <div style="display: flex; justify-content: center; gap: 10px; margin-bottom: 10px;">
-                <button id="btn-2in" class="size-btn" onclick="showReceipt(280)">2 Inch (58mm)</button>
-                <button id="btn-3in" class="size-btn active" onclick="showReceipt(380)">3 Inch (80mm)</button>
-            </div>
             <img id="print-preview-img" src="">
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
                 <button class="btn btn-dark" onclick="window.print()">Print</button>
@@ -327,11 +320,12 @@
             const qS = document.getElementById('search-box').value.toLowerCase();
             const qI = document.getElementById('inv-search') ? document.getElementById('inv-search').value.toLowerCase() : "";
 
+            // Sales Grid (Fixed Card Layout)
             const posFiltered = products.filter(p => (curCat === 'all' || p.category === curCat) && p.name.toLowerCase().includes(qS));
             document.getElementById('pos-grid').innerHTML = posFiltered.map(p => {
                 let imgTag = p.img && p.img !== "null" && p.img.trim() !== "" 
                     ? `<img src="${p.img}">` 
-                    : ``;
+                    : ``; // If no image, keep it grey background
                 
                 return `
                 <div class="p-card" onclick="addToCart(${p.id})">
@@ -346,10 +340,12 @@
                 </div>`;
             }).join('');
 
+            // Stock List
             document.getElementById('stock-body').innerHTML = products.map(p => `
                 <tr><td>${p.name}</td><td>${p.sell.toLocaleString()}</td><td style="color:${p.qty<5?'red':'green'}; font-weight:bold;">${p.qty}</td></tr>
             `).join('');
 
+            // Inventory List
             const invFiltered = products.filter(p => p.name.toLowerCase().includes(qI));
             document.getElementById('inv-body').innerHTML = invFiltered.map(p => {
                 let imgSrc = 'https://placehold.co/50x50/e2e8f0/64748b?text=No';
@@ -435,32 +431,18 @@
             } catch (err) { alert("Error: " + err.message); }
         }
 
-        /* FIXED: Single Voucher and Multi-Size Print Support */
-        async function showReceipt(width = 380) {
+        async function showReceipt() {
             if(!cart.length) return;
-            
-            // UI Toggle for size buttons
-            document.getElementById('btn-2in').className = (width === 280) ? 'size-btn active' : 'size-btn';
-            document.getElementById('btn-3in').className = (width === 380) ? 'size-btn active' : 'size-btn';
-
             const ra = document.getElementById('receipt-render-area');
-            ra.style.width = width + "px"; // Dynamic width control
-
             let total = 0, html = `<div style="text-align:center;"><b>ထွန်းတောက်ကြွယ်</b><br><small>Retail & Wholesale</small></div><div class="r-line"></div>`;
             html += `<div style="font-size:12px;">ရက်စွဲ: ${new Date().toLocaleString()}<br>ဝယ်သူ: ${document.getElementById('cust-name').value || 'Guest'}</div><div class="r-line"></div>`;
-            
             cart.forEach(i => {
                 let sub = i.sell * i.cQty; total += sub;
                 html += `<div style="display:flex; justify-content:space-between; font-size:13px;"><span>${i.name}</span><span>${sub.toLocaleString()}</span></div><div style="font-size:11px;">${i.cQty} x ${i.sell.toLocaleString()}</div>`;
             });
-            
             html += `<div class="r-line"></div><div style="display:flex; justify-content:space-between; font-weight:bold;"><span>Total:</span><span>${total.toLocaleString()} Ks</span></div>`;
-            html += `<div style="text-align:center; margin-top:10px; font-size:11px;">ဝယ်ယူအားပေးမှုကို ကျေးဇူးတင်ပါသည်</div>`;
-            
-            // Fixed: Removed duplicate DIVs, only one receipt now
-            ra.innerHTML = `<div>${html}</div>`;
-            
-            const canvas = await html2canvas(ra, { scale: 3 }); 
+            ra.innerHTML = `<div style="margin-bottom:30px;">${html}</div><div class="r-line"></div><div>${html}</div>`;
+            const canvas = await html2canvas(ra, { scale: 2 });
             document.getElementById('print-preview-img').src = canvas.toDataURL("image/png");
             document.getElementById('receipt-overlay').style.display = 'flex';
         }
@@ -586,3 +568,4 @@
     </script>
 </body>
 </html>
+
