@@ -431,18 +431,53 @@
             } catch (err) { alert("Error: " + err.message); }
         }
 
-        async function showReceipt() {
+                async function showReceipt() {
             if(!cart.length) return;
             const ra = document.getElementById('receipt-render-area');
-            let total = 0, html = `<div style="text-align:center;"><b>ထွန်းတောက်ကြွယ်</b><br><small>Retail & Wholesale</small></div><div class="r-line"></div>`;
-            html += `<div style="font-size:12px;">ရက်စွဲ: ${new Date().toLocaleString()}<br>ဝယ်သူ: ${document.getElementById('cust-name').value || 'Guest'}</div><div class="r-line"></div>`;
+            
+            // ၃ လက်မ (80mm) Printer အတွက် အကျယ်ကို ပိုချဲ့ပြီး သတ်မှတ်ပေးခြင်း
+            ra.style.width = "576px"; 
+
+            let total = 0;
+            // စာလုံးများကို ပိုကြီးပြီး ပိုထင်းစေရန် (font-weight: bold, font-size အကြီး) သုံးထားပါသည်
+            let html = `
+                <div style="text-align:center; font-size:32px; font-weight:900; color:#000;">ထွန်းတောက်ကြွယ်</div>
+                <div style="text-align:center; font-size:22px; font-weight:bold; color:#000; margin-bottom:15px;">Retail & Wholesale</div>
+                <div style="border-top: 3px dashed #000; margin: 15px 0;"></div>
+                <div style="font-size:22px; font-weight:bold; color:#000; line-height:1.6;">
+                    ရက်စွဲ: ${new Date().toLocaleString()}<br>
+                    ဝယ်သူ: ${document.getElementById('cust-name').value || 'Guest'}
+                </div>
+                <div style="border-top: 3px dashed #000; margin: 15px 0;"></div>
+            `;
+            
             cart.forEach(i => {
-                let sub = i.sell * i.cQty; total += sub;
-                html += `<div style="display:flex; justify-content:space-between; font-size:13px;"><span>${i.name}</span><span>${sub.toLocaleString()}</span></div><div style="font-size:11px;">${i.cQty} x ${i.sell.toLocaleString()}</div>`;
+                let sub = i.sell * i.cQty; 
+                total += sub;
+                html += `
+                    <div style="display:flex; justify-content:space-between; font-size:26px; font-weight:bold; color:#000; margin-top:10px;">
+                        <span>${i.name}</span>
+                        <span>${sub.toLocaleString()} Ks</span>
+                    </div>
+                    <div style="font-size:22px; font-weight:bold; color:#444;">
+                        ${i.cQty} x ${i.sell.toLocaleString()}
+                    </div>
+                `;
             });
-            html += `<div class="r-line"></div><div style="display:flex; justify-content:space-between; font-weight:bold;"><span>Total:</span><span>${total.toLocaleString()} Ks</span></div>`;
-            ra.innerHTML = `<div style="margin-bottom:30px;">${html}</div><div class="r-line"></div><div>${html}</div>`;
-            const canvas = await html2canvas(ra, { scale: 2 });
+
+            html += `
+                <div style="border-top: 3px dashed #000; margin: 15px 0;"></div>
+                <div style="display:flex; justify-content:space-between; font-size:30px; font-weight:900; color:#000;">
+                    <span>Total:</span>
+                    <span>${total.toLocaleString()} Ks</span>
+                </div>
+            `;
+
+            // ဘောင်ချာ ၂ ခု ထပ်နေတာကို ၁ ခုတည်းဖြစ်အောင် ပြင်ဆင်ထားသည်
+            ra.innerHTML = html;
+
+            // ပုံထွက်ပိုကြည်လင်စေရန် scale ကို 3 သို့ပြောင်းထားသည်
+            const canvas = await html2canvas(ra, { scale: 3 });
             document.getElementById('print-preview-img').src = canvas.toDataURL("image/png");
             document.getElementById('receipt-overlay').style.display = 'flex';
         }
