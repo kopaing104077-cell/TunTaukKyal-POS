@@ -67,7 +67,7 @@
         
         #receipt-render-area { display: none; }
 
-        /* --- PRINT STYLES (RE-OPTIMIZED FOR TABLE WIDTH & CENTER) --- */
+        /* --- PRINT STYLES (Header/Footer CENTER, Table LEFT) --- */
         @media print {
             body { background: white; width: 100%; margin: 0; padding: 0; position: static; height: auto; overflow: visible; }
             body * { visibility: hidden; }
@@ -78,114 +78,50 @@
                 position: absolute; 
                 left: 0; 
                 top: 0; 
-                width: 74mm !important; /* Fixed width for standard 80mm paper to avoid margins */
-                margin: 0 auto;
+                width: 74mm !important;
+                margin: 0;
                 padding: 0;
-                box-sizing: border-box;
             }
 
             .receipt-container { 
                 width: 100%; 
                 margin: 0; 
-                padding: 0 2mm; /* Tiny padding to prevent clipping */
+                padding: 0 2mm;
                 color: #000;
-                text-align: center; /* Center Header/Footer content */
-                font-family: 'Pyidaungsu', sans-serif;
-                box-sizing: border-box;
             }
             
-            /* Center Header & Footer with original size */
-            .receipt-header-title { 
-                font-size: 26px; /* Orginal size from the center-code */
-                font-weight: bold; 
-                margin: 0;
+            /* Header & Footer စာသားများကို အလယ်ပို့ထားခြင်း */
+            .receipt-header-title, .receipt-header-sub, .receipt-divider, .receipt-section-title, .footer-msg {
+                text-align: center;
                 display: block;
-            }
-
-            .receipt-header-sub { 
-                font-size: 16px; /* Original size from the center-code */
-                margin-top: 4px; 
-                line-height: 1.4;
-                display: block;
-            }
-
-            .receipt-divider {
-                margin: 10px 0;
-                border-top: 1.5px dashed #000;
                 width: 100%;
             }
 
-            /* Info section remains left-aligned */
-            .receipt-info { 
-                font-size: 14px; 
-                text-align: left; 
-                margin: 10px 0; 
-                line-height: 1.6;
-            }
+            .receipt-header-title { font-size: 24px; font-weight: bold; margin: 0; }
+            .receipt-header-sub { font-size: 15px; margin-top: 4px; line-height: 1.4; }
+            .receipt-divider { margin: 10px 0; border-top: 1.5px dashed #000; }
+            .receipt-section-title { font-size: 16px; font-weight: bold; margin: 5px 0; }
 
-            /* Table re-FIXED width for standard 80mm */
-            .receipt-table { 
-                width: 100%; 
-                border-collapse: collapse; 
-                font-size: 12px; /* Small font to fit 5 columns within standard 80mm */
-                table-layout: fixed; 
-                margin: 5px 0;
-                box-sizing: border-box;
-            }
+            /* Customer Info ကို ဘယ်ဘက်ကပ်ထားခြင်း */
+            .receipt-info { font-size: 14px; text-align: left; margin: 10px 0; line-height: 1.6; }
 
-            .receipt-table th { 
-                border-top: 1px dashed #000; 
-                border-bottom: 1px dashed #000; 
-                padding: 8px 0; 
-                font-weight: bold;
-                text-align: center;
-            }
+            /* Table ကို ဘယ်ဘက်အတိုင်းထားရှိခြင်း */
+            .receipt-table { width: 100%; border-collapse: collapse; font-size: 12px; table-layout: fixed; margin: 5px 0; }
+            .receipt-table th { border-top: 1px dashed #000; border-bottom: 1px dashed #000; padding: 8px 0; font-weight: bold; text-align: left; }
             
-            /* Column Widths to fit within 72-74mm total */
-            .col-name  { text-align: left; width: 32%; }
+            .col-name  { text-align: left; width: 35%; }
             .col-qty   { text-align: center; width: 10%; }
-            .col-unit  { text-align: center; width: 13%; }
-            .col-price { text-align: right; width: 22%; }
+            .col-unit  { text-align: center; width: 12%; }
+            .col-price { text-align: right; width: 20%; }
             .col-amt   { text-align: right; width: 23%; }
 
-            .receipt-table td { 
-                padding: 6px 0; 
-                vertical-align: top; 
-                word-wrap: break-word; 
-                overflow-wrap: break-word; /* Crucial for long names */
-            }
+            .receipt-table td { padding: 6px 0; vertical-align: top; word-wrap: break-word; }
 
-            .summary-wrap { 
-                margin-top: 10px; 
-                border-top: 1.5px dashed #000; 
-                padding-top: 8px; 
-                box-sizing: border-box;
-            }
-
-            .receipt-row { 
-                display: flex; 
-                justify-content: flex-end; 
-                font-size: 16px; 
-                margin-bottom: 5px; 
-            }
-
+            .summary-wrap { margin-top: 10px; border-top: 1.5px dashed #000; padding-top: 8px; }
+            .receipt-row { display: flex; justify-content: flex-end; font-size: 16px; margin-bottom: 5px; }
             .label { width: 45%; text-align: right; padding-right: 15px; }
             .val { width: 35%; text-align: right; font-weight: bold; }
-
-            .total-row { 
-                font-size: 20px; /* Orginal size from the center-code */
-                font-weight: bold; 
-                margin-top: 8px; 
-                padding-top: 8px; 
-                border-top: 1px solid #000; 
-            }
-
-            .footer-msg {
-                text-align: center; /* Center-aligned original message */
-                margin-top: 20px;
-                font-size: 15px;
-                line-height: 1.5;
-            }
+            .total-row { font-size: 20px; font-weight: bold; margin-top: 8px; padding-top: 8px; border-top: 1px solid #000; }
 
             @page { margin: 0; }
         }
@@ -392,8 +328,7 @@
             renderCart();
         }
 
-        function renderCart()
-        {
+        function renderCart() {
             let total = 0;
             const cl = document.getElementById('cart-list');
             if(cart.length === 0) {
@@ -461,7 +396,7 @@
                     <span class="receipt-header-sub">အမှတ်(၁၅)၊ ထင်းရှူးရိပ်သာ(၁)ပတ်လမ်း၊ ဇေကမ္ဘာဝင်း၊ မင်္ဂလာဒုံမြို့နယ်</span>
                     
                     <div class="receipt-divider"></div>
-                    <span style="font-size:16px; font-weight:bold;">*** RECEIPT ***</span>
+                    <span class="receipt-section-title">*** RECEIPT ***</span>
                     <div class="receipt-divider"></div>
                     
                     <div class="receipt-info">
@@ -471,15 +406,7 @@
                     </div>
 
                     <table class="receipt-table">
-                        <thead>
-                            <tr>
-                                <th class="col-name">NAME</th>
-                                <th class="col-qty">QTY</th>
-                                <th class="col-unit">UNIT</th>
-                                <th class="col-price">PRICE</th>
-                                <th class="col-amt">AMT</th>
-                            </tr>
-                        </thead>
+                        <thead><tr><th>NAME</th><th>QTY</th><th>UNIT</th><th>PRICE</th><th>AMT</th></tr></thead>
                         <tbody>${rowsHtml}</tbody>
                     </table>
 
@@ -504,7 +431,61 @@
             }, 500);
         }
 
-        /* ... (rest of the functions remain the same) ... */
+        /* --- စာရင်းချုပ်အပိုင်း (Updated runReport) --- */
+        async function runReport() {
+            const dt = document.getElementById('rep-date').value;
+            const ty = document.getElementById('rep-type').value;
+            
+            let q = _sb.from('sales').select('*');
+            if(ty === 'day') {
+                q = q.eq('date', dt); 
+            } else {
+                q = q.like('date', `${dt.slice(0, 7)}%`);
+            }
+            
+            const { data, error } = await q.order('id', { ascending: false });
+            
+            if (error) {
+                console.error("Report Fetch Error:", error);
+                return;
+            }
+
+            let r = 0, p = 0, h = ``;
+            if (data && data.length > 0) {
+                data.forEach(s => {
+                    r += (s.rev || 0); 
+                    p += (s.prof || 0);
+                    h += `<tr>
+                        <td>${s.date}</td>
+                        <td>${s.cust || '-'}</td>
+                        <td>${(s.rev || 0).toLocaleString()}</td>
+                        <td>${(s.prof || 0).toLocaleString()}</td>
+                        <td><button onclick="delSale(${s.id})" style="color:var(--red); background:none; border:none; cursor:pointer;"><i class="fas fa-trash"></i></button></td>
+                    </tr>`;
+                });
+            } else {
+                h = `<tr><td colspan="5" style="text-align:center;">မှတ်တမ်းမရှိပါ</td></tr>`;
+            }
+
+            document.getElementById('sum-rev').innerText = r.toLocaleString() + " Ks";
+            document.getElementById('sum-prof').innerText = p.toLocaleString() + " Ks";
+            document.getElementById('rep-body').innerHTML = h;
+        }
+
+        async function delSale(sid) {
+            if(!confirm("ဖျက်မှာလား? Stock ပြန်တိုးပါမည်။")) return;
+            const { data: sale } = await _sb.from('sales').select('*').eq('id', sid).single();
+            if(sale && sale.items) {
+                for(let it of sale.items) {
+                    const p = products.find(x => x.id === it.id);
+                    if(p) await _sb.from('products').update({qty: p.qty + it.qty}).eq('id', it.id);
+                }
+            }
+            await _sb.from('sales').delete().eq('id', sid); 
+            runReport(); loadProducts();
+        }
+
+        /* UI Helpers */
         function navTo(tid, btn) {
             document.querySelectorAll('.container').forEach(c => c.classList.remove('active'));
             document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
@@ -569,31 +550,6 @@
         }
 
         async function deleteProduct() { if(confirm("ဖျက်မှာလား?")) { await _sb.from('products').delete().eq('id', document.getElementById('edit-id').value); closeOverlay('add-overlay'); loadProducts(); } }
-
-        async function runReport() {
-            const dt = document.getElementById('rep-date').value, ty = document.getElementById('rep-type').value;
-            let q = _sb.from('sales').select('*');
-            if(ty==='day') q = q.eq('date', dt); else q = q.like('date', `${dt.slice(0,7)}%`);
-            const { data } = await q;
-            let r=0, p=0, h=``;
-            (data||[]).forEach(s => {
-                r += s.rev; p += s.prof;
-                h += `<tr><td>${s.date}</td><td>${s.cust}</td><td>${s.rev.toLocaleString()}</td><td>${s.prof.toLocaleString()}</td><td><button onclick="delSale(${s.id})" style="color:red; background:none; border:none;"><i class="fas fa-trash"></i></button></td></tr>`;
-            });
-            document.getElementById('sum-rev').innerText = r.toLocaleString();
-            document.getElementById('sum-prof').innerText = p.toLocaleString();
-            document.getElementById('rep-body').innerHTML = h;
-        }
-
-        async function delSale(sid) {
-            if(!confirm("ဖျက်မှာလား? Stock ပြန်တိုးပါမည်။")) return;
-            const { data: sale } = await _sb.from('sales').select('*').eq('id', sid).single();
-            for(let it of sale.items) {
-                const p = products.find(x => x.id === it.id);
-                if(p) await _sb.from('products').update({qty: p.qty + it.qty}).eq('id', it.id);
-            }
-            await _sb.from('sales').delete().eq('id', sid); runReport(); loadProducts();
-        }
 
         function handleImg(e) {
             const reader = new FileReader();
