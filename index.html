@@ -66,7 +66,7 @@
         
         #receipt-render-area { display: none; }
 
-        /* --- 80mm THERMAL PRINTER STYLES (CENTERED & CALIBRATED) --- */
+        /* --- 80mm THERMAL PRINTER STYLES (MATCHING YOUR RECEIPT PHOTO) --- */
         @media print {
             body { background: white; margin: 0; padding: 0; }
             body * { visibility: hidden !important; }
@@ -77,34 +77,34 @@
                 position: absolute; 
                 left: 0; 
                 top: 0; 
-                width: 76mm !important; /* Standard printable width for 80mm paper */
+                width: 76mm !important; 
                 padding: 1mm 2mm;
                 background: white; 
             }
 
             .receipt-container { 
                 width: 100%; 
-                text-align: center; /* Headers and Footers Centered */
+                text-align: center; 
                 color: #000; 
                 font-family: 'Pyidaungsu', 'Segoe UI', sans-serif;
             }
             
             .receipt-header-title { font-size: 24px; font-weight: bold; margin: 0; }
-            .receipt-header-sub { font-size: 14px; margin-top: 2px; line-height: 1.2; }
+            .receipt-header-sub { font-size: 13px; margin-top: 1px; line-height: 1.2; }
             
             .receipt-info { 
                 font-size: 13px; 
                 line-height: 1.4; 
-                margin-top: 8px; 
-                text-align: left; /* Details like Time/Cust aligned left */
+                margin-top: 10px; 
+                text-align: left;
             }
 
             .receipt-table { 
                 width: 100%; 
                 border-collapse: collapse; 
-                font-size: 13px; 
+                font-size: 12px; 
                 margin-top: 8px; 
-                table-layout: fixed;
+                table-layout: fixed; /* Column အကျယ်တွေကို Lock ချထားရန် */
             }
             
             .receipt-table th { 
@@ -114,17 +114,16 @@
                 font-weight: bold; 
             }
 
-            /* Precise columns for 80mm width */
-            .col-name { text-align: left; width: 35%; }
-            .col-qty { text-align: center; width: 12%; }
+            /* Column widths calibrated for 80mm to fit 5 columns */
+            .col-name { text-align: left; width: 34%; word-break: break-all; }
+            .col-qty { text-align: right; width: 10%; }
             .col-unit { text-align: center; width: 13%; }
-            .col-price { text-align: right; width: 20%; }
-            .col-amt { text-align: right; width: 20%; }
+            .col-price { text-align: right; width: 18%; }
+            .col-amt { text-align: right; width: 25%; }
 
             .receipt-table td { 
                 padding: 6px 0; 
                 vertical-align: top; 
-                word-wrap: break-word; 
             }
 
             .summary-box {
@@ -134,14 +133,14 @@
             }
 
             .summary-row { display: flex; justify-content: flex-end; font-size: 14px; padding: 2px 0; }
-            .summary-label { width: 50%; text-align: right; padding-right: 10px; }
-            .summary-value { width: 35%; text-align: right; font-weight: bold; }
+            .summary-label { width: 60%; text-align: right; padding-right: 15px; }
+            .summary-value { width: 35%; text-align: right; }
             
             .total-row { font-size: 18px; font-weight: bold; margin-top: 2px; }
 
             .receipt-footer {
                 text-align: center;
-                margin-top: 12px;
+                margin-top: 15px;
                 font-size: 13px;
                 border-top: 1px dashed #000;
                 padding-top: 10px;
@@ -247,7 +246,7 @@
                 <tbody id="rep-body"></tbody>
             </table>
         </div>
-    </main>
+    </nav>
 
     <nav class="nav">
         <button class="nav-item active" id="n-sales" onclick="navTo('tab-sales', this)"><i class="fas fa-cash-register"></i>အရောင်း</button>
@@ -390,13 +389,12 @@
             if(!cart.length) return;
             if(!confirm("သိမ်းဆည်းပြီး ဘောင်ချာထုတ်မလား?")) return;
             
-            // Format Date as YYYY/MM/DD and Time as HH:MM:SS
             const now = new Date();
-            const date = now.toISOString().split('T')[0].replace(/-/g, '/');
-            const time = now.toLocaleTimeString('en-GB', { hour12: false });
+            const dateStr = now.toISOString().split('T')[0].replace(/-/g, '/');
+            const timeStr = now.toLocaleTimeString('en-GB', { hour12: false });
             const staff = document.getElementById('staff-name').value || "Admin";
             const cust = document.getElementById('cust-name').value || "Guest";
-            const chkNumber = now.getTime().toString().slice(-8); // Generate dynamic CHK#
+            const chkId = now.getTime().toString().slice(-8); 
             
             let totalRev=0, totalProf=0, saleItems=[];
             let rowsHtml = "";
@@ -423,17 +421,17 @@
                     <div class="receipt-header-sub">အမှတ်(၁၅)၊ ထင်းရှူးရိပ်သာ(၁)ပတ်လမ်း၊</div>
                     <div class="receipt-header-sub">ဇေကမ္ဘာဝင်း၊ မင်္ဂလာဒုံမြို့နယ်</div>
                     
-                    <div style="margin:8px 0; font-weight:bold;">****** COPY ******</div>
+                    <div style="margin:10px 0; font-weight:bold;">****** COPY ******</div>
 
                     <div class="receipt-info">
                         <div style="display:flex; justify-content:space-between;">
-                            <span>CHK# ${chkNumber}</span>
+                            <span>CHK# ${chkId}</span>
                         </div>
                         <div style="display:flex; justify-content:space-between;">
                             <span>Clerk: ${staff}</span>
                             <span>Guest# 1</span>
                         </div>
-                        <div>Print Time: ${date} ${time}</div>
+                        <div>Print Time: ${dateStr} ${timeStr}</div>
                         <div>Customer: <b>${cust}</b></div>
                     </div>
 
