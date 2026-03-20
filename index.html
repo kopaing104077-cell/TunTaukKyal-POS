@@ -74,14 +74,24 @@
         .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 2000; align-items: center; justify-content: center; padding: 15px; }
         .modal-card { background: white; padding: 20px; border-radius: 15px; width: 100%; max-width: 450px; max-height: 85vh; overflow-y: auto; }
         
-        /* ဘောင်ချာ Render လုပ်မည့်နေရာ */
+        /* ဘောင်ချာ Render လုပ်မည့်နေရာ Styling */
         #receipt-render-area { display: none; }
 
         @media print {
             body * { visibility: hidden !important; }
             #receipt-render-area, #receipt-render-area * { visibility: visible !important; }
-            #receipt-render-area { display: block !important; position: absolute; left: 0; top: 0; width: 100%; }
-            @page { margin: 0; }
+            #receipt-render-area { 
+                display: block !important; 
+                position: absolute; 
+                left: 0; 
+                top: 0; 
+                width: 80mm !important; 
+                background: white;
+            }
+            @page { 
+                size: 80mm auto; 
+                margin: 0; 
+            }
         }
     </style>
 </head>
@@ -335,7 +345,7 @@
 
         function removeItem(id) { cart = cart.filter(x => x.id !== id); renderCart(); }
 
-        // အရောင်းသိမ်းခြင်းနှင့် ဘောင်ချာထုတ်ခြင်း (Integrated 5-Column Table)
+        // အရောင်းသိမ်းခြင်းနှင့် ဘောင်ချာထုတ်ခြင်း (Optimized for 80mm Printer)
         async function processSale() {
             if(!cart.length) return;
             if(!confirm("အရောင်းစာရင်း သိမ်းပြီး ဘောင်ချာထုတ်ယူမလား?")) return;
@@ -348,27 +358,31 @@
             
             let totalRev=0, totalProf=0, saleItems=[];
             
-            // ဘောင်ချာ HTML ပုံစံသစ်
+            // 80mm Standard Receipt Design
             let h = `
-                <div style="width: 100%; font-family: sans-serif; color: #000; padding: 5px; font-size: 13px; background: #fff;">
-                    <div style="text-align: center; line-height: 1.2;">
-                        <h2 style="margin: 0; font-size: 18px;">ထွန်းတောက်ကြွယ်</h2>
-                        <div style="font-size: 11px;">စားသောက်ကုန်နှင့်လူသုံးကုန်လက်ကားဖြန့်ချိရေး</div>
-                        <div style="font-size: 11px;">အမှတ်(၁၅)၊ ထင်းရှူးရိပ်သာ(၁)ပတ်လမ်း၊ဇေကမ္ဘာဝင်း၊မင်္ဂလာဒုံမြို့နယ်</div>
-                        <div style="margin-top: 5px; border-top: 1px dashed #000; border-bottom: 1px dashed #000; padding: 2px 0;">****** COPY ******</div>
-                    </div>
-                    <div style="margin-top: 10px; font-size: 11px; line-height: 1.5;">
-                        <div style="display: flex; justify-content: space-between;"><span>Clerk: ${staff}</span> <span>Guest# 1</span></div>
-                        <div>Print Time: ${date} ${time}</div>
-                        <div>Customer: ${cust}</div>
+                <div style="width: 72mm; margin: 0 auto; font-family: 'Segoe UI', 'Pyidaungsu', sans-serif; color: #000; padding: 2mm; background: #fff;">
+                    <div style="text-align: center; margin-bottom: 5px;">
+                        <h2 style="margin: 0; font-size: 18px; font-weight: bold;">ထွန်းတောက်ကြွယ်</h2>
+                        <div style="font-size: 11px; margin-top: 2px;">စားသောက်ကုန်နှင့်လူသုံးကုန်လက်ကားဖြန့်ချိရေး</div>
+                        <div style="font-size: 10px; line-height: 1.3;">အမှတ်(၁၅)၊ ထင်းရှူးရိပ်သာ(၁)ပတ်လမ်း၊<br>ဇေကမ္ဘာဝင်း၊ မင်္ဂလာဒုံမြို့နယ်</div>
+                        <div style="margin: 8px 0; border-top: 1px dashed #000; border-bottom: 1px dashed #000; padding: 3px 0; font-weight: bold;">****** အရောင်းပြေစာ (COPY) ******</div>
                     </div>
 
-                    <table style="width: 100%; border-collapse: collapse; font-size: 11px; margin-top: 10px;">
+                    <div style="font-size: 11px; line-height: 1.6; margin-bottom: 8px;">
+                        <div style="display: flex; justify-content: space-between;">
+                            <span>Clerk: ${staff}</span>
+                            <span>Guest# 1</span>
+                        </div>
+                        <div>Print Time: ${date} ${time}</div>
+                        <div>Customer: <b>${cust}</b></div>
+                    </div>
+
+                    <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
                         <thead>
-                            <tr style="border-top: 1px dashed #000; border-bottom: 1px dashed #000;">
+                            <tr style="border-top: 1px solid #000; border-bottom: 1px solid #000;">
                                 <th style="text-align: left; padding: 5px 0;">NAME</th>
                                 <th style="text-align: center;">QTY</th>
-                                <th style="text-align: center;">Unit</th>
+                                <th style="text-align: center;">UNIT</th>
                                 <th style="text-align: right;">PRICE</th>
                                 <th style="text-align: right;">AMOUNT</th>
                             </tr>
@@ -382,8 +396,8 @@
                     saleItems.push({id: i.id, name: i.name, qty: i.cQty, buy: i.buy, sell: i.sell});
                     
                     h += `
-                        <tr>
-                            <td style="padding: 5px 0;">${i.name}</td>
+                        <tr style="border-bottom: 0.5px solid #eee;">
+                            <td style="padding: 6px 0; width: 35%;">${i.name}</td>
                             <td style="text-align: center;">${i.cQty}</td>
                             <td style="text-align: center;">${i.unit||'ခု'}</td>
                             <td style="text-align: right;">${i.sell.toLocaleString()}</td>
@@ -394,15 +408,21 @@
                 }
 
                 h += `</tbody></table>
-                    <div style="border-top: 1px dashed #000; margin-top: 5px;"></div>
-                    <div style="text-align: right; margin-top: 5px; font-size: 12px;">
-                        <div style="display: flex; justify-content: space-between;"><span>Subtotal</span> <span>${totalRev.toLocaleString()}</span></div>
-                        <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 15px; margin: 3px 0;">
-                            <span>Total</span> <span>${totalRev.toLocaleString()}</span>
+                    <div style="border-top: 1px solid #000; margin-top: 8px; padding-top: 5px;">
+                        <div style="display: flex; justify-content: space-between; font-size: 11px;">
+                            <span>Subtotal</span>
+                            <span>${totalRev.toLocaleString()}</span>
                         </div>
-                        <div style="display: flex; justify-content: space-between;"><span>Cash Paid</span> <span>${totalRev.toLocaleString()}</span></div>
+                        <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 16px; margin: 4px 0;">
+                            <span>Total</span>
+                            <span>${totalRev.toLocaleString()}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; font-size: 11px;">
+                            <span>Cash Paid</span>
+                            <span>${totalRev.toLocaleString()}</span>
+                        </div>
                     </div>
-                    <div style="text-align: center; margin-top: 15px; font-size: 10px;">
+                    <div style="text-align: center; margin-top: 20px; font-size: 10px; border-top: 1px dashed #000; padding-top: 10px;">
                         *** Have a nice day! Please Come again! ***
                     </div>
                 </div>`;
