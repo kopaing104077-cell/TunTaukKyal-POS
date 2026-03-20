@@ -64,71 +64,43 @@
         .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 2000; align-items: center; justify-content: center; padding: 15px; }
         .modal-card { background: white; padding: 20px; border-radius: 15px; width: 100%; max-width: 450px; max-height: 85vh; overflow-y: auto; }
         
+        /* --- 80mm Thermal Receipt Professional Styling --- */
         #receipt-render-area { display: none; }
-
-        /* --- 80mm Thermal Receipt Layout Fix --- */
         @media print {
-            body { background: white; margin: 0; }
             body * { visibility: hidden !important; }
             #receipt-render-area, #receipt-render-area * { visibility: visible !important; }
-            
             #receipt-render-area { 
                 display: block !important; 
-                position: absolute; 
-                left: 0; 
-                top: 0; 
-                width: 72mm !important; 
-                padding: 0;
+                position: absolute; left: 0; top: 0; 
+                width: 72mm !important; /* 80mm printer safe width */
+                padding: 2mm; background: white; color: black;
+                font-family: 'Pyidaungsu', sans-serif;
             }
-
-            .receipt-container { 
-                width: 100%; 
-                font-family: 'Pyidaungsu', sans-serif; 
-                color: #000; 
-                text-align: center;
-            }
-
-            .receipt-table { 
-                width: 100%; 
-                border-collapse: collapse; 
-                table-layout: fixed; 
-                margin: 10px 0;
-            }
-
-            .col-name  { width: 45%; text-align: left; }
-            .col-qty   { width: 15%; text-align: center; }
-            .col-price { width: 20%; text-align: right; }
-            .col-amt   { width: 20%; text-align: right; }
-
-            .receipt-table th { 
-                border-top: 1px dashed #000; 
-                border-bottom: 1px dashed #000; 
-                padding: 5px 0; 
-                font-size: 13px;
-                text-align: inherit;
-            }
-
-            .receipt-table td { 
-                padding: 4px 0; 
-                font-size: 13px; 
-                vertical-align: top;
-                word-break: break-word;
-            }
-
-            .receipt-footer-row { display: flex; justify-content: flex-end; font-size: 14px; margin-top: 4px; }
-            .label-side { width: 65%; text-align: right; padding-right: 10px; }
-            .amount-side { width: 35%; text-align: right; font-weight: bold; }
+            .r-header { text-align: center; margin-bottom: 5px; }
+            .r-shop { font-size: 19px; font-weight: bold; }
+            .r-tag { font-size: 12px; margin: 2px 0; }
+            .r-addr { font-size: 10px; line-height: 1.3; }
+            .r-ph { font-size: 11px; font-weight: bold; margin-top: 2px; }
+            .r-stars { text-align: center; margin: 5px 0; font-size: 12px; }
+            .r-label { text-align: center; font-weight: bold; border-top: 1px dashed #000; border-bottom: 1px dashed #000; padding: 3px 0; margin: 5px 0; font-size: 13px; }
             
-            .receipt-total-row { 
-                display: flex; 
-                justify-content: flex-end; 
-                font-size: 16px; 
-                font-weight: bold; 
-                border-top: 1px dashed #000; 
-                margin-top: 4px; 
-                padding-top: 4px; 
-            }
+            .r-info { width: 100%; font-size: 11px; margin-bottom: 5px; }
+            .r-table { width: 100%; border-collapse: collapse; margin-top: 5px; table-layout: fixed; }
+            .r-table th { border-bottom: 1px dashed #000; padding: 4px 0; font-size: 11px; text-align: left; }
+            .r-table td { padding: 5px 0; font-size: 12px; vertical-align: top; word-wrap: break-word; }
+            
+            .c-name { width: 40%; }
+            .c-qty { width: 20%; text-align: center; }
+            .c-prc { width: 20%; text-align: right; }
+            .c-amt { width: 20%; text-align: right; }
 
+            .r-totals { border-top: 1px dashed #000; margin-top: 5px; padding-top: 5px; }
+            .r-row { display: flex; justify-content: flex-end; font-size: 13px; margin-bottom: 3px; }
+            .r-l { width: 60%; text-align: right; padding-right: 10px; }
+            .r-v { width: 40%; text-align: right; }
+            .r-grand { font-size: 16px; font-weight: bold; border-top: 1px dashed #000; margin-top: 3px; padding-top: 3px; }
+
+            .r-footer { text-align: center; margin-top: 15px; font-size: 11px; border-top: 1px dashed #000; padding-top: 10px; line-height: 1.4; }
             @page { margin: 0; }
         }
     </style>
@@ -368,6 +340,7 @@
 
         function removeItem(id) { cart = cart.filter(x => x.id !== id); renderCart(); }
 
+        // --- Refined Process Sale with Professional Receipt Render ---
         async function processSale() {
             if(!cart.length) return;
             if(!confirm("သိမ်းဆည်းပြီး ဘောင်ချာထုတ်မလား?")) return;
@@ -376,6 +349,7 @@
             const time = new Date().toLocaleTimeString();
             const staff = document.getElementById('staff-name').value || "Admin";
             const cust = document.getElementById('cust-name').value || "Guest";
+            const chkNum = "CHK" + Date.now().toString().slice(-8);
             
             let totalRev=0, totalProf=0, saleItems=[];
             let rowsHtml = "";
@@ -386,48 +360,42 @@
                 saleItems.push({id: i.id, name: i.name, qty: i.cQty, buy: i.buy, sell: i.sell});
                 
                 rowsHtml += `<tr>
-                    <td class="col-name">${i.name}</td>
-                    <td class="col-qty">${i.cQty}</td>
-                    <td class="col-price">${i.sell.toLocaleString()}</td>
-                    <td class="col-amt">${sub.toLocaleString()}</td>
+                    <td class="c-name">${i.name}</td>
+                    <td class="c-qty">${i.cQty} ${i.unit || 'ခု'}</td>
+                    <td class="c-prc">${i.sell.toLocaleString()}</td>
+                    <td class="c-amt">${sub.toLocaleString()}</td>
                 </tr>`;
                 await _sb.from('products').update({qty: i.qty - i.cQty}).eq('id', i.id);
             }
 
             const h = `
-                <div class="receipt-container">
-                    <div style="text-align:center;">
-                        <h2 style="margin:0; font-size: 20px;">ထွန်းတောက်ကြွယ်</h2>
-                        <div style="font-size:12px;">စားသောက်ကုန်နှင့်လူသုံးကုန်လက်ကားဖြန့်ချိရေး</div>
-                        <div style="font-size:11px; margin-top:2px;">
-                            အမှတ်(၁၅)၊ ထင်းရှူးရိပ်သာ(၁)ပတ်လမ်း<br>
-                            ဇေကမ္ဘာဝင်း၊ မင်္ဂလာဒုံမြို့နယ်
-                        </div>
-                        <div style="margin:8px 0; border-top:1px dashed #000; border-bottom:1px dashed #000; padding:4px 0; font-size:13px; font-weight:bold;">*** RECEIPT ***</div>
+                <div class="r-header">
+                    <div class="r-shop">ထွန်းတောက်ကြွယ်</div>
+                    <div class="r-tag">စားသောက်ကုန်နှင့်လူသုံးကုန်လက်ကားဖြန့်ချိရေး</div>
+                    <div class="r-addr">
+                        အမှတ်(၁၅)၊ ထင်းရှူးရိပ်သာ(၁)ပတ်လမ်း<br>
+                        ဇေကမ္ဘာဝင်း၊ မင်္ဂလာဒုံမြို့နယ်
                     </div>
-                    <div style="text-align:left; font-size:11px; margin-bottom:5px;">
-                        <div style="display:flex; justify-content:space-between;"><span>Clerk: ${staff}</span><span>Time: ${time}</span></div>
-                        <div>Date: ${date}</div>
-                        <div>Customer: <b>${cust}</b></div>
-                    </div>
-                    <table class="receipt-table">
-                        <thead>
-                            <tr>
-                                <th class="col-name">NAME</th>
-                                <th class="col-qty">QTY</th>
-                                <th class="col-price">PRICE</th>
-                                <th class="col-amt">TOTAL</th>
-                            </tr>
-                        </thead>
-                        <tbody>${rowsHtml}</tbody>
-                    </table>
-                    <div style="border-top:1px dashed #000; margin-top:6px; padding-top:6px;">
-                        <div class="receipt-footer-row"><span class="label-side">Subtotal:</span><span class="amount-side">${totalRev.toLocaleString()}</span></div>
-                        <div class="receipt-total-row"><span class="label-side">Grand Total:</span><span class="amount-side">${totalRev.toLocaleString()} Ks</span></div>
-                    </div>
-                    <div style="text-align:center; margin-top:15px; font-size:11px; border-top:1px dashed #000; padding-top:10px;">
-                        ဝယ်ယူအားပေးမှုကို အထူးကျေးဇူးတင်ပါသည်။<br>*** Have a nice day! Please Come again! ***
-                    </div>
+                    <div class="r-label">*** RECEIPT ***</div>
+                </div>
+                <table class="r-info">
+                    <tr><td>CHK# ${chkNum}</td><td style="text-align:right">Guest# 1</td></tr>
+                    <tr><td colspan="2">Clerk: ${staff}</td></tr>
+                    <tr><td colspan="2">Print Time: ${date} ${time}</td></tr>
+                    <tr><td colspan="2">Customer: <b>${cust}</b></td></tr>
+                </table>
+                <table class="r-table">
+                    <thead><tr><th class="c-name">NAME</th><th class="c-qty">QTY</th><th class="c-prc">PRICE</th><th class="c-amt">AMOUNT</th></tr></thead>
+                    <tbody>${rowsHtml}</tbody>
+                </table>
+                <div class="r-totals">
+                    <div class="r-row"><span class="r-l">Subtotal:</span><span class="r-v">${totalRev.toLocaleString()}</span></div>
+                    <div class="r-row r-grand"><span class="r-l">Total:</span><span class="r-v">${totalRev.toLocaleString()} Ks</span></div>
+                    <div class="r-row"><span class="r-l">Cash Paid:</span><span class="r-v">${totalRev.toLocaleString()}</span></div>
+                </div>
+                <div class="r-footer">
+                    ဝယ်ယူအားပေးမှုကို အထူးကျေးဇူးတင်ရှိပါသည်။<br>
+                    *** Have a nice day! Please Come again! ***
                 </div>`;
 
             await _sb.from('sales').insert([{date, rev: totalRev, prof: totalProf, cust: cust + " (" + staff + ")", items: saleItems}]);
@@ -439,6 +407,7 @@
             }, 500);
         }
 
+        // --- (Supporting functions: navTo, askPass, etc. remain unchanged) ---
         function navTo(tid, btn) {
             document.querySelectorAll('.container').forEach(c => c.classList.remove('active'));
             document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
