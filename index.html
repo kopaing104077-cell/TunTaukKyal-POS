@@ -34,6 +34,7 @@
         .total-amt { color: var(--red); font-size: 16px; }
 
         .cat-scroll { display: flex; overflow-x: auto; gap: 6px; padding: 4px 0 8px 0; flex-shrink: 0; scrollbar-width: none; }
+        .cat-scroll::-webkit-scrollbar { display: none; }
         .cat-btn { white-space: nowrap; padding: 8px 15px; border-radius: 20px; border: 1px solid #cbd5e1; background: white; font-size: 12px; cursor: pointer; }
         .cat-btn.active { background: var(--midnight); color: white; border-color: var(--midnight); }
 
@@ -59,45 +60,36 @@
         .btn-row { display: flex; gap: 8px; }
         .btn { border: none; padding: 10px 15px; border-radius: 8px; font-weight: bold; font-size: 13px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 5px; width: 100%; }
         .btn-dark { background: var(--midnight); color: white; }
-        .btn-green { background: var(--green); color: white; }
-        .btn-red { background: var(--red); color: white; }
 
         .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 2000; align-items: center; justify-content: center; padding: 15px; }
         .modal-card { background: white; padding: 20px; border-radius: 15px; width: 100%; max-width: 450px; max-height: 85vh; overflow-y: auto; }
         
         #receipt-render-area { display: none; }
 
-        /* ဘောင်ချာအတွက် Printer သီးသန့် CSS (စာသားပြတ်သားစေရန် ပြင်ထားသည်) */
         @media print {
             body * { visibility: hidden !important; }
             #receipt-render-area, #receipt-render-area * { visibility: visible !important; }
             #receipt-render-area { 
                 display: block !important; 
-                position: fixed; left: 0; top: 0; width: 80mm !important; 
-                background: white; z-index: 9999; 
+                position: absolute; left: 0; top: 0; width: 80mm !important; 
+                background: white; 
             }
-            .receipt-container { 
-                width: 74mm; margin: 0 auto; color: #000; padding: 2mm 0; 
-                font-family: 'Pyidaungsu', sans-serif; line-height: 1.3;
-            }
-            .receipt-bold { font-weight: 900 !important; } /* စာသားပြတ်သားစေရန် */
-            .line-dashed { border-top: 1.5px dashed #000; margin: 5px 0; }
-
-            .receipt-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 8px; }
-            .receipt-table th { border-top: 1.5px dashed #000; border-bottom: 1.5px dashed #000; padding: 6px 0; font-weight: bold; }
+            .receipt-container { width: 74mm; margin: 0 auto; color: #000; padding: 2mm 0; font-family: sans-serif; }
+            .receipt-table { width: 100%; border-collapse: collapse; font-size: 11px; margin-top: 8px; table-layout: fixed; }
+            .receipt-table th { border-top: 1px dashed #000; border-bottom: 1px dashed #000; padding: 6px 0; font-weight: bold; }
             
-            /* Column Width ညှိထားခြင်း */
-            .col-name { text-align: left; width: 35%; }
-            .col-qty { text-align: right; width: 10%; }
-            .col-unit { text-align: center; width: 15%; }
-            .col-price { text-align: right; width: 20%; }
-            .col-amt { text-align: right; width: 20%; }
+            /* Columns Width - တောင်းဆိုထားသည့်အတိုင်း ညှိထားသည် */
+            .col-name { text-align: left; width: 40%; overflow: hidden; }
+            .col-qty { text-align: center; width: 10%; }
+            .col-unit { text-align: center; width: 10%; }
+            .col-price { text-align: right; width: 15%; }
+            .col-amt { text-align: right; width: 25%; }
 
-            .receipt-table td { padding: 4px 0; vertical-align: top; }
+            .receipt-table td { padding: 5px 0; vertical-align: top; word-wrap: break-word; }
 
-            .footer-row { display: flex; justify-content: flex-end; margin-top: 4px; font-size: 13px; }
-            .footer-label { width: 60%; text-align: right; padding-right: 15px; }
-            .footer-val { width: 20%; text-align: right; }
+            .receipt-footer-row { display: flex; justify-content: flex-end; margin-top: 4px; font-size: 12px; }
+            .label-side { width: 60%; text-align: right; padding-right: 10px; }
+            .amount-side { width: 25%; text-align: right; }
 
             @page { margin: 0; size: 80mm auto; }
         }
@@ -237,8 +229,8 @@
                 <input type="number" id="p-new-qty" class="input-style" value="0" style="margin-top: 5px;">
             </div>
             <input type="file" accept="image/*" class="input-style" onchange="handleImg(event)" style="margin-bottom: 10px;">
-            <button class="btn btn-green" onclick="saveProduct()">သိမ်းမည်</button>
-            <button id="del-btn" class="btn btn-red" style="margin-top:10px; display:none;" onclick="deleteProduct()">ဖျက်မည်</button>
+            <button class="btn btn-dark" style="background:var(--green)" onclick="saveProduct()">သိမ်းမည်</button>
+            <button id="del-btn" class="btn btn-dark" style="margin-top:10px; display:none; background:var(--red)" onclick="deleteProduct()">ဖျက်မည်</button>
             <button class="btn" onclick="closeOverlay('add-overlay')" style="margin-top:10px; background: #e2e8f0; color: black;">မလုပ်တော့ပါ</button>
         </div>
     </div>
@@ -355,36 +347,31 @@
                 totalRev += sub; totalProf += (i.sell - i.buy) * i.cQty;
                 saleItems.push({id: i.id, name: i.name, qty: i.cQty, buy: i.buy, sell: i.sell});
                 
-                // Amount Column အသစ်ထည့်သွင်းခြင်း
-                rowsHtml += `
-                    <tr>
-                        <td class="col-name receipt-bold">${i.name}</td>
-                        <td class="col-qty">${i.cQty}</td>
-                        <td class="col-unit">${i.unit||'ခု'}</td>
-                        <td class="col-price">${i.sell.toLocaleString()}</td>
-                        <td class="col-amt receipt-bold">${sub.toLocaleString()}</td>
-                    </tr>`;
-                
+                rowsHtml += `<tr>
+                    <td class="col-name">${i.name}</td>
+                    <td class="col-qty">${i.cQty}</td>
+                    <td class="col-unit">${i.unit||'ခု'}</td>
+                    <td class="col-price">${i.sell.toLocaleString()}</td>
+                    <td class="col-amt">${sub.toLocaleString()}</td>
+                </tr>`;
                 await _sb.from('products').update({qty: i.qty - i.cQty}).eq('id', i.id);
             }
 
             const h = `
                 <div class="receipt-container">
                     <div style="text-align:center;">
-                        <h2 style="margin:0; font-size:20px;" class="receipt-bold">ထွန်းတောက်ကြွယ်</h2>
-                        <div style="font-size:13px;" class="receipt-bold">စားသောက်ကုန်နှင့်လူသုံးကုန်လက်ကားဖြန့်ချိရေး</div>
-                        <div style="font-size:13px;">အမှတ်(၁၅)၊ ထင်းရှူးရိပ်သာ(၁)ပတ်လမ်း၊ဇေကမ္ဘာဝင်း၊မင်္ဂလာဒုံမြို့နယ်</div>
-                        <div class="line-dashed"></div>
-                        <div style="font-size:13px; font-weight:bold;">*** ***</div>
-                        <div class="line-dashed"></div>
-                    </div>
-                    <div style="margin-top:10px; font-size:13px;">
-                        <div style="display:flex; justify-content:space-between;">
-                            <span>Clerk: <b class="receipt-bold">${staff}</b></span>
-                            <span>Guest# 1</span>
+                        <h2 style="margin:0; font-size:18px;">ထွန်းတောက်ကြွယ်</h2>
+                        <div style="font-size:13px;">စားသောက်ကုန်နှင့်လူသုံးကုန်လက်ကားဖြန့်ချိရေး</div>
+                        <div style="font-size:12px; margin-top:2px;">
+                            အမှတ်(၁၅)၊ ထင်းရှူးရိပ်သာ(၁)ပတ်လမ်း<br>
+                            ဇေကမ္ဘာဝင်း၊ မင်္ဂလာဒုံမြို့နယ်
                         </div>
-                        <div>Print Time: <b class="receipt-bold">${date} ${time}</b></div>
-                        <div>Customer: <b class="receipt-bold" style="font-size:14px;">${cust}</b></div>
+                        <div style="margin:8px 0; border-top:1px dashed #000; border-bottom:1px dashed #000; padding:3px 0; font-size:11px;">*** COPY ***</div>
+                    </div>
+                    <div style="margin-top:5px; font-size:11px; line-height:1.4;">
+                        <div style="display:flex; justify-content:space-between;"><span>Clerk: ${staff}</span><span>Guest# 1</span></div>
+                        <div>Print Time: ${date} ${time}</div>
+                        <div>Customer: <b>${cust}</b></div>
                     </div>
                     <table class="receipt-table">
                         <thead>
@@ -398,23 +385,13 @@
                         </thead>
                         <tbody>${rowsHtml}</tbody>
                     </table>
-                    <div class="line-dashed"></div>
-                    <div class="footer-row">
-                        <span class="footer-label">Subtotal</span>
-                        <span class="footer-val">${totalRev.toLocaleString()}</span>
+                    <div style="border-top:1px solid #000; margin-top:5px; padding-top:5px;">
+                        <div class="receipt-footer-row"><span class="label-side">Subtotal:</span><span class="amount-side">${totalRev.toLocaleString()}</span></div>
+                        <div class="receipt-footer-row" style="font-weight:bold; font-size:14px;"><span class="label-side">Total:</span><span class="amount-side">${totalRev.toLocaleString()}</span></div>
+                        <div class="receipt-footer-row"><span class="label-side">Cash Paid:</span><span class="amount-side">${totalRev.toLocaleString()}</span></div>
                     </div>
-                    <div class="footer-row" style="font-size:16px;">
-                        <span class="footer-label receipt-bold">Total</span>
-                        <span class="footer-val receipt-bold">${totalRev.toLocaleString()}</span>
-                    </div>
-                    <div class="footer-row">
-                        <span class="footer-label">Cash Paid</span>
-                        <span class="footer-val">${totalRev.toLocaleString()}</span>
-                    </div>
-                    <div class="line-dashed" style="margin-top:10px;"></div>
-                    <div style="text-align:center; margin-top:10px; font-size:12px;">
-                        <div class="receipt-bold" style="font-size:13px; margin-bottom:5px;">ဝယ်ယူအားပေးမှုကို အထူးကျေးဇူးတင်ပါသည်။</div>
-                        *** Have a nice day! Please Come again! ***
+                    <div style="text-align:center; margin-top:15px; font-size:11px; border-top:1px dashed #000; padding-top:8px;">
+                        ဝယ်ယူအားပေးမှုကို အထူးကျေးဇူးတင်ပါသည်။<br>*** Have a nice day! Please Come again! ***
                     </div>
                 </div>`;
 
@@ -470,9 +447,8 @@
 
         async function saveProduct() {
             const id = document.getElementById('edit-id').value, name = document.getElementById('p-name').value;
-            const unit = document.getElementById('p-unit').value || "ခု";
-            const cat = document.getElementById('p-cat').value, buy = parseInt(document.getElementById('p-buy').value || 0);
-            const sell = parseInt(document.getElementById('p-sell').value || 0);
+            const unit = document.getElementById('p-unit').value || "ခု", cat = document.getElementById('p-cat').value;
+            const buy = parseInt(document.getElementById('p-buy').value || 0), sell = parseInt(document.getElementById('p-sell').value || 0);
             if(!name) return alert("အမည်ထည့်ပါ");
 
             try {
