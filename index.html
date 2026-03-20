@@ -66,73 +66,70 @@
         
         #receipt-render-area { display: none; }
 
-        /* --- 80mm THERMAL PRINTER STYLES (LARGE FONT) --- */
-        @media print {
-            body { background: white; }
-            body * { visibility: hidden !important; }
-            #receipt-render-area, #receipt-render-area * { visibility: visible !important; }
-            
-            #receipt-render-area { 
-                display: block !important; 
-                position: absolute; 
-                left: 0; 
-                top: 0; 
-                /* 80mm paper, safe area set to 74mm */
-                width: 74mm !important; 
-                max-width: 74mm !important; 
-                box-sizing: border-box;
-                padding: 0 1mm;
-                background: white; 
-                margin: 0 auto;
-            }
-            .receipt-container { 
-                width: 100%; 
-                margin: 0; 
-                color: #000; 
-                font-family: 'Pyidaungsu', sans-serif;
-            }
-            
-            .receipt-header-title { font-size: 25px; font-weight: bold; margin: 0; }
-            .receipt-header-sub { font-size: 18px; margin-top: 4px; }
-            .receipt-info { font-size: 15px; line-height: 1.4; margin-top: 6px; }
+        /* --- 80mm THERMAL PRINTER STYLES (UPDATED) --- */
+@media print {
+    body { background: white; }
+    body * { visibility: hidden !important; }
+    #receipt-render-area, #receipt-render-area * { visibility: visible !important; }
+    
+    #receipt-render-area { 
+        display: block !important; 
+        position: absolute; 
+        left: 0; 
+        top: 0; 
+        width: 72mm !important; /* 80mm paper အတွက် safe width */
+        padding: 0;
+        margin: 0;
+    }
 
-            .receipt-table { 
-                width: 100%; 
-                border-collapse: collapse; 
-                font-size: 15px; /* Bigger font for table */
-                margin-top: 8px; 
-                table-layout: fixed; /* Strictly lock columns */
-            }
-            .receipt-table th { 
-                border-top: 1px dashed #000; 
-                border-bottom: 1px dashed #000; 
-                padding: 6px 0; 
-                font-weight: bold; 
-                text-align: center;
-            }
-            
-            /* Calculated columns for 100% (74mm) */
-            .col-name { text-align: left; width: 30%; }
-            .col-qty { text-align: center; width: 10%; }
-            .col-unit { text-align: center; width: 10%; }
-            .col-price { text-align: right; width: 15%; }
-            .col-amt { text-align: right; width: 15%; }
+    .receipt-container { 
+        width: 100%; 
+        font-family: 'Pyidaungsu', sans-serif;
+        color: #000;
+    }
 
-            .receipt-table td { 
-                padding: 6px 1px; 
-                vertical-align: top; 
-                word-wrap: break-word; 
-                overflow-wrap: break-word;
-            }
+    .receipt-table { 
+        width: 100%; 
+        border-collapse: collapse; 
+        margin-top: 5px;
+        table-layout: fixed; /* Column width တွေကို အတင်းသတ်မှတ်ခိုင်းတာပါ */
+    }
 
-            .receipt-footer-row { display: flex; justify-content: flex-end; margin-top: 5px; font-size: 15px; }
-            .label-side { width: 45%; text-align: right; padding-right: 10px; }
-            .amount-side { width: 40%; text-align: right; font-weight: bold; }
-            
-            .receipt-total-row { display: flex; justify-content: flex-end; margin-top: 5px; font-size: 18px; font-weight: bold; }
+    /* Column Width သတ်မှတ်ချက်များ */
+    .col-name  { width: 35%; text-align: left; }
+    .col-qty   { width: 12%; text-align: center; }
+    .col-unit  { width: 15%; text-align: center; }
+    .col-price { width: 18%; text-align: right; }
+    .col-amt   { width: 20%; text-align: right; }
 
-            @page { margin: 0; }
-        }
+    .receipt-table th { 
+        border-top: 1px dashed #000; 
+        border-bottom: 1px dashed #000; 
+        padding: 4px 0; 
+        font-size: 13px;
+    }
+
+    .receipt-table td { 
+        padding: 4px 1px; 
+        font-size: 13px;
+        vertical-align: top;
+        word-wrap: break-word; /* အမည်ရှည်ရင် အောက်ကြောင်းဆင်းပေးမယ် */
+        overflow: hidden;
+    }
+
+    .receipt-footer-row { 
+        display: flex; 
+        justify-content: flex-end; 
+        margin-top: 3px; 
+        font-size: 14px; 
+    }
+    
+    .label-side { width: 60%; text-align: right; padding-right: 5px; }
+    .amount-side { width: 40%; text-align: right; font-weight: bold; }
+
+    @page { margin: 0; }
+}
+
     </style>
 </head>
 <body>
