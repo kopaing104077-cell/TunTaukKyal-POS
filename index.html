@@ -69,11 +69,68 @@
         #receipt-render-area { display: none; width: 80mm; background: white; padding: 0; margin: 0; }
 
         @media print {
-            body * { visibility: hidden !important; }
-            #receipt-render-area, #receipt-render-area * { visibility: visible !important; }
-            #receipt-render-area { display: block !important; position: fixed; left: 0; top: 0; width: 80mm; z-index: 9999; }
-            @page { margin: 0; size: 80mm auto; }
-        }
+    body * { visibility: hidden !important; }
+    #receipt-render-area, #receipt-render-area * { visibility: visible !important; }
+    #receipt-render-area { 
+        display: block !important; 
+        position: fixed; 
+        left: 0; 
+        top: 0; 
+        width: 80mm !important; 
+        background: white; 
+        z-index: 9999; 
+    }
+    
+    /* ဘောင်ချာ ဧရိယာ Styling */
+    .receipt-container {
+        width: 72mm; /* 80mm စာရွက်ပေါ်မှာ ဘေး margin လွတ်အောင် */
+        margin: 0 auto;
+        font-family: 'Pyidaungsu', 'Segoe UI', sans-serif;
+        color: #000;
+        padding: 2mm 0;
+        background: #fff;
+    }
+
+    /* ဇယား Styling */
+    .receipt-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 11px;
+    }
+
+    /* Column Header များ styling */
+    .receipt-table th {
+        border-top: 1px dashed #000;
+        border-bottom: 1px dashed #000;
+        padding: 6px 0;
+        font-weight: bold;
+    }
+
+    /* Column width များကို ချိန်ညှိခြင်း (ပထမပုံ Layout အတိုင်း) */
+    .receipt-table .col-name { text-align: left; width: 38%; }   /* Name - အရှည်ဆုံး */
+    .receipt-table .col-qty { text-align: center; width: 10%; } /* Qty */
+    .receipt-table .col-unit { text-align: center; width: 12%; } /* Unit */
+    .receipt-table .col-price { text-align: right; width: 20%; } /* Price */
+    .receipt-table .col-amt { text-align: right; width: 20%; }   /* Amount - တန်းနေစေရန် */
+
+    /* ဇယား Row styling */
+    .receipt-table td {
+        padding: 5px 0;
+        vertical-align: top;
+        line-height: 1.2;
+    }
+
+    /* Footer styling */
+    .receipt-footer-row {
+        display: grid;
+        grid-template-columns: 78% 22%; /* Total စာသားနဲ့ Total Amount ကို တန်းစေရန် */
+        margin-top: 5px;
+        font-size: 12px;
+    }
+    .receipt-footer-row span { text-align: right; }
+
+    @page { margin: 0; size: 80mm auto; }
+}
     </style>
 </head>
 <body>
@@ -333,29 +390,58 @@
             }
 
             const h = `
-                <div style="width:72mm; margin:0 auto; font-family:sans-serif; color:#000; padding:10px; font-size:12px; background:#fff;">
-                    <div style="text-align:center;">
-                        <h2 style="margin:0; font-size:16px;">ထွန်းတောက်ကြွယ်</h2>
-                        <div style="font-size:10px;">စားသောက်ကုန်နှင့်လူသုံးကုန်လက်ကားဖြန့်ချိရေး</div>
-                        <div style="font-size:10px;">အမှတ်(၁၅)၊ ထင်းရှူးရိပ်သာ(၁)ပတ်လမ်း၊ မင်္ဂလာဒုံ</div>
-                        <div style="margin:5px 0; border-top:1px dashed #000; border-bottom:1px dashed #000; padding:2px 0;">*** COPY ***</div>
-                    </div>
-                    <div style="margin-top:10px; font-size:10px;">
-                        <div style="display:flex; justify-content:space-between;"><span>Clerk: ${staff}</span><span>Guest# 1</span></div>
-                        <div>Date: ${date} ${time}</div>
-                        <div>Customer: ${cust}</div>
-                    </div>
-                    <table style="width:100%; border-collapse:collapse; font-size:10px; margin-top:10px;">
-                        <tr style="border-top:1px dashed #000; border-bottom:1px dashed #000;"><th style="text-align:left;">NAME</th><th>QTY</th><th>Unit</th><th style="text-align:right;">PRICE</th><th style="text-align:right;">AMT</th></tr>
-                        ${rowsHtml}
-                    </table>
-                    <div style="border-top:1px dashed #000; margin-top:5px; padding-top:5px;">
-                        <div style="display:flex; justify-content:space-between;"><span>Subtotal</span><span>${totalRev.toLocaleString()}</span></div>
-                        <div style="display:flex; justify-content:space-between; font-weight:bold; font-size:14px;"><span>Total</span><span>${totalRev.toLocaleString()}</span></div>
-                        <div style="display:flex; justify-content:space-between;"><span>Cash Paid</span><span>${totalRev.toLocaleString()}</span></div>
-                    </div>
-                    <div style="text-align:center; margin-top:15px; font-size:9px;">*** Have a nice day! Please Come again! ***</div>
-                </div>`;
+    <div class="receipt-container">
+        <div style="text-align:center;">
+            <h2 style="margin:0; font-size:18px;">ထွန်းတောက်ကြွယ်</h2>
+            <div style="font-size:11px;">စားသောက်ကုန်နှင့်လူသုံးကုန်လက်ကားဖြန့်ချိရေး</div>
+            <div style="font-size:10px; line-height:1.3;">အမှတ်(၁၅)၊ ထင်းရှူးရိပ်သာ(၁)ပတ်လမ်း၊ မင်္ဂလာဒုံ</div>
+            <div style="margin:8px 0; border-top:1px dashed #000; border-bottom:1px dashed #000; padding:3px 0; font-size:11px; font-weight:bold;">*** ကော်ပီစာရင်း (COPY) ***</div>
+        </div>
+
+        <div style="margin-top:10px; font-size:11px; line-height:1.5;">
+            <div style="display:flex; justify-content:space-between;">
+                <span>Clerk: ${staff}</span>
+                <span>Guest# 1</span>
+            </div>
+            <div>Print Time: ${date} ${time}</div>
+            <div>Customer: <b>${cust}</b></div>
+        </div>
+
+        <table class="receipt-table" style="margin-top:10px;">
+            <thead>
+                <tr>
+                    <th class="col-name">NAME</th>
+                    <th class="col-qty">QTY</th>
+                    <th class="col-unit">Unit</th>
+                    <th class="col-price">PRICE</th>
+                    <th class="col-amt">AMOUNT</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${rowsHtml}
+            </tbody>
+        </table>
+
+        <div style="border-top:1px solid #000; margin-top:8px; padding-top:5px;">
+            <div class="receipt-footer-row">
+                <span>Subtotal</span>
+                <span>${totalRev.toLocaleString()}</span>
+            </div>
+            <div class="receipt-footer-row" style="font-weight:bold; font-size:16px; margin:4px 0;">
+                <span>Total</span>
+                <span>${totalRev.toLocaleString()}</span>
+            </div>
+            <div class="receipt-footer-row">
+                <span>Cash Paid</span>
+                <span>${totalRev.toLocaleString()}</span>
+            </div>
+        </div>
+
+        <div style="text-align:center; margin-top:20px; font-size:10px; border-top:1px dashed #000; padding-top:10px;">
+            ဝယ်ယူအားပေးမှုကို အထူးကျေးဇူးတင်ပါသည်။<br>
+            *** Have a nice day! Please Come again! ***
+        </div>
+    </div>`;
 
             await _sb.from('sales').insert([{date, rev: totalRev, prof: totalProf, cust: cust + " (" + staff + ")", items: saleItems}]);
             document.getElementById('receipt-render-area').innerHTML = h;
