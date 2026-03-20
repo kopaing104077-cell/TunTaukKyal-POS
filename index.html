@@ -64,53 +64,37 @@
         .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 2000; align-items: center; justify-content: center; padding: 15px; }
         .modal-card { background: white; padding: 20px; border-radius: 15px; width: 100%; max-width: 450px; max-height: 85vh; overflow-y: auto; }
         
+        /* --- 80mm Receipt Fixing --- */
         #receipt-render-area { display: none; }
 
-        /* --- 80mm Thermal Receipt Formatting --- */
         @media print {
-    @page { margin: 0; size: 80mm auto; }
-    body { background: white; margin: 0; padding: 0; }
-    body * { visibility: hidden !important; }
-    #receipt-render-area, #receipt-render-area * { visibility: visible !important; }
-    
-    #receipt-render-area { 
-        display: block !important; 
-        position: absolute; 
-        left: 0; 
-        top: 0; 
-        width: 72mm !important; /* 80mm စာရွက်အတွက် ဘေးမပြတ်အောင် 72mm ပဲပေးထားပါတယ် */
-        padding: 0 2mm;
-        margin: 0;
-    }
+            @page { margin: 0; size: 80mm auto; }
+            body * { visibility: hidden !important; }
+            #receipt-render-area, #receipt-render-area * { visibility: visible !important; }
+            
+            #receipt-render-area { 
+                display: block !important; 
+                position: absolute; 
+                left: 0; 
+                top: 0; 
+                width: 72mm !important; /* 80mm printer အတွက် ဘေးစာသားမပြတ်စေရန် */
+                padding: 0 2mm;
+                margin: 0;
+            }
 
-    .receipt-container { 
-        width: 100%; 
-        font-family: 'Pyidaungsu', 'Arial', sans-serif; 
-        color: #000; 
-        line-height: 1.2;
-    }
+            .receipt-container { width: 100%; font-family: 'Arial', sans-serif; color: #000; line-height: 1.2; }
+            .receipt-table { width: 100%; border-collapse: collapse; margin: 8px 0; table-layout: fixed; }
+            
+            /* Column Width များကို ပုံသေ ညှိထားခြင်း */
+            .col-name  { width: 38%; text-align: left; font-size: 11px; word-wrap: break-word; }
+            .col-qty   { width: 12%; text-align: center; font-size: 11px; }
+            .col-unit  { width: 14%; text-align: center; font-size: 11px; }
+            .col-price { width: 18%; text-align: right; font-size: 11px; }
+            .col-amt   { width: 18%; text-align: right; font-size: 11px; }
 
-    .receipt-table { 
-        width: 100%; 
-        border-collapse: collapse; 
-        margin: 5px 0;
-        table-layout: fixed; /* Column size တွေကို ပုံသေထိန်းထားဖို့ပါ */
-    }
-
-    /* Column Width များကို ပုံထဲကအတိုင်း အံဝင်အောင် ညှိထားခြင်း */
-    .col-name  { width: 45%; text-align: left; font-size: 11px; word-wrap: break-word; }
-    .col-qty   { width: 12%; text-align: center; font-size: 11px; }
-    .col-price { width: 20%; text-align: right; font-size: 11px; }
-    .col-amt   { width: 23%; text-align: right; font-size: 11px; }
-
-    .receipt-table th { 
-        border-top: 1px dashed #000; 
-        border-bottom: 1px dashed #000; 
-        padding: 5px 0; 
-        font-size: 11px;
-    }
-}
-
+            .receipt-table th { border-top: 1px dashed #000; border-bottom: 1px dashed #000; padding: 5px 0; font-size: 11px; }
+            .receipt-table td { padding: 4px 0; vertical-align: top; }
+        }
     </style>
 </head>
 <body>
@@ -267,7 +251,6 @@
             if(sessionStorage.getItem('TTK_ADMIN') === 'true') { isAdmin=true; document.getElementById('logout-btn').style.display='block'; }
         };
 
-        // --- Core Functions (loadProducts, refreshUI, etc. are the same as yours) ---
         async function checkConnection() {
             try {
                 const { error } = await _sb.from('products').select('id', { count: 'exact', head: true });
@@ -349,86 +332,73 @@
 
         function removeItem(id) { cart = cart.filter(x => x.id !== id); renderCart(); }
 
-        // --- ပြင်ဆင်ထားသော processSale Function ---
         async function processSale() {
-    if(!cart.length) return;
-    
-    const date = new Date().toLocaleDateString('en-GB'); 
-    const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    const staff = document.getElementById('staff-name').value || "Admin";
-    const cust = document.getElementById('cust-name').value || "Guest";
-    
-    let totalRev = 0;
-    let rowsHtml = "";
-
-    // Cart ထဲက ပစ္စည်းတွေကို Table Row အနေနဲ့ ပြောင်းခြင်း
-    cart.forEach(i => {
-        let sub = i.sell * i.cQty; 
-        totalRev += sub;
-        rowsHtml += `
-            <tr>
-                <td class="col-name">${i.name}</td>
-                <td class="col-qty">${i.cQty}</td>
-                <td class="col-price">${i.sell.toLocaleString()}</td>
-                <td class="col-amt">${sub.toLocaleString()}</td>
-            </tr>`;
-    });
-
-    // ဘောင်ချာ ပုံစံတည်ဆောက်ခြင်း
-    const receiptHtml = `
-        <div class="receipt-container">
-            <div style="text-align:center;">
-                <div style="font-size:18px; font-weight:bold;">ထွန်းတောက်ကြွယ်</div>
-                <div style="font-size:11px;">စားသောက်ကုန်နှင့်လူသုံးကုန်လက်ကားဖြန့်ချိရေး</div>
-                <div style="font-size:10px;">အမှတ်(၁၅)၊ ထင်းရှူးရိပ်သာ(၁)ပတ်လမ်း၊ မင်္ဂလာဒုံ။</div>
-                <div style="margin:5px 0; border-top:1px dashed #000; border-bottom:1px dashed #000; padding:2px 0; font-size:12px; font-weight:bold;">*** RECEIPT ***</div>
-            </div>
+            if(!cart.length) return;
+            if(!confirm("သိမ်းဆည်းပြီး ဘောင်ချာထုတ်မလား?")) return;
             
-            <div style="font-size:11px; margin-bottom:5px;">
-                <div style="display:flex; justify-content:space-between;">
-                    <span>Date: ${date}</span>
-                    <span>Time: ${time}</span>
-                </div>
-                <div>Customer: ${cust}</div>
-                <div>Clerk: ${staff}</div>
-            </div>
-
-            <table class="receipt-table">
-                <thead>
-                    <tr>
-                        <th class="col-name">NAME</th>
-                        <th class="col-qty">QTY</th>
-                        <th class="col-price">PRICE</th>
-                        <th class="col-amt">AMOUNT</th>
-                    </tr>
-                </thead>
-                <tbody>${rowsHtml}</tbody>
-            </table>
-
-            <div style="border-top:1px dashed #000; padding-top:5px; font-size:12px;">
-                <div style="display:flex; justify-content:space-between;">
-                    <span>Subtotal:</span>
-                    <span>${totalRev.toLocaleString()}</span>
-                </div>
-                <div style="display:flex; justify-content:space-between; font-size:15px; font-weight:bold; border-top:1px dashed #000; margin-top:5px; padding-top:5px;">
-                    <span>Total:</span>
-                    <span>${totalRev.toLocaleString()} Ks</span>
-                </div>
-                <div style="display:flex; justify-content:space-between; margin-top:3px;">
-                    <span>Cash Paid:</span>
-                    <span>${totalRev.toLocaleString()}</span>
-                </div>
-            </div>
-
-            <div style="text-align:center; margin-top:15px; font-size:11px; border-top:1px dashed #000; padding-top:8px;">
-                ဝယ်ယူအားပေးမှုကို အထူးကျေးဇူးတင်ရှိပါသည်။<br>
-                *** Have a nice day! ***
-            </div>
-        </div>`;
-
-            // Insert to Sales Table
-            await _sb.from('sales').insert([{date: new Date().toISOString().split('T')[0], rev: totalRev, prof: totalProf, cust: cust + " (" + staff + ")", items: saleItems}]);
+            const now = new Date();
+            const dateStr = now.toLocaleDateString('en-GB').split('/').reverse().join('/');
+            const timeStr = now.toLocaleTimeString('en-GB', { hour12: false });
             
+            const staff = document.getElementById('staff-name').value || "Minkhant";
+            const cust = document.getElementById('cust-name').value || "လရောင်";
+            
+            let totalRev=0, totalProf=0, saleItems=[];
+            let rowsHtml = "";
+
+            for(let i of cart) {
+                let sub = i.sell * i.cQty; 
+                totalRev += sub; totalProf += (i.sell - i.buy) * i.cQty;
+                saleItems.push({id: i.id, name: i.name, qty: i.cQty, buy: i.buy, sell: i.sell});
+                
+                rowsHtml += `<tr>
+                    <td class="col-name">${i.name}</td>
+                    <td class="col-qty">${i.cQty}</td>
+                    <td class="col-unit">${i.unit||'ခု'}</td>
+                    <td class="col-price">${i.sell.toLocaleString()}</td>
+                    <td class="col-amt">${sub.toLocaleString()}</td>
+                </tr>`;
+                await _sb.from('products').update({qty: i.qty - i.cQty}).eq('id', i.id);
+            }
+
+            const h = `
+                <div class="receipt-container">
+                    <div style="text-align:center;">
+                        <div style="font-size:18px; font-weight:bold;">ထွန်းတောက်ကြွယ်</div>
+                        <div style="font-size:11px;">စားသောက်ကုန်နှင့်လူသုံးကုန်လက်ကားဖြန့်ချိရေး</div>
+                        <div style="font-size:10px;">အမှတ်(၁၅)၊ ထင်းရှူးရိပ်သာ(၁)ပတ်လမ်း၊ ဇေကမ္ဘာဝင်း၊ မင်္ဂလာဒုံမြို့နယ်</div>
+                        <div style="margin:8px 0; border-top:1px dashed #000; border-bottom:1px dashed #000; padding:2px 0; font-size:12px; font-weight:bold;">*** RECEIPT ***</div>
+                    </div>
+                    <div style="font-size:11px; margin-bottom:5px;">
+                        <div style="display:flex; justify-content:space-between;"><span>Clerk: ${staff}</span><span>Guest# 1</span></div>
+                        <div>Time: ${dateStr} ${timeStr}</div>
+                        <div>Customer: <b>${cust}</b></div>
+                    </div>
+                    <table class="receipt-table">
+                        <thead>
+                            <tr>
+                                <th class="col-name">NAME</th>
+                                <th class="col-qty">QTY</th>
+                                <th class="col-unit">Unit</th>
+                                <th class="col-price">PRICE</th>
+                                <th class="col-amt">AMOUNT</th>
+                            </tr>
+                        </thead>
+                        <tbody>${rowsHtml}</tbody>
+                    </table>
+                    <div style="border-top:1px dashed #000; padding-top:5px; font-size:12px;">
+                        <div style="display:flex; justify-content:space-between;"><span>Subtotal:</span><span>${totalRev.toLocaleString()}</span></div>
+                        <div style="display:flex; justify-content:space-between; font-size:14px; font-weight:bold; border-top:1px dashed #000; margin-top:5px; padding-top:5px;">
+                            <span>Total:</span><span>${totalRev.toLocaleString()}</span>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; margin-top:3px;"><span>Cash Paid:</span><span>${totalRev.toLocaleString()}</span></div>
+                    </div>
+                    <div style="text-align:center; margin-top:15px; font-size:11px;">
+                        ဝယ်ယူအားပေးမှုကို အထူးကျေးဇူးတင်ရှိပါသည်။<br>*** Have a nice day! Please Come again! ***
+                    </div>
+                </div>`;
+
+            await _sb.from('sales').insert([{date: dateStr.replace(/\//g, '-'), rev: totalRev, prof: totalProf, cust: cust + " (" + staff + ")", items: saleItems}]);
             document.getElementById('receipt-render-area').innerHTML = h;
 
             setTimeout(() => {
@@ -437,7 +407,7 @@
             }, 500);
         }
 
-        // --- Other Utility Functions (navTo, checkPass, handleImg, etc.) ---
+        // Navigation and other logic remains same...
         function navTo(tid, btn) {
             document.querySelectorAll('.container').forEach(c => c.classList.remove('active'));
             document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
