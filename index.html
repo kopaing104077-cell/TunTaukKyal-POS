@@ -66,9 +66,9 @@
         
         #receipt-render-area { display: none; }
 
-        /* --- 80mm THERMAL PRINTER STYLES (RE-OPTIMIZED FOR 5 COLUMNS) --- */
+        /* --- PRINT STYLES RE-FIXED FOR 80MM --- */
         @media print {
-            body { background: white; }
+            body { background: white; width: 100%; position: static; height: auto; overflow: visible; }
             body * { visibility: hidden !important; }
             #receipt-render-area, #receipt-render-area * { visibility: visible !important; }
             
@@ -77,57 +77,55 @@
                 position: absolute; 
                 left: 0; 
                 top: 0; 
-                width: 74mm !important; /* 80mm printer width safe zone */
-                box-sizing: border-box;
+                width: 76mm !important; /* Fixed width for 80mm paper */
+                margin: 0 auto;
                 padding: 0;
-                margin: 0;
-                background: white; 
             }
             .receipt-container { 
                 width: 100%; 
-                margin: 0; 
+                padding: 0 1mm;
                 color: #000; 
-                font-family: 'Pyidaungsu', sans-serif;
+                text-align: center; /* Center the whole content */
             }
             
-            .receipt-header-title { font-size: 22px; font-weight: bold; margin: 0; }
-            .receipt-header-sub { font-size: 14px; margin-top: 2px; }
-            .receipt-info { font-size: 13px; line-height: 1.4; margin-top: 6px; }
+            .receipt-header-title { font-size: 20px; font-weight: bold; margin: 0; }
+            .receipt-header-sub { font-size: 13px; margin-top: 2px; line-height: 1.2; }
+            .receipt-info { font-size: 12px; text-align: left; margin: 8px 0; border-top: 1px dashed #000; padding-top: 5px; }
 
             .receipt-table { 
                 width: 100%; 
                 border-collapse: collapse; 
-                font-size: 13px; 
-                margin-top: 8px; 
-                table-layout: fixed; /* Column width တွေကို အတင်းသတ်မှတ်မယ် */
+                font-size: 11px; /* Slightly smaller to fit 5 columns */
+                table-layout: fixed; 
+                margin: 5px 0;
             }
             .receipt-table th { 
                 border-top: 1px dashed #000; 
                 border-bottom: 1px dashed #000; 
-                padding: 6px 0; 
-                font-weight: bold; 
+                padding: 5px 0; 
                 text-align: center;
             }
             
-            /* Column Width Calculations (Total 100%) */
-            .col-name  { text-align: left; width: 33%; }
-            .col-qty   { text-align: center; width: 11%; }
+            /* Column Widths to keep within 76mm */
+            .col-name  { text-align: left; width: 34%; }
+            .col-qty   { text-align: center; width: 10%; }
             .col-unit  { text-align: center; width: 13%; }
             .col-price { text-align: right; width: 20%; }
             .col-amt   { text-align: right; width: 23%; }
 
             .receipt-table td { 
-                padding: 6px 1px; 
+                padding: 4px 0; 
                 vertical-align: top; 
                 word-wrap: break-word; 
                 overflow-wrap: break-word;
             }
 
-            .receipt-summary-row { display: flex; justify-content: flex-end; margin-top: 4px; font-size: 14px; }
-            .label-side { width: 40%; text-align: right; padding-right: 8px; }
-            .amount-side { width: 40%; text-align: right; font-weight: bold; }
-            
-            .receipt-total-row { display: flex; justify-content: flex-end; margin-top: 4px; font-size: 16px; font-weight: bold; border-top: 1px dashed #000; padding-top: 4px; }
+            .summary-wrap { margin-top: 5px; border-top: 1px dashed #000; padding-top: 5px; }
+            .receipt-row { display: flex; justify-content: flex-end; font-size: 13px; margin-bottom: 2px; }
+            .label { width: 40%; text-align: right; padding-right: 10px; }
+            .val { width: 35%; text-align: right; font-weight: bold; }
+
+            .total-row { font-size: 16px; font-weight: bold; margin-top: 4px; padding-top: 4px; border-top: 1px solid #000; }
 
             @page { margin: 0; }
         }
@@ -397,38 +395,38 @@
 
             const h = `
                 <div class="receipt-container">
-                    <div style="text-align:center;">
-                        <h2 class="receipt-header-title">ထွန်းတောက်ကြွယ်</h2>
-                        <div class="receipt-header-sub">စားသောက်ကုန်နှင့်လူသုံးကုန်လက်ကားဖြန့်ချိရေး</div>
-                        <div style="font-size:13px; margin-top:3px;">
-                            အမှတ်(၁၅)၊ ထင်းရှူးရိပ်သာ(၁)ပတ်လမ်း<br>
-                            ဇေကမ္ဘာဝင်း၊ မင်္ဂလာဒုံမြို့နယ်
-                        </div>
-                        <div style="margin:8px 0; border-top:1px dashed #000; border-bottom:1px dashed #000; padding:5px 0; font-size:14px; font-weight:bold;">*** RECEIPT ***</div>
-                    </div>
+                    <h2 class="receipt-header-title">ထွန်းတောက်ကြွယ်</h2>
+                    <div class="receipt-header-sub">စားသောက်ကုန်နှင့်လူသုံးကုန်လက်ကားဖြန့်ချိရေး</div>
+                    <div class="receipt-header-sub">အမှတ်(၁၅)၊ ထင်းရှူးရိပ်သာ(၁)ပတ်လမ်း၊ ဇေကမ္ဘာဝင်း၊ မင်္ဂလာဒုံမြို့နယ်</div>
+                    
+                    <div style="margin:6px 0; border-top:1px dashed #000; border-bottom:1px dashed #000; padding:3px 0; font-size:13px; font-weight:bold;">*** RECEIPT ***</div>
+                    
                     <div class="receipt-info">
                         <div style="display:flex; justify-content:space-between;"><span>Clerk: ${staff}</span><span>#1</span></div>
                         <div>Date: ${date} ${time}</div>
                         <div>Customer: <b>${cust}</b></div>
                     </div>
+
                     <table class="receipt-table">
                         <thead>
                             <tr>
                                 <th class="col-name">NAME</th>
                                 <th class="col-qty">QTY</th>
-                                <th class="col-unit">Unit</th>
+                                <th class="col-unit">UNIT</th>
                                 <th class="col-price">PRICE</th>
                                 <th class="col-amt">AMT</th>
                             </tr>
                         </thead>
                         <tbody>${rowsHtml}</tbody>
                     </table>
-                    <div style="border-top:1px dashed #000; margin-top:8px; padding-top:8px;">
-                        <div class="receipt-summary-row"><span class="label-side">Subtotal:</span><span class="amount-side">${totalRev.toLocaleString()}</span></div>
-                        <div class="receipt-total-row"><span class="label-side">Total:</span><span class="amount-side">${totalRev.toLocaleString()}</span></div>
-                        <div class="receipt-summary-row"><span class="label-side">Cash Paid:</span><span class="amount-side">${totalRev.toLocaleString()}</span></div>
+
+                    <div class="summary-wrap">
+                        <div class="receipt-row"><span class="label">Subtotal:</span><span class="val">${totalRev.toLocaleString()}</span></div>
+                        <div class="receipt-row total-row"><span class="label">Total:</span><span class="val">${totalRev.toLocaleString()}</span></div>
+                        <div class="receipt-row"><span class="label">Paid:</span><span class="val">${totalRev.toLocaleString()}</span></div>
                     </div>
-                    <div style="text-align:center; margin-top:15px; font-size:13px; border-top:1px dashed #000; padding-top:10px;">
+
+                    <div style="text-align:center; margin-top:12px; font-size:12px; border-top:1px dashed #000; padding-top:10px;">
                         ဝယ်ယူအားပေးမှုကို အထူးကျေးဇူးတင်ပါသည်။<br>*** Have a nice day! Come again! ***
                     </div>
                 </div>`;
