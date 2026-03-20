@@ -66,9 +66,9 @@
         
         #receipt-render-area { display: none; }
 
-        /* --- 80mm THERMAL PRINTER STYLES (LARGE FONT) --- */
+        /* --- 80mm THERMAL PRINTER STYLES (CENTERED & CALIBRATED) --- */
         @media print {
-            body { background: white; }
+            body { background: white; margin: 0; padding: 0; }
             body * { visibility: hidden !important; }
             #receipt-render-area, #receipt-render-area * { visibility: visible !important; }
             
@@ -77,59 +77,75 @@
                 position: absolute; 
                 left: 0; 
                 top: 0; 
-                /* 80mm paper, safe area set to 74mm */
-                width: 74mm !important; 
-                max-width: 74mm !important; 
-                box-sizing: border-box;
-                padding: 0 1mm;
+                width: 76mm !important; /* Standard printable width for 80mm paper */
+                padding: 1mm 2mm;
                 background: white; 
-                margin: 0 auto;
             }
+
             .receipt-container { 
                 width: 100%; 
-                margin: 0; 
+                text-align: center; /* Headers and Footers Centered */
                 color: #000; 
-                font-family: 'Pyidaungsu', sans-serif;
+                font-family: 'Pyidaungsu', 'Segoe UI', sans-serif;
             }
             
-            .receipt-header-title { font-size: 25px; font-weight: bold; margin: 0; }
-            .receipt-header-sub { font-size: 18px; margin-top: 4px; }
-            .receipt-info { font-size: 15px; line-height: 1.4; margin-top: 6px; }
+            .receipt-header-title { font-size: 24px; font-weight: bold; margin: 0; }
+            .receipt-header-sub { font-size: 14px; margin-top: 2px; line-height: 1.2; }
+            
+            .receipt-info { 
+                font-size: 13px; 
+                line-height: 1.4; 
+                margin-top: 8px; 
+                text-align: left; /* Details like Time/Cust aligned left */
+            }
 
             .receipt-table { 
                 width: 100%; 
                 border-collapse: collapse; 
-                font-size: 15px; /* Bigger font for table */
+                font-size: 13px; 
                 margin-top: 8px; 
-                table-layout: fixed; /* Strictly lock columns */
+                table-layout: fixed;
             }
+            
             .receipt-table th { 
                 border-top: 1px dashed #000; 
                 border-bottom: 1px dashed #000; 
                 padding: 6px 0; 
                 font-weight: bold; 
-                text-align: center;
             }
-            
-            /* Calculated columns for 100% (74mm) */
-            .col-name { text-align: left; width: 30%; }
-            .col-qty { text-align: center; width: 10%; }
-            .col-unit { text-align: center; width: 10%; }
-            .col-price { text-align: right; width: 15%; }
-            .col-amt { text-align: right; width: 15%; }
+
+            /* Precise columns for 80mm width */
+            .col-name { text-align: left; width: 35%; }
+            .col-qty { text-align: center; width: 12%; }
+            .col-unit { text-align: center; width: 13%; }
+            .col-price { text-align: right; width: 20%; }
+            .col-amt { text-align: right; width: 20%; }
 
             .receipt-table td { 
-                padding: 6px 1px; 
+                padding: 6px 0; 
                 vertical-align: top; 
                 word-wrap: break-word; 
-                overflow-wrap: break-word;
             }
 
-            .receipt-footer-row { display: flex; justify-content: flex-end; margin-top: 5px; font-size: 15px; }
-            .label-side { width: 45%; text-align: right; padding-right: 10px; }
-            .amount-side { width: 40%; text-align: right; font-weight: bold; }
+            .summary-box {
+                border-top: 1px dashed #000;
+                margin-top: 5px;
+                padding-top: 5px;
+            }
+
+            .summary-row { display: flex; justify-content: flex-end; font-size: 14px; padding: 2px 0; }
+            .summary-label { width: 50%; text-align: right; padding-right: 10px; }
+            .summary-value { width: 35%; text-align: right; font-weight: bold; }
             
-            .receipt-total-row { display: flex; justify-content: flex-end; margin-top: 5px; font-size: 18px; font-weight: bold; }
+            .total-row { font-size: 18px; font-weight: bold; margin-top: 2px; }
+
+            .receipt-footer {
+                text-align: center;
+                margin-top: 12px;
+                font-size: 13px;
+                border-top: 1px dashed #000;
+                padding-top: 10px;
+            }
 
             @page { margin: 0; }
         }
@@ -374,10 +390,13 @@
             if(!cart.length) return;
             if(!confirm("သိမ်းဆည်းပြီး ဘောင်ချာထုတ်မလား?")) return;
             
-            const date = new Date().toISOString().split('T')[0];
-            const time = new Date().toLocaleTimeString();
+            // Format Date as YYYY/MM/DD and Time as HH:MM:SS
+            const now = new Date();
+            const date = now.toISOString().split('T')[0].replace(/-/g, '/');
+            const time = now.toLocaleTimeString('en-GB', { hour12: false });
             const staff = document.getElementById('staff-name').value || "Admin";
             const cust = document.getElementById('cust-name').value || "Guest";
+            const chkNumber = now.getTime().toString().slice(-8); // Generate dynamic CHK#
             
             let totalRev=0, totalProf=0, saleItems=[];
             let rowsHtml = "";
@@ -399,20 +418,25 @@
 
             const h = `
                 <div class="receipt-container">
-                    <div style="text-align:center;">
-                        <h2 class="receipt-header-title">ထွန်းတောက်ကြွယ်</h2>
-                        <div class="receipt-header-sub">စားသောက်ကုန်နှင့်လူသုံးကုန်လက်ကားဖြန့်ချိရေး</div>
-                        <div style="font-size:15px; margin-top:2px;">
-                            အမှတ်(၁၅)၊ ထင်းရှူးရိပ်သာ(၁)ပတ်လမ်း<br>
-                            ဇေကမ္ဘာဝင်း၊ မင်္ဂလာဒုံမြို့နယ်
-                        </div>
-                        <div style="margin:6px 0; border-top:1px dashed #000; border-bottom:1px dashed #000; padding:4px 0; font-size:15px; font-weight:bold;">*** RECEIPT ***</div>
-                    </div>
+                    <h2 class="receipt-header-title">ထွန်းတောက်ကြွယ်</h2>
+                    <div class="receipt-header-sub">စားသောက်ကုန်နှင့်လူသုံးကုန်လက်ကားဖြန့်ချိရေး</div>
+                    <div class="receipt-header-sub">အမှတ်(၁၅)၊ ထင်းရှူးရိပ်သာ(၁)ပတ်လမ်း၊</div>
+                    <div class="receipt-header-sub">ဇေကမ္ဘာဝင်း၊ မင်္ဂလာဒုံမြို့နယ်</div>
+                    
+                    <div style="margin:8px 0; font-weight:bold;">****** COPY ******</div>
+
                     <div class="receipt-info">
-                        <div style="display:flex; justify-content:space-between;"><span>Clerk: ${staff}</span><span>Guest# 1</span></div>
-                        <div>Time: ${date} ${time}</div>
+                        <div style="display:flex; justify-content:space-between;">
+                            <span>CHK# ${chkNumber}</span>
+                        </div>
+                        <div style="display:flex; justify-content:space-between;">
+                            <span>Clerk: ${staff}</span>
+                            <span>Guest# 1</span>
+                        </div>
+                        <div>Print Time: ${date} ${time}</div>
                         <div>Customer: <b>${cust}</b></div>
                     </div>
+
                     <table class="receipt-table">
                         <thead>
                             <tr>
@@ -425,17 +449,29 @@
                         </thead>
                         <tbody>${rowsHtml}</tbody>
                     </table>
-                    <div style="border-top:1px dashed #000; margin-top:6px; padding-top:6px;">
-                        <div class="receipt-footer-row"><span class="label-side">Subtotal:</span><span class="amount-side">${totalRev.toLocaleString()}</span></div>
-                        <div class="receipt-total-row"><span class="label-side">Total:</span><span class="amount-side">${totalRev.toLocaleString()}</span></div>
-                        <div class="receipt-footer-row"><span class="label-side">Cash Paid:</span><span class="amount-side">${totalRev.toLocaleString()}</span></div>
+
+                    <div class="summary-box">
+                        <div class="summary-row">
+                            <span class="summary-label">Subtotal</span>
+                            <span class="summary-value">${totalRev.toLocaleString()}</span>
+                        </div>
+                        <div class="summary-row total-row">
+                            <span class="summary-label">Total</span>
+                            <span class="summary-value">${totalRev.toLocaleString()}</span>
+                        </div>
+                        <div class="summary-row">
+                            <span class="summary-label">Cash Paid</span>
+                            <span class="summary-value">${totalRev.toLocaleString()}</span>
+                        </div>
                     </div>
-                    <div style="text-align:center; margin-top:12px; font-size:15px; border-top:1px dashed #000; padding-top:10px;">
-                        ဝယ်ယူအားပေးမှုကို အထူးကျေးဇူးတင်ပါသည်။<br>*** Have a nice day! Please Come again! ***
+
+                    <div class="receipt-footer">
+                        *** Have a nice day! Please Come again! ***<br>
+                        ***
                     </div>
                 </div>`;
 
-            await _sb.from('sales').insert([{date, rev: totalRev, prof: totalProf, cust: cust + " (" + staff + ")", items: saleItems}]);
+            await _sb.from('sales').insert([{date: now.toISOString().split('T')[0], rev: totalRev, prof: totalProf, cust: cust + " (" + staff + ")", items: saleItems}]);
             document.getElementById('receipt-render-area').innerHTML = h;
 
             setTimeout(() => {
