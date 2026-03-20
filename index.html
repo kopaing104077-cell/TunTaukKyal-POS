@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>ထွန်းတောက်ကြွယ် POS</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         :root { --midnight: #020617; --primary: #1e293b; --green: #10b981; --red: #ef4444; --gold: #fbbf24; --bg: #f8fafc; }
@@ -44,16 +43,16 @@
         .cat-btn { white-space: nowrap; padding: 8px 15px; border-radius: 20px; border: 1px solid #cbd5e1; background: white; font-size: 12px; cursor: pointer; }
         .cat-btn.active { background: var(--midnight); color: white; border-color: var(--midnight); }
 
-        /* Product Grid - STRICTLY CONFIGURED TO PREVENT SQUISHING */
+        /* Product Grid */
         .grid-area { 
             flex: 1; 
-            overflow-y: auto; /* Allow vertical scrolling */
-            padding: 5px 10px 80px 10px; /* Space for bottom nav */
+            overflow-y: auto;
+            padding: 5px 10px 80px 10px;
             display: grid; 
-            grid-template-columns: repeat(2, 1fr); /* 2 Columns Always */
-            grid-auto-rows: max-content; /* Cards take the height they need, NO squishing */
+            grid-template-columns: repeat(2, 1fr);
+            grid-auto-rows: max-content;
             gap: 12px; 
-            align-content: start; /* Align to top */
+            align-content: start;
             -webkit-overflow-scrolling: touch;
         }
         
@@ -65,15 +64,15 @@
             display: flex;
             flex-direction: column;
             box-shadow: 0 2px 5px rgba(0,0,0,0.02);
-            min-height: 170px; /* FIXED MINIMUM HEIGHT */
+            min-height: 170px;
         }
         
         .img-wrap {
             width: 100%;
-            height: 110px; /* FIXED IMAGE HEIGHT */
+            height: 110px;
             background: #e2e8f0;
             position: relative;
-            flex-shrink: 0; /* Prevent image box from shrinking */
+            flex-shrink: 0;
         }
         
         .img-wrap img { 
@@ -127,9 +126,23 @@
         .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 2000; align-items: center; justify-content: center; padding: 15px; }
         .modal-card { background: white; padding: 20px; border-radius: 15px; width: 100%; max-width: 450px; max-height: 85vh; overflow-y: auto; }
         
-        #receipt-render-area { position: absolute; left: -9999px; width: 380px; padding: 20px; background: white; color: #000; }
-        #print-preview-img { width: 100%; border: 1px solid #ddd; margin-bottom: 10px; display: block; }
-        .r-line { border-top: 1px dashed #000; margin: 8px 0; }
+        /* Printer အတွက် သီးသန့် CSS */
+        @media print {
+            body * { visibility: hidden; }
+            #receipt-render-area, #receipt-render-area * { visibility: visible; }
+            #receipt-render-area {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 80mm; /* 3-inch Printer size */
+                padding: 0;
+                margin: 0;
+                background: white;
+                color: black;
+                border: none !important;
+            }
+            @page { margin: 0; }
+        }
     </style>
 </head>
 <body>
@@ -146,8 +159,6 @@
             </div>
         </div>
     </header>
-
-    <div id="receipt-render-area"></div>
 
     <main id="tab-sales" class="container active">
         <div class="sales-sticky">
@@ -275,10 +286,10 @@
     </div>
 
     <div id="receipt-overlay" class="overlay">
-        <div class="modal-card" style="text-align: center;">
-            <img id="print-preview-img" src="">
+        <div class="modal-card" style="text-align: center; max-width: 350px;">
+            <div id="receipt-render-area" style="text-align: left; margin-bottom: 20px; background: white; padding: 10px; border: 1px solid #ddd;"></div>
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
-                <button class="btn btn-dark" onclick="window.print()">Print</button>
+                <button class="btn btn-dark" onclick="printAndSave()"><i class="fas fa-print"></i> Print & Save</button>
                 <button class="btn btn-red" onclick="closeOverlay('receipt-overlay')">ပိတ်မည်</button>
             </div>
         </div>
@@ -320,12 +331,12 @@
             const qS = document.getElementById('search-box').value.toLowerCase();
             const qI = document.getElementById('inv-search') ? document.getElementById('inv-search').value.toLowerCase() : "";
 
-            // Sales Grid (Fixed Card Layout)
+            // Sales Grid
             const posFiltered = products.filter(p => (curCat === 'all' || p.category === curCat) && p.name.toLowerCase().includes(qS));
             document.getElementById('pos-grid').innerHTML = posFiltered.map(p => {
                 let imgTag = p.img && p.img !== "null" && p.img.trim() !== "" 
                     ? `<img src="${p.img}">` 
-                    : ``; // If no image, keep it grey background
+                    : ``; 
                 
                 return `
                 <div class="p-card" onclick="addToCart(${p.id})">
@@ -413,9 +424,10 @@
             renderCart();
         }
 
-        async function processSale() {
+        // Modified processSale for optional skipConfirm
+        async function processSale(skipConfirm = false) {
             if(!cart.length) return;
-            if(!confirm("အရောင်းစာရင်း သိမ်းမလား?")) return;
+            if(!skipConfirm && !confirm("အရောင်းစာရင်း သိမ်းမလား?")) return;
             const date = new Date().toISOString().split('T')[0];
             const staff = document.getElementById('staff-name').value || "-";
             const cust = document.getElementById('cust-name').value || "Guest";
@@ -427,23 +439,97 @@
                     await _sb.from('products').update({qty: i.qty - i.cQty}).eq('id', i.id);
                 }
                 await _sb.from('sales').insert([{date, rev, prof, cust: `${cust} / ${staff}`, items}]);
-                alert("အောင်မြင်ပါသည်"); cart = []; renderCart(); loadProducts();
+                if(!skipConfirm) alert("အရောင်းစာရင်း သိမ်းဆည်းပြီးပါပြီ။"); 
+                cart = []; renderCart(); loadProducts();
             } catch (err) { alert("Error: " + err.message); }
         }
 
-        async function showReceipt() {
+        // New function for handling both printing and saving
+        async function printAndSave() {
+            window.print(); 
+            
+            setTimeout(async () => {
+                await processSale(true); 
+                closeOverlay('receipt-overlay');
+            }, 500);
+        }
+
+        // Modified showReceipt to generate printable HTML layout
+        function showReceipt() {
             if(!cart.length) return;
-            const ra = document.getElementById('receipt-render-area');
-            let total = 0, html = `<div style="text-align:center;"><b>ထွန်းတောက်ကြွယ်</b><br><small>Retail & Wholesale</small></div><div class="r-line"></div>`;
-            html += `<div style="font-size:12px;">ရက်စွဲ: ${new Date().toLocaleString()}<br>ဝယ်သူ: ${document.getElementById('cust-name').value || 'Guest'}</div><div class="r-line"></div>`;
+            
+            const staff = document.getElementById('staff-name').value || "Hsu Mon"; 
+            const cust = document.getElementById('cust-name').value || "Guest";
+            
+            const now = new Date();
+            const pad = (n) => n.toString().padStart(2, '0');
+            const dateTimeStr = `${now.getFullYear()}/${pad(now.getMonth()+1)}/${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+            
+            const chkNum = Math.floor(Math.random() * 1000000000).toString().padStart(9, '0');
+            
+            let html = `
+            <div style="font-family: 'Segoe UI', 'Pyidaungsu', sans-serif; color: black; font-size: 13px; line-height: 1.5;">
+                <div style="text-align: center; margin-bottom: 10px;">
+                    <h2 style="font-size: 17px; margin: 0 0 5px 0;">ထွန်းတောက်ကြွယ်</h2>
+                    <div style="font-size: 11px;">စားသောက်ကုန်နှင့်လူသုံးကုန်လက်ကားဖြန့်ချိရေး</div>
+                    <div style="font-size: 11px;">အမှတ်(၁၅)၊ထင်းရူးရိပ်သာ(၁)ပတ်လမ်း</div>
+                    <div style="font-size: 11px;">ဇေကမ္ဘာဝင်း၊မင်္ဂလာဒုံမြို့နယ်</div>
+                    <div style="margin-top: 5px;">****** ******</div>
+                </div>
+                
+                <div style="margin-bottom: 8px; font-size: 12px;">
+                    <div style="display: flex; justify-content: space-between;"><span>CHK#</span> <span>${chkNum}</span></div>
+                    <div style="display: flex; justify-content: space-between;"><span>Clerk &nbsp;&nbsp;${staff}</span> <span>Guest# 1</span></div>
+                    <div style="display: flex; gap: 15px;"><span>Print Time</span> <span>${dateTimeStr}</span></div>
+                    <div style="display: flex; gap: 15px;"><span>Customer :</span> <span>${cust}</span></div>
+                </div>
+                
+                <div style="border-top: 1px dashed #000; border-bottom: 1px dashed #000; padding: 5px 0; margin-bottom: 5px; display: flex; font-size: 12px;">
+                    <div style="flex: 2;">NAME</div>
+                    <div style="flex: 1; text-align: center;">QTY</div>
+                    <div style="flex: 1; text-align: right;">PRICE</div>
+                    <div style="flex: 1.5; text-align: right;">AMOUNT</div>
+                </div>
+            `;
+            
+            let total = 0;
             cart.forEach(i => {
-                let sub = i.sell * i.cQty; total += sub;
-                html += `<div style="display:flex; justify-content:space-between; font-size:13px;"><span>${i.name}</span><span>${sub.toLocaleString()}</span></div><div style="font-size:11px;">${i.cQty} x ${i.sell.toLocaleString()}</div>`;
+                let sub = i.sell * i.cQty; 
+                total += sub;
+                html += `
+                <div style="margin-bottom: 5px; font-size: 13px;">
+                    <div style="margin-bottom: 2px;">${i.name}</div>
+                    <div style="display: flex; justify-content: space-between;">
+                        <div style="flex: 2; text-align: right; padding-right: 15px;">${i.cQty} ခု</div>
+                        <div style="flex: 1; text-align: right;">${i.sell.toLocaleString()}</div>
+                        <div style="flex: 1.5; text-align: right;">${sub.toLocaleString()}</div>
+                    </div>
+                </div>`;
             });
-            html += `<div class="r-line"></div><div style="display:flex; justify-content:space-between; font-weight:bold;"><span>Total:</span><span>${total.toLocaleString()} Ks</span></div>`;
-            ra.innerHTML = `<div style="margin-bottom:30px;">${html}</div><div class="r-line"></div><div>${html}</div>`;
-            const canvas = await html2canvas(ra, { scale: 2 });
-            document.getElementById('print-preview-img').src = canvas.toDataURL("image/png");
+            
+            html += `
+                <div style="border-top: 1px dashed #000; padding-top: 5px; margin-top: 5px;">
+                    <div style="display: flex; justify-content: space-between; font-size: 13px;">
+                        <span style="margin-left: auto; margin-right: 30px;">Subtotal</span>
+                        <span>${total.toLocaleString()}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 15px; margin-top: 3px;">
+                        <span style="margin-left: auto; margin-right: 30px;">Total</span>
+                        <span>${total.toLocaleString()}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; font-size: 13px; margin-top: 3px;">
+                        <span style="margin-left: auto; margin-right: 30px;">Cash Paid</span>
+                        <span>${total.toLocaleString()}</span>
+                    </div>
+                </div>
+                
+                <div style="text-align: center; margin-top: 15px; font-size: 12px;">
+                    *** Have a nice day! Please Come again! ***
+                </div>
+            </div>
+            `;
+
+            document.getElementById('receipt-render-area').innerHTML = html;
             document.getElementById('receipt-overlay').style.display = 'flex';
         }
 
@@ -568,4 +654,3 @@
     </script>
 </body>
 </html>
-
