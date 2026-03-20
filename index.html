@@ -68,59 +68,49 @@
 
         /* --- 80mm Thermal Receipt Formatting --- */
         @media print {
-            @page { margin: 0; size: auto; }
-            body { background: white; margin: 0; padding: 0; }
-            body * { visibility: hidden !important; }
-            #receipt-render-area, #receipt-render-area * { visibility: visible !important; }
-            
-            #receipt-render-area { 
-                display: block !important; 
-                position: absolute; 
-                left: 0; 
-                top: 0; 
-                width: 72mm !important; /* 80mm printer အတွက် အကောင်းဆုံး width */
-                padding: 2mm;
-                margin: 0;
-            }
+    @page { margin: 0; size: 80mm auto; }
+    body { background: white; margin: 0; padding: 0; }
+    body * { visibility: hidden !important; }
+    #receipt-render-area, #receipt-render-area * { visibility: visible !important; }
+    
+    #receipt-render-area { 
+        display: block !important; 
+        position: absolute; 
+        left: 0; 
+        top: 0; 
+        width: 72mm !important; /* 80mm စာရွက်အတွက် ဘေးမပြတ်အောင် 72mm ပဲပေးထားပါတယ် */
+        padding: 0 2mm;
+        margin: 0;
+    }
 
-            .receipt-container { width: 100%; font-family: 'Pyidaungsu', sans-serif; color: #000; line-height: 1.2; }
+    .receipt-container { 
+        width: 100%; 
+        font-family: 'Pyidaungsu', 'Arial', sans-serif; 
+        color: #000; 
+        line-height: 1.2;
+    }
 
-            .receipt-table { 
-                width: 100%; 
-                border-collapse: collapse; 
-                table-layout: fixed; 
-                margin: 8px 0;
-            }
+    .receipt-table { 
+        width: 100%; 
+        border-collapse: collapse; 
+        margin: 5px 0;
+        table-layout: fixed; /* Column size တွေကို ပုံသေထိန်းထားဖို့ပါ */
+    }
 
-            /* Column Widths */
-            .col-name  { width: 40%; text-align: left; overflow-wrap: break-word; font-size: 11px; }
-            .col-qty   { width: 15%; text-align: center; font-size: 11px; }
-            .col-price { width: 20%; text-align: right; font-size: 11px; }
-            .col-amt   { width: 25%; text-align: right; font-size: 11px; }
+    /* Column Width များကို ပုံထဲကအတိုင်း အံဝင်အောင် ညှိထားခြင်း */
+    .col-name  { width: 45%; text-align: left; font-size: 11px; word-wrap: break-word; }
+    .col-qty   { width: 12%; text-align: center; font-size: 11px; }
+    .col-price { width: 20%; text-align: right; font-size: 11px; }
+    .col-amt   { width: 23%; text-align: right; font-size: 11px; }
 
-            .receipt-table th { 
-                border-top: 1px dashed #000; 
-                border-bottom: 1px dashed #000; 
-                padding: 4px 0; 
-                font-size: 11px;
-            }
+    .receipt-table th { 
+        border-top: 1px dashed #000; 
+        border-bottom: 1px dashed #000; 
+        padding: 5px 0; 
+        font-size: 11px;
+    }
+}
 
-            .receipt-table td { padding: 3px 0; vertical-align: top; }
-
-            .receipt-footer-row { display: flex; justify-content: flex-end; font-size: 12px; margin-top: 2px; }
-            .receipt-total-row { 
-                display: flex; 
-                justify-content: flex-end; 
-                font-size: 14px; 
-                font-weight: bold; 
-                border-top: 1px dashed #000; 
-                margin-top: 4px; 
-                padding-top: 4px; 
-            }
-
-            .label-side { width: 60%; text-align: right; padding-right: 5px; }
-            .amount-side { width: 40%; text-align: right; }
-        }
     </style>
 </head>
 <body>
@@ -361,71 +351,80 @@
 
         // --- ပြင်ဆင်ထားသော processSale Function ---
         async function processSale() {
-            if(!cart.length) return;
-            if(!confirm("သိမ်းဆည်းပြီး ဘောင်ချာထုတ်မလား?")) return;
-            
-            const date = new Date().toLocaleDateString();
-            const time = new Date().toLocaleTimeString();
-            const staff = document.getElementById('staff-name').value || "Admin";
-            const cust = document.getElementById('cust-name').value || "Guest";
-            
-            let totalRev=0, totalProf=0, saleItems=[];
-            let rowsHtml = "";
+    if(!cart.length) return;
+    
+    const date = new Date().toLocaleDateString('en-GB'); 
+    const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const staff = document.getElementById('staff-name').value || "Admin";
+    const cust = document.getElementById('cust-name').value || "Guest";
+    
+    let totalRev = 0;
+    let rowsHtml = "";
 
-            for(let i of cart) {
-                let sub = i.sell * i.cQty; 
-                totalRev += sub; totalProf += (i.sell - i.buy) * i.cQty;
-                saleItems.push({id: i.id, name: i.name, qty: i.cQty, buy: i.buy, sell: i.sell});
-                
-                rowsHtml += `<tr>
-                    <td class="col-name">${i.name}</td>
-                    <td class="col-qty">${i.cQty}</td>
-                    <td class="col-price">${i.sell.toLocaleString()}</td>
-                    <td class="col-amt">${sub.toLocaleString()}</td>
-                </tr>`;
-                // Update Supabase Stock
-                await _sb.from('products').update({qty: i.qty - i.cQty}).eq('id', i.id);
-            }
+    // Cart ထဲက ပစ္စည်းတွေကို Table Row အနေနဲ့ ပြောင်းခြင်း
+    cart.forEach(i => {
+        let sub = i.sell * i.cQty; 
+        totalRev += sub;
+        rowsHtml += `
+            <tr>
+                <td class="col-name">${i.name}</td>
+                <td class="col-qty">${i.cQty}</td>
+                <td class="col-price">${i.sell.toLocaleString()}</td>
+                <td class="col-amt">${sub.toLocaleString()}</td>
+            </tr>`;
+    });
 
-            const h = `
-                <div class="receipt-container">
-                    <div style="text-align:center;">
-                        <h3 style="margin:0; font-size:16px;">ထွန်းတောက်ကြွယ်</h3>
-                        <div style="font-size:11px;">စားသောက်ကုန်နှင့်လူသုံးကုန်လက်ကားဖြန့်ချိရေး</div>
-                        <div style="font-size:10px;">အမှတ်(၁၅)၊ ထင်းရှူးရိပ်သာ(၁)ပတ်လမ်း၊​ဇေကမ္ဘာဝင်း၊မင်္ဂလာဒုံမြို့နယ်။</div>
-                        <div style="margin:5px 0; border-top:1px dashed #000; border-bottom:1px dashed #000; padding:2px 0; font-size:12px; font-weight:bold;">RECEIPT</div>
-                    </div>
-                    <div style="font-size:11px; margin-bottom:5px;">
-                        <div style="display:flex; justify-content:space-between;"><span>နေ့စွဲ: ${date}</span><span>အချိန်: ${time}</span></div>
-                        <div>ဝယ်သူ: <b>${cust}</b></div>
-                        <div>အရောင်းသမား: ${staff}</div>
-                    </div>
-                    <table class="receipt-table">
-                        <thead>
-                            <tr>
-                                <th class="col-name">ပစ္စည်း</th>
-                                <th class="col-qty">ခု</th>
-                                <th class="col-price">ဈေး</th>
-                                <th class="col-amt">စုစုပေါင်း</th>
-                            </tr>
-                        </thead>
-                        <tbody>${rowsHtml}</tbody>
-                    </table>
-                    <div style="border-top:1px dashed #000; padding-top:5px;">
-                        <div class="receipt-footer-row">
-                            <span class="label-side">စုစုပေါင်း:</span>
-                            <span class="amount-side">${totalRev.toLocaleString()}</span>
-                        </div>
-                        <div class="receipt-total-row">
-                            <span class="label-side">ပေးချေရမည့်ငွေ:</span>
-                            <span class="amount-side">${totalRev.toLocaleString()} Ks</span>
-                        </div>
-                    </div>
-                    <div style="text-align:center; margin-top:15px; font-size:11px; border-top:1px dashed #000; padding-top:5px;">
-                        ဝယ်ယူအားပေးမှုကို အထူးကျေးဇူးတင်ပါသည်။<br>
-                        *** ပစ္စည်းပြန်လဲလိုပါက ဘောင်ချာပါရပါမည် ***
-                    </div>
-                </div>`;
+    // ဘောင်ချာ ပုံစံတည်ဆောက်ခြင်း
+    const receiptHtml = `
+        <div class="receipt-container">
+            <div style="text-align:center;">
+                <div style="font-size:18px; font-weight:bold;">ထွန်းတောက်ကြွယ်</div>
+                <div style="font-size:11px;">စားသောက်ကုန်နှင့်လူသုံးကုန်လက်ကားဖြန့်ချိရေး</div>
+                <div style="font-size:10px;">အမှတ်(၁၅)၊ ထင်းရှူးရိပ်သာ(၁)ပတ်လမ်း၊ မင်္ဂလာဒုံ။</div>
+                <div style="margin:5px 0; border-top:1px dashed #000; border-bottom:1px dashed #000; padding:2px 0; font-size:12px; font-weight:bold;">*** RECEIPT ***</div>
+            </div>
+            
+            <div style="font-size:11px; margin-bottom:5px;">
+                <div style="display:flex; justify-content:space-between;">
+                    <span>Date: ${date}</span>
+                    <span>Time: ${time}</span>
+                </div>
+                <div>Customer: ${cust}</div>
+                <div>Clerk: ${staff}</div>
+            </div>
+
+            <table class="receipt-table">
+                <thead>
+                    <tr>
+                        <th class="col-name">NAME</th>
+                        <th class="col-qty">QTY</th>
+                        <th class="col-price">PRICE</th>
+                        <th class="col-amt">AMOUNT</th>
+                    </tr>
+                </thead>
+                <tbody>${rowsHtml}</tbody>
+            </table>
+
+            <div style="border-top:1px dashed #000; padding-top:5px; font-size:12px;">
+                <div style="display:flex; justify-content:space-between;">
+                    <span>Subtotal:</span>
+                    <span>${totalRev.toLocaleString()}</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; font-size:15px; font-weight:bold; border-top:1px dashed #000; margin-top:5px; padding-top:5px;">
+                    <span>Total:</span>
+                    <span>${totalRev.toLocaleString()} Ks</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; margin-top:3px;">
+                    <span>Cash Paid:</span>
+                    <span>${totalRev.toLocaleString()}</span>
+                </div>
+            </div>
+
+            <div style="text-align:center; margin-top:15px; font-size:11px; border-top:1px dashed #000; padding-top:8px;">
+                ဝယ်ယူအားပေးမှုကို အထူးကျေးဇူးတင်ရှိပါသည်။<br>
+                *** Have a nice day! ***
+            </div>
+        </div>`;
 
             // Insert to Sales Table
             await _sb.from('sales').insert([{date: new Date().toISOString().split('T')[0], rev: totalRev, prof: totalProf, cust: cust + " (" + staff + ")", items: saleItems}]);
