@@ -164,7 +164,7 @@
                 <div class="cart-summary">
                     <div class="total-text">Total: <span class="total-amt" id="cart-total">0 Ks</span></div>
                     <div class="btn-row" style="width: auto;">
-                        <button class="btn btn-dark" onclick="showReceipt()"><i class="fas fa-file-invoice"></i> Preview</button>
+                        <button class="btn btn-dark" onclick="showReceipt()"><i class="fas fa-print"></i> ဘောင်ချာထုတ်မည်</button>
                         <button class="btn btn-green" onclick="processSale()"><i class="fas fa-check"></i> သိမ်းမည်</button>
                     </div>
                 </div>
@@ -274,16 +274,6 @@
         </div>
     </div>
 
-    <div id="receipt-overlay" class="overlay">
-        <div class="modal-card" style="text-align: center;">
-            <img id="print-preview-img" src="">
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
-                <button class="btn btn-dark" onclick="window.print()">Print</button>
-                <button class="btn btn-red" onclick="closeOverlay('receipt-overlay')">ပိတ်မည်</button>
-            </div>
-        </div>
-    </div>
-
     <script>
         const SUPA_URL = "https://iyhskfxxpemtpspohjve.supabase.co";
         const SUPA_KEY = "sb_publishable_pJ6ewySbcvru7PNQdY0RAQ_8DLnS3j8";
@@ -320,12 +310,11 @@
             const qS = document.getElementById('search-box').value.toLowerCase();
             const qI = document.getElementById('inv-search') ? document.getElementById('inv-search').value.toLowerCase() : "";
 
-            // Sales Grid (Fixed Card Layout)
             const posFiltered = products.filter(p => (curCat === 'all' || p.category === curCat) && p.name.toLowerCase().includes(qS));
             document.getElementById('pos-grid').innerHTML = posFiltered.map(p => {
                 let imgTag = p.img && p.img !== "null" && p.img.trim() !== "" 
                     ? `<img src="${p.img}">` 
-                    : ``; // If no image, keep it grey background
+                    : ``;
                 
                 return `
                 <div class="p-card" onclick="addToCart(${p.id})">
@@ -340,12 +329,10 @@
                 </div>`;
             }).join('');
 
-            // Stock List
             document.getElementById('stock-body').innerHTML = products.map(p => `
                 <tr><td>${p.name}</td><td>${p.sell.toLocaleString()}</td><td style="color:${p.qty<5?'red':'green'}; font-weight:bold;">${p.qty}</td></tr>
             `).join('');
 
-            // Inventory List
             const invFiltered = products.filter(p => p.name.toLowerCase().includes(qI));
             document.getElementById('inv-body').innerHTML = invFiltered.map(p => {
                 let imgSrc = 'https://placehold.co/50x50/e2e8f0/64748b?text=No';
@@ -413,73 +400,76 @@
             renderCart();
         }
 
+        // Print နှင့် Save တစ်ခါတည်းလုပ်ဆောင်မည့် Function
         async function processSale() {
             if(!cart.length) return;
-            if(!confirm("အရောင်းစာရင်း သိမ်းမလား?")) return;
+            if(!confirm("အရောင်းစာရင်း သိမ်းပြီး ဘောင်ချာတန်းထုတ်မည်။ သေချာပါသလား?")) return;
+            
             const date = new Date().toISOString().split('T')[0];
             const staff = document.getElementById('staff-name').value || "-";
             const cust = document.getElementById('cust-name').value || "Guest";
             let rev=0, prof=0, items=[];
+            
+            // Native HTML Print အတွက် 3-inch Printer (80mm) နှင့်ကိုက်ညီမည့် HTML ပြင်ဆင်ခြင်း
+            let total = 0;
+            let html = '<div style="width:100%; max-width: 320px; margin: 0 auto; color:#000; font-family: sans-serif; padding: 5px 0;">';
+            html += '<div style="text-align:center; font-size:26px; font-weight:bold;">ထွန်းတောက်ကြွယ်</div>';
+            html += '<div style="text-align:center; font-size:16px; margin-bottom:10px;">Retail & Wholesale</div>';
+            html += '<div style="border-top: 1px dashed #000; margin: 10px 0;"></div>';
+            html += '<div style="font-size:14px; line-height: 1.6;">ရက်စွဲ: ' + new Date().toLocaleString() + '<br>ဝယ်သူ: ' + cust + '</div>';
+            html += '<div style="border-top: 1px dashed #000; margin: 10px 0;"></div>';
+
             try {
                 for(let i of cart) {
-                    rev += i.sell * i.cQty; prof += (i.sell - i.buy) * i.cQty;
+                    let sub = i.sell * i.cQty; 
+                    rev += sub; prof += (i.sell - i.buy) * i.cQty;
+                    total += sub;
                     items.push({id: i.id, n: i.name, q: i.cQty, b: i.buy, s: i.sell});
+                    
+                    // Stock နှုတ်ခြင်း
                     await _sb.from('products').update({qty: i.qty - i.cQty}).eq('id', i.id);
+
+                    // Items ထည့်ခြင်း (စာလုံးပိုကြီး၊ ပိုထင်းအောင်ပြင်ထားသည်)
+                    html += '<div style="display:flex; justify-content:space-between; font-size:16px; font-weight:bold; margin-top:8px;">';
+                    html += '<span>' + i.name + '</span>';
+                    html += '<span>' + sub.toLocaleString() + ' Ks</span>';
+                    html += '</div>';
+                    html += '<div style="font-size:13px; color:#333;">' + i.cQty + ' x ' + i.sell.toLocaleString() + '</div>';
                 }
-                await _sb.from('sales').insert([{date, rev, prof, cust: `${cust} / ${staff}`, items}]);
-                alert("အောင်မြင်ပါသည်"); cart = []; renderCart(); loadProducts();
+
+                html += '<div style="border-top: 1px dashed #000; margin: 10px 0;"></div>';
+                html += '<div style="display:flex; justify-content:space-between; font-size:20px; font-weight:bold;">';
+                html += '<span>Total:</span>';
+                html += '<span>' + total.toLocaleString() + ' Ks</span>';
+                html += '</div>';
+                html += '<div style="text-align:center; font-size:13px; margin-top:20px;">ဝယ်ယူအားပေးမှုကို ကျေးဇူးတင်ပါသည်</div>';
+                html += '</div>';
+
+                // အရောင်းစာရင်း Database သိမ်းခြင်း
+                await _sb.from('sales').insert([{date, rev, prof, cust: cust + " / " + staff, items}]);
+                
+                // Print ထုတ်သည့်အချိန်တွင် အခြားခလုတ်များ မပေါ်စေရန် Print CSS ထည့်ခြင်း
+                if (!document.getElementById('print-css')) {
+                    const style = document.createElement('style');
+                    style.id = 'print-css';
+                    style.innerHTML = "@media print { body * { visibility: hidden !important; } #receipt-render-area, #receipt-render-area * { visibility: visible !important; } #receipt-render-area { position: absolute !important; left: 0 !important; top: 0 !important; width: 100% !important; max-width: 100% !important; padding: 0 !important; margin: 0 !important; } @page { margin: 0; } }";
+                    document.head.appendChild(style);
+                }
+
+                // တိုက်ရိုက် Print ထုတ်ခြင်း (ကြန့်ကြာမှု မရှိတော့ပါ)
+                const ra = document.getElementById('receipt-render-area');
+                ra.innerHTML = html;
+                window.print();
+
+                // ပြီးလျှင် ခြင်းတောင်း ရှင်းလင်းခြင်း
+                cart = []; renderCart(); loadProducts();
+
             } catch (err) { alert("Error: " + err.message); }
         }
 
-                async function showReceipt() {
-            if(!cart.length) return;
-            const ra = document.getElementById('receipt-render-area');
-            
-            // ၃ လက်မ (80mm) Printer အတွက် အကျယ်ကို ပိုချဲ့ပြီး သတ်မှတ်ပေးခြင်း
-            ra.style.width = "576px"; 
-
-            let total = 0;
-            // စာလုံးများကို ပိုကြီးပြီး ပိုထင်းစေရန် (font-weight: bold, font-size အကြီး) သုံးထားပါသည်
-            let html = `
-                <div style="text-align:center; font-size:32px; font-weight:900; color:#000;">ထွန်းတောက်ကြွယ်</div>
-                <div style="text-align:center; font-size:22px; font-weight:bold; color:#000; margin-bottom:15px;">Retail & Wholesale</div>
-                <div style="border-top: 3px dashed #000; margin: 15px 0;"></div>
-                <div style="font-size:22px; font-weight:bold; color:#000; line-height:1.6;">
-                    ရက်စွဲ: ${new Date().toLocaleString()}<br>
-                    ဝယ်သူ: ${document.getElementById('cust-name').value || 'Guest'}
-                </div>
-                <div style="border-top: 3px dashed #000; margin: 15px 0;"></div>
-            `;
-            
-            cart.forEach(i => {
-                let sub = i.sell * i.cQty; 
-                total += sub;
-                html += `
-                    <div style="display:flex; justify-content:space-between; font-size:26px; font-weight:bold; color:#000; margin-top:10px;">
-                        <span>${i.name}</span>
-                        <span>${sub.toLocaleString()} Ks</span>
-                    </div>
-                    <div style="font-size:22px; font-weight:bold; color:#444;">
-                        ${i.cQty} x ${i.sell.toLocaleString()}
-                    </div>
-                `;
-            });
-
-            html += `
-                <div style="border-top: 3px dashed #000; margin: 15px 0;"></div>
-                <div style="display:flex; justify-content:space-between; font-size:30px; font-weight:900; color:#000;">
-                    <span>Total:</span>
-                    <span>${total.toLocaleString()} Ks</span>
-                </div>
-            `;
-
-            // ဘောင်ချာ ၂ ခု ထပ်နေတာကို ၁ ခုတည်းဖြစ်အောင် ပြင်ဆင်ထားသည်
-            ra.innerHTML = html;
-
-            // ပုံထွက်ပိုကြည်လင်စေရန် scale ကို 3 သို့ပြောင်းထားသည်
-            const canvas = await html2canvas(ra, { scale: 3 });
-            document.getElementById('print-preview-img').src = canvas.toDataURL("image/png");
-            document.getElementById('receipt-overlay').style.display = 'flex';
+        async function showReceipt() {
+            // "ဘောင်ချာထုတ်မည်" ခလုတ်နှိပ်လျှင်လည်း သိမ်းပြီး တစ်ခါတည်း Print မည့်စနစ်ကို သုံးမည်
+            processSale();
         }
 
         function navTo(tid, btn) {
