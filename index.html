@@ -67,9 +67,9 @@
         
         #receipt-render-area { display: none; }
 
-        /* --- PRINT STYLES: CENTERED & LARGE FONT --- */
+        /* --- PRINT STYLES (RE-OPTIMIZED FOR TABLE WIDTH & CENTER) --- */
         @media print {
-            body { background: white; width: 100%; margin: 0; padding: 0; }
+            body { background: white; width: 100%; margin: 0; padding: 0; position: static; height: auto; overflow: visible; }
             body * { visibility: hidden; }
             #receipt-render-area, #receipt-render-area * { visibility: visible; }
             
@@ -78,28 +78,32 @@
                 position: absolute; 
                 left: 0; 
                 top: 0; 
-                width: 100% !important; /* Use full print width */
-                margin: 0;
+                width: 74mm !important; /* Fixed width for standard 80mm paper to avoid margins */
+                margin: 0 auto;
                 padding: 0;
+                box-sizing: border-box;
             }
 
             .receipt-container { 
-                width: 72mm; /* Standard safe width for 80mm */
-                margin: 0 auto; /* Force center */
-                padding: 0 2mm;
+                width: 100%; 
+                margin: 0; 
+                padding: 0 2mm; /* Tiny padding to prevent clipping */
                 color: #000;
-                text-align: center; /* Center all contents by default */
+                text-align: center; /* Center Header/Footer content */
+                font-family: 'Pyidaungsu', sans-serif;
+                box-sizing: border-box;
             }
             
+            /* Center Header & Footer with original size */
             .receipt-header-title { 
-                font-size: 26px; /* Bigger Title */
+                font-size: 26px; /* Orginal size from the center-code */
                 font-weight: bold; 
                 margin: 0;
                 display: block;
             }
 
             .receipt-header-sub { 
-                font-size: 16px; /* Bigger sub-text */
+                font-size: 16px; /* Original size from the center-code */
                 margin-top: 4px; 
                 line-height: 1.4;
                 display: block;
@@ -111,6 +115,7 @@
                 width: 100%;
             }
 
+            /* Info section remains left-aligned */
             .receipt-info { 
                 font-size: 14px; 
                 text-align: left; 
@@ -118,12 +123,14 @@
                 line-height: 1.6;
             }
 
+            /* Table re-FIXED width for standard 80mm */
             .receipt-table { 
                 width: 100%; 
                 border-collapse: collapse; 
-                font-size: 14px; /* Bigger table font */
+                font-size: 12px; /* Small font to fit 5 columns within standard 80mm */
                 table-layout: fixed; 
-                margin-top: 5px;
+                margin: 5px 0;
+                box-sizing: border-box;
             }
 
             .receipt-table th { 
@@ -131,25 +138,28 @@
                 border-bottom: 1px dashed #000; 
                 padding: 8px 0; 
                 font-weight: bold;
+                text-align: center;
             }
-
-            /* Column Ratios */
-            .col-name  { text-align: left; width: 35%; }
+            
+            /* Column Widths to fit within 72-74mm total */
+            .col-name  { text-align: left; width: 32%; }
             .col-qty   { text-align: center; width: 10%; }
-            .col-unit  { text-align: center; width: 12%; }
-            .col-price { text-align: right; width: 20%; }
+            .col-unit  { text-align: center; width: 13%; }
+            .col-price { text-align: right; width: 22%; }
             .col-amt   { text-align: right; width: 23%; }
 
             .receipt-table td { 
-                padding: 8px 0; 
+                padding: 6px 0; 
                 vertical-align: top; 
                 word-wrap: break-word; 
+                overflow-wrap: break-word; /* Crucial for long names */
             }
 
             .summary-wrap { 
                 margin-top: 10px; 
                 border-top: 1.5px dashed #000; 
                 padding-top: 8px; 
+                box-sizing: border-box;
             }
 
             .receipt-row { 
@@ -159,11 +169,11 @@
                 margin-bottom: 5px; 
             }
 
-            .label { width: 50%; text-align: right; padding-right: 15px; }
-            .val { width: 40%; text-align: right; font-weight: bold; }
+            .label { width: 45%; text-align: right; padding-right: 15px; }
+            .val { width: 35%; text-align: right; font-weight: bold; }
 
             .total-row { 
-                font-size: 20px; /* Large Total Price */
+                font-size: 20px; /* Orginal size from the center-code */
                 font-weight: bold; 
                 margin-top: 8px; 
                 padding-top: 8px; 
@@ -171,7 +181,7 @@
             }
 
             .footer-msg {
-                text-align: center;
+                text-align: center; /* Center-aligned original message */
                 margin-top: 20px;
                 font-size: 15px;
                 line-height: 1.5;
@@ -382,7 +392,8 @@
             renderCart();
         }
 
-        function renderCart() {
+        function renderCart()
+        {
             let total = 0;
             const cl = document.getElementById('cart-list');
             if(cart.length === 0) {
@@ -609,3 +620,4 @@
     </script>
 </body>
 </html>
+
