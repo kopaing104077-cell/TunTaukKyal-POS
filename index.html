@@ -64,73 +64,32 @@
         .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 2000; align-items: center; justify-content: center; padding: 15px; }
         .modal-card { background: white; padding: 20px; border-radius: 15px; width: 100%; max-width: 450px; max-height: 85vh; overflow-y: auto; }
         
+        /* --- PRINT VOUCHER CSS (FROM FIRST CODE) --- */
         #receipt-render-area { display: none; }
-
-        /* --- 80mm THERMAL PRINTER STYLES (LARGE FONT) --- */
         @media print {
-            body { background: white; }
             body * { visibility: hidden !important; }
             #receipt-render-area, #receipt-render-area * { visibility: visible !important; }
-            
             #receipt-render-area { 
-                display: block !important; 
-                position: absolute; 
-                left: 0; 
-                top: 0; 
-                /* 80mm paper, safe area set to 74mm */
-                width: 74mm !important; 
-                max-width: 74mm !important; 
-                box-sizing: border-box;
-                padding: 0 1mm;
-                background: white; 
-                margin: 0 auto;
+                display: block !important; position: absolute; left: 0; top: 0; width: 76mm !important; 
+                padding: 0; margin: 0; color: #000; background: #fff;
             }
-            .receipt-container { 
-                width: 100%; 
-                margin: 0; 
-                color: #000; 
-                font-family: 'Pyidaungsu', sans-serif;
-            }
-            
-            .receipt-header-title { font-size: 20px; font-weight: bold; margin: 0; }
-            .receipt-header-sub { font-size: 14px; margin-top: 4px; }
-            .receipt-info { font-size: 13px; line-height: 1.4; margin-top: 6px; }
-
-            .receipt-table { 
-                width: 100%; 
-                border-collapse: collapse; 
-                font-size: 13px; /* Bigger font for table */
-                margin-top: 8px; 
-                table-layout: fixed; /* Strictly lock columns */
-            }
-            .receipt-table th { 
-                border-top: 1px dashed #000; 
-                border-bottom: 1px dashed #000; 
-                padding: 6px 0; 
-                font-weight: bold; 
-                text-align: center;
-            }
-            
-            /* Calculated columns for 100% (74mm) */
-            .col-name { text-align: left; width: 28%; }
-            .col-qty { text-align: center; width: 13%; }
-            .col-unit { text-align: center; width: 15%; }
-            .col-price { text-align: right; width: 21%; }
-            .col-amt { text-align: right; width: 23%; }
-
-            .receipt-table td { 
-                padding: 6px 1px; 
-                vertical-align: top; 
-                word-wrap: break-word; 
-                overflow-wrap: break-word;
-            }
-
-            .receipt-footer-row { display: flex; justify-content: flex-end; margin-top: 5px; font-size: 14px; }
-            .label-side { width: 45%; text-align: right; padding-right: 10px; }
-            .amount-side { width: 40%; text-align: right; font-weight: bold; }
-            
-            .receipt-total-row { display: flex; justify-content: flex-end; margin-top: 5px; font-size: 16px; font-weight: bold; }
-
+            .r-center { width: 100%; text-align: center; font-family: 'Pyidaungsu', sans-serif; }
+            .r-header-title { font-size: 20px; font-weight: bold; }
+            .r-header-sub { font-size: 11px; margin-top: 2px; }
+            .r-info { text-align: left; font-size: 11px; margin: 10px 0; border-top: 1px dashed #000; padding-top: 5px; line-height: 1.5; }
+            .r-table { width: 100%; border-collapse: collapse; font-size: 10px; table-layout: fixed; margin: 5px 0; }
+            .r-table th { border-top: 1px dashed #000; border-bottom: 1px dashed #000; padding: 5px 0; text-align: center; }
+            .c-name { width: 35%; text-align: left; }
+            .c-qty { width: 10%; text-align: center; }
+            .c-unit { width: 12%; text-align: center; }
+            .c-price { width: 20%; text-align: right; }
+            .c-amt { width: 23%; text-align: right; }
+            .r-table td { padding: 4px 0; vertical-align: top; word-break: break-word; }
+            .r-summary { border-top: 1px dashed #000; margin-top: 5px; padding-top: 5px; font-size: 14px; }
+            .r-row { display: flex; justify-content: flex-end; margin-bottom: 2px; }
+            .r-label { width: 60%; text-align: right; padding-right: 15px; }
+            .r-val { width: 35%; text-align: right; font-weight: bold; }
+            .r-footer { margin-top: 15px; font-size: 10px; border-top: 1px dashed #000; padding-top: 5px; text-align: center; }
             @page { margin: 0; }
         }
     </style>
@@ -322,7 +281,7 @@
             const qI = document.getElementById('inv-search') ? document.getElementById('inv-search').value.toLowerCase() : "";
             const invFiltered = products.filter(p => p.name.toLowerCase().includes(qI));
             document.getElementById('inv-body').innerHTML = invFiltered.map(p => `
-                <tr><td><img src="${p.img||'https://placehold.co/50x50'}" style="width:35px;height:35px;border-radius:4px;object-fit:cover;"></td>
+                <tr><td><img src="${p.img||''}" style="width:35px;height:35px;border-radius:4px;object-fit:cover;"></td>
                     <td><b>${p.name}</b></td><td>${p.unit||'ခု'}</td><td>${p.buy.toLocaleString()}</td><td>${p.sell.toLocaleString()}</td><td>${p.qty}</td>
                     <td><button class="btn btn-dark" onclick="editProduct(${p.id})" style="padding:5px;width:35px;"><i class="fas fa-edit"></i></button></td></tr>`).join('');
         }
@@ -359,202 +318,93 @@
 
         function adjustQty(id, d) {
             const it = cart.find(x => x.id === id);
-            if(it) { 
-                it.cQty += d; 
-                const p = products.find(x=>x.id===id);
-                if(it.cQty > p.qty) { it.cQty--; alert("Stock ထက်မကျော်ရပါ"); }
-                if(it.cQty <= 0) cart = cart.filter(x => x.id !== id);
-            }
+            if(it) { it.cQty += d; const p = products.find(x=>x.id===id); if(it.cQty > p.qty) { it.cQty--; alert("Stock ထက်မကျော်ရပါ"); } if(it.cQty <= 0) cart = cart.filter(x => x.id !== id); }
             renderCart();
         }
 
         function removeItem(id) { cart = cart.filter(x => x.id !== id); renderCart(); }
 
+        /* --- UPDATED PROCESS SALE WITH FIRST CODE'S PRINT LOGIC --- */
         async function processSale() {
             if(!cart.length) return;
             if(!confirm("သိမ်းဆည်းပြီး ဘောင်ချာထုတ်မလား?")) return;
             
-            const date = new Date().toISOString().split('T')[0];
-            const time = new Date().toLocaleTimeString();
+            const now = new Date();
+            const date = now.toISOString().split('T')[0];
+            const time = now.toLocaleTimeString('en-GB');
             const staff = document.getElementById('staff-name').value || "Admin";
             const cust = document.getElementById('cust-name').value || "Guest";
             
-            let totalRev=0, totalProf=0, saleItems=[];
-            let rowsHtml = "";
+            let rev=0, prof=0, rowsHtml="";
+            const saleItems = [];
 
             for(let i of cart) {
                 let sub = i.sell * i.cQty; 
-                totalRev += sub; totalProf += (i.sell - i.buy) * i.cQty;
+                rev += sub; 
+                prof += (i.sell - i.buy) * i.cQty;
                 saleItems.push({id: i.id, name: i.name, qty: i.cQty, buy: i.buy, sell: i.sell});
                 
                 rowsHtml += `<tr>
-                    <td class="col-name">${i.name}</td>
-                    <td class="col-qty">${i.cQty}</td>
-                    <td class="col-unit">${i.unit||'ခု'}</td>
-                    <td class="col-price">${i.sell.toLocaleString()}</td>
-                    <td class="col-amt">${sub.toLocaleString()}</td>
+                    <td class="c-name">${i.name}</td>
+                    <td class="c-qty">${i.cQty}</td>
+                    <td class="c-unit">${i.unit||'ခု'}</td>
+                    <td class="c-price">${i.sell.toLocaleString()}</td>
+                    <td class="c-amt">${sub.toLocaleString()}</td>
                 </tr>`;
+                
                 await _sb.from('products').update({qty: i.qty - i.cQty}).eq('id', i.id);
             }
 
             const h = `
-                <div class="receipt-container">
-                    <div style="text-align:center;">
-                        <h2 class="receipt-header-title">ထွန်းတောက်ကြွယ်</h2>
-                        <div class="receipt-header-sub">စားသောက်ကုန်နှင့်လူသုံးကုန်လက်ကားဖြန့်ချိရေး</div>
-                        <div style="font-size:12px; margin-top:2px;">
-                            အမှတ်(၁၅)၊ ထင်းရှူးရိပ်သာ(၁)ပတ်လမ်း<br>
-                            ဇေကမ္ဘာဝင်း၊ မင်္ဂလာဒုံမြို့နယ်
-                        </div>
-                        <div style="margin:6px 0; border-top:1px dashed #000; border-bottom:1px dashed #000; padding:4px 0; font-size:12px; font-weight:bold;">*** RECEIPT ***</div>
+                <div class="r-center">
+                    <div class="r-header-title">ထွန်းတောက်ကြွယ်</div>
+                    <div class="r-header-sub">စားသောက်ကုန်နှင့်လူသုံးကုန်လက်ကားဖြန့်ချိရေး</div>
+                    <div class="r-header-sub">အမှတ်(၁၅)၊ ထင်းရှူးရိပ်သာ(၁)ပတ်လမ်း၊ ဇေကမ္ဘာဝင်း</div>
+                    <div class="r-header-sub">မင်္ဂလာဒုံမြို့နယ်</div>
+                    <div class="r-header-sub">09-777715161, 09-777715164</div>
+                    <div class="r-center" style="margin-top:5px;">****** COPY ******</div>
+                    <div class="r-info">
+                        CHK# ${now.getTime().toString().slice(-8)}<br>
+                        Clerk: ${staff} &nbsp;&nbsp;&nbsp; Guest# 1<br>
+                        Print Time: ${date.replace(/-/g,'/')} ${time}<br>
+                        Customer: ${cust}
                     </div>
-                    <div class="receipt-info">
-                        <div style="display:flex; justify-content:space-between;"><span>Clerk: ${staff}</span><span>Guest# 1</span></div>
-                        <div>Time: ${date} ${time}</div>
-                        <div>Customer: <b>${cust}</b></div>
-                    </div>
-                    <table class="receipt-table">
-                        <thead>
-                            <tr>
-                                <th class="col-name">NAME</th>
-                                <th class="col-qty">QTY</th>
-                                <th class="col-unit">Unit</th>
-                                <th class="col-price">PRICE</th>
-                                <th class="col-amt">AMOUNT</th>
-                            </tr>
-                        </thead>
+                    <table class="r-table">
+                        <thead><tr><th class="c-name">NAME</th><th class="c-qty">QTY</th><th class="c-unit">Unit</th><th class="c-price">PRICE</th><th class="c-amt">AMOUNT</th></tr></thead>
                         <tbody>${rowsHtml}</tbody>
                     </table>
-                    <div style="border-top:1px dashed #000; margin-top:6px; padding-top:6px;">
-                        <div class="receipt-footer-row"><span class="label-side">Subtotal:</span><span class="amount-side">${totalRev.toLocaleString()}</span></div>
-                        <div class="receipt-total-row"><span class="label-side">Total:</span><span class="amount-side">${totalRev.toLocaleString()}</span></div>
-                        <div class="receipt-footer-row"><span class="label-side">Cash Paid:</span><span class="amount-side">${totalRev.toLocaleString()}</span></div>
+                    <div class="r-summary">
+                        <div class="r-row"><span class="r-label">Subtotal</span><span class="r-val">${rev.toLocaleString()}</span></div>
+                        <div class="r-row" style="font-size:18px;"><span class="r-label">Total</span><span class="r-val">${rev.toLocaleString()}</span></div>
+                        <div class="r-row"><span class="r-label">Cash Paid</span><span class="r-val">${rev.toLocaleString()}</span></div>
                     </div>
-                    <div style="text-align:center; margin-top:12px; font-size:13px; border-top:1px dashed #000; padding-top:10px;">
-                        ဝယ်ယူအားပေးမှုကို အထူးကျေးဇူးတင်ပါသည်။<br>*** Have a nice day! Please Come again! ***
-                    </div>
+                    <div class="r-footer">*** Have a nice day! Please Come again! ***<br>***</div>
                 </div>`;
 
-            await _sb.from('sales').insert([{date, rev: totalRev, prof: totalProf, cust: cust + " (" + staff + ")", items: saleItems}]);
-            document.getElementById('receipt-render-area').innerHTML = h;
-
-            setTimeout(() => {
-                window.print();
-                cart = []; renderCart(); loadProducts();
-            }, 500);
-        }
-
-        function navTo(tid, btn) {
-            document.querySelectorAll('.container').forEach(c => c.classList.remove('active'));
-            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-            document.getElementById(tid).classList.add('active');
-            btn.classList.add('active');
-            refreshUI();
-            if(tid === 'tab-rep') runReport();
-        }
-
-        function askPass(tid, btn) {
-            if(isAdmin) navTo(tid, btn);
-            else { nextTab = tid; document.getElementById('login-overlay').style.display='flex'; }
-        }
-
-        function checkPass() {
-            if(document.getElementById('pass-input').value === "111111") {
-                isAdmin=true; sessionStorage.setItem('TTK_ADMIN', 'true');
-                document.getElementById('login-overlay').style.display='none';
-                document.getElementById('logout-btn').style.display='block';
-                navTo(nextTab, document.getElementById('n-' + nextTab.split('-')[1]));
-            } else alert("စကားဝှက်မှားယွင်းနေပါသည်");
-        }
-
-        function logout() { isAdmin=false; sessionStorage.removeItem('TTK_ADMIN'); location.reload(); }
-
-        function editProduct(id) {
-            const p = products.find(x => x.id === id);
-            document.getElementById('edit-id').value = p.id;
-            document.getElementById('p-name').value = p.name;
-            document.getElementById('p-unit').value = p.unit || "ခု";
-            document.getElementById('p-cat').value = p.category || 'အခြား';
-            document.getElementById('p-buy').value = p.buy;
-            document.getElementById('p-sell').value = p.sell;
-            document.getElementById('p-qty').value = p.qty;
-            document.getElementById('p-qty').disabled = true;
-            document.getElementById('st-add-area').style.display = 'block';
-            document.getElementById('del-btn').style.display = 'block';
-            tempImg = p.img;
-            document.getElementById('add-overlay').style.display = 'flex';
-        }
-
-        async function saveProduct() {
-            const id = document.getElementById('edit-id').value, name = document.getElementById('p-name').value;
-            const unit = document.getElementById('p-unit').value || "ခု", cat = document.getElementById('p-cat').value;
-            const buy = parseInt(document.getElementById('p-buy').value || 0), sell = parseInt(document.getElementById('p-sell').value || 0);
-            if(!name) return alert("အမည်ထည့်ပါ");
-
             try {
-                if(id) {
-                    const p = products.find(x => x.id == id);
-                    const nq = parseInt(document.getElementById('p-new-qty').value || 0), fq = p.qty + nq;
-                    const fb = (buy !== p.buy && nq > 0) ? Math.round(((p.qty * p.buy) + (nq * buy)) / fq) : buy;
-                    const obj = { name, unit, category: cat, buy: fb, sell, qty: fq };
-                    if(tempImg) obj.img = tempImg;
-                    await _sb.from('products').update(obj).eq('id', id);
-                } else {
-                    const q = parseInt(document.getElementById('p-qty').value || 0);
-                    await _sb.from('products').insert([{name, unit, category: cat, buy, sell, qty: q, img: tempImg}]);
-                }
-                closeOverlay('add-overlay'); loadProducts();
-            } catch (e) { alert("Error saving."); }
+                await _sb.from('sales').insert([{date, rev, prof, cust: cust + " (" + staff + ")", items: saleItems}]);
+                document.getElementById('receipt-render-area').innerHTML = h;
+
+                setTimeout(() => {
+                    window.print();
+                    cart = []; renderCart(); loadProducts();
+                }, 500);
+            } catch (e) { alert("Error: စာရင်းမဝင်ပါ"); }
         }
 
+        // Other functions (navTo, askPass, checkPass, editProduct, saveProduct, deleteProduct, runReport, delSale, handleImg, setCategory, openAddModal, closeOverlay) remain same as in your second code block
+        function navTo(tid, btn) { document.querySelectorAll('.container').forEach(c => c.classList.remove('active')); document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active')); document.getElementById(tid).classList.add('active'); btn.classList.add('active'); refreshUI(); if(tid === 'tab-rep') runReport(); }
+        function askPass(tid, btn) { if(isAdmin) navTo(tid, btn); else { nextTab = tid; document.getElementById('login-overlay').style.display='flex'; } }
+        function checkPass() { if(document.getElementById('pass-input').value === "111111") { isAdmin=true; sessionStorage.setItem('TTK_ADMIN', 'true'); document.getElementById('login-overlay').style.display='none'; document.getElementById('logout-btn').style.display='block'; navTo(nextTab, document.getElementById('n-' + nextTab.split('-')[1])); } else alert("စကားဝှက်မှားယွင်းနေပါသည်"); }
+        function logout() { isAdmin=false; sessionStorage.removeItem('TTK_ADMIN'); location.reload(); }
+        function editProduct(id) { const p = products.find(x => x.id === id); document.getElementById('edit-id').value = p.id; document.getElementById('p-name').value = p.name; document.getElementById('p-unit').value = p.unit || "ခု"; document.getElementById('p-cat').value = p.category || 'အခြား'; document.getElementById('p-buy').value = p.buy; document.getElementById('p-sell').value = p.sell; document.getElementById('p-qty').value = p.qty; document.getElementById('p-qty').disabled = true; document.getElementById('st-add-area').style.display = 'block'; document.getElementById('del-btn').style.display = 'block'; tempImg = p.img; document.getElementById('add-overlay').style.display = 'flex'; }
+        async function saveProduct() { const id = document.getElementById('edit-id').value, name = document.getElementById('p-name').value; const unit = document.getElementById('p-unit').value || "ခု", cat = document.getElementById('p-cat').value; const buy = parseInt(document.getElementById('p-buy').value || 0), sell = parseInt(document.getElementById('p-sell').value || 0); if(!name) return alert("အမည်ထည့်ပါ"); try { if(id) { const p = products.find(x => x.id == id); const nq = parseInt(document.getElementById('p-new-qty').value || 0), fq = p.qty + nq; const fb = (buy !== p.buy && nq > 0) ? Math.round(((p.qty * p.buy) + (nq * buy)) / fq) : buy; const obj = { name, unit, category: cat, buy: fb, sell, qty: fq }; if(tempImg) obj.img = tempImg; await _sb.from('products').update(obj).eq('id', id); } else { const q = parseInt(document.getElementById('p-qty').value || 0); await _sb.from('products').insert([{name, unit, category: cat, buy, sell, qty: q, img: tempImg}]); } closeOverlay('add-overlay'); loadProducts(); } catch (e) { alert("Error saving."); } }
         async function deleteProduct() { if(confirm("ဖျက်မှာလား?")) { await _sb.from('products').delete().eq('id', document.getElementById('edit-id').value); closeOverlay('add-overlay'); loadProducts(); } }
-
-        async function runReport() {
-            const dt = document.getElementById('rep-date').value, ty = document.getElementById('rep-type').value;
-            let q = _sb.from('sales').select('*');
-            if(ty==='day') q = q.eq('date', dt); else q = q.like('date', `${dt.slice(0,7)}%`);
-            const { data } = await q;
-            let r=0, p=0, h=``;
-            (data||[]).forEach(s => {
-                r += s.rev; p += s.prof;
-                h += `<tr><td>${s.date}</td><td>${s.cust}</td><td>${s.rev.toLocaleString()}</td><td>${s.prof.toLocaleString()}</td><td><button onclick="delSale(${s.id})" style="color:red; background:none; border:none;"><i class="fas fa-trash"></i></button></td></tr>`;
-            });
-            document.getElementById('sum-rev').innerText = r.toLocaleString();
-            document.getElementById('sum-prof').innerText = p.toLocaleString();
-            document.getElementById('rep-body').innerHTML = h;
-        }
-
-        async function delSale(sid) {
-            if(!confirm("ဖျက်မှာလား? Stock ပြန်တိုးပါမည်။")) return;
-            const { data: sale } = await _sb.from('sales').select('*').eq('id', sid).single();
-            for(let it of sale.items) {
-                const p = products.find(x => x.id === it.id);
-                if(p) await _sb.from('products').update({qty: p.qty + it.qty}).eq('id', it.id);
-            }
-            await _sb.from('sales').delete().eq('id', sid); runReport(); loadProducts();
-        }
-
-        function handleImg(e) {
-            const reader = new FileReader();
-            reader.onload = (ev) => {
-                const img = new Image();
-                img.onload = () => {
-                    const canvas = document.createElement('canvas');
-                    canvas.width = 150; canvas.height = 150;
-                    canvas.getContext('2d').drawImage(img, 0, 0, 150, 150);
-                    tempImg = canvas.toDataURL('image/jpeg', 0.6);
-                };
-                img.src = ev.target.result;
-            };
-            if(e.target.files[0]) reader.readAsDataURL(e.target.files[0]);
-        }
-
+        async function runReport() { const dt = document.getElementById('rep-date').value, ty = document.getElementById('rep-type').value; let q = _sb.from('sales').select('*'); if(ty==='day') q = q.eq('date', dt); else q = q.like('date', `${dt.slice(0,7)}%`); const { data } = await q; let r=0, p=0, h=``; (data||[]).forEach(s => { r += s.rev; p += s.prof; h += `<tr><td>${s.date}</td><td>${s.cust}</td><td>${s.rev.toLocaleString()}</td><td>${s.prof.toLocaleString()}</td><td><button onclick="delSale(${s.id})" style="color:red; background:none; border:none;"><i class="fas fa-trash"></i></button></td></tr>`; }); document.getElementById('sum-rev').innerText = r.toLocaleString(); document.getElementById('sum-prof').innerText = p.toLocaleString(); document.getElementById('rep-body').innerHTML = h; }
+        async function delSale(sid) { if(!confirm("ဖျက်မှာလား? Stock ပြန်တိုးပါမည်။")) return; const { data: sale } = await _sb.from('sales').select('*').eq('id', sid).single(); for(let it of sale.items) { const p = products.find(x => x.id === it.id); if(p) await _sb.from('products').update({qty: p.qty + it.qty}).eq('id', it.id); } await _sb.from('sales').delete().eq('id', sid); runReport(); loadProducts(); }
+        function handleImg(e) { const reader = new FileReader(); reader.onload = (ev) => { const img = new Image(); img.onload = () => { const canvas = document.createElement('canvas'); canvas.width = 150; canvas.height = 150; canvas.getContext('2d').drawImage(img, 0, 0, 150, 150); tempImg = canvas.toDataURL('image/jpeg', 0.6); }; img.src = ev.target.result; }; if(e.target.files[0]) reader.readAsDataURL(e.target.files[0]); }
         function setCategory(c, b) { curCat = c; document.querySelectorAll('.cat-btn').forEach(x => x.classList.remove('active')); b.classList.add('active'); refreshUI(); }
-        function openAddModal() {
-            document.getElementById('edit-id').value = ""; document.getElementById('p-name').value = ""; document.getElementById('p-unit').value = "";
-            document.getElementById('p-qty').disabled = false; document.getElementById('st-add-area').style.display = 'none';
-            document.getElementById('del-btn').style.display = 'none'; document.getElementById('add-overlay').style.display = 'flex';
-        }
+        function openAddModal() { document.getElementById('edit-id').value = ""; document.getElementById('p-name').value = ""; document.getElementById('p-unit').value = ""; document.getElementById('p-qty').disabled = false; document.getElementById('st-add-area').style.display = 'none'; document.getElementById('del-btn').style.display = 'none'; document.getElementById('add-overlay').style.display = 'flex'; }
         function closeOverlay(id) { document.getElementById(id).style.display = 'none'; }
     </script>
 </body>
