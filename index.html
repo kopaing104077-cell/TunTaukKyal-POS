@@ -56,7 +56,7 @@
         .btn { padding: 10px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 5px; width: 100%; }
         .btn-dark { background: var(--midnight); color: white; }
 
-        /* --- PRINT VOUCHER CSS (As per your latest request) --- */
+        /* --- PRINT VOUCHER CSS --- */
         #receipt-render-area { display: none; }
         @media print {
             body * { visibility: hidden !important; }
@@ -145,7 +145,7 @@
         </div>
         <div class="table-wrap">
             <table>
-                <thead><tr><th>ပုံ</th><th>အမည်</th><th>ဝယ်/ရောင်း</th><th>Stock</th><th>Action</th></tr></thead>
+                <thead><tr><th>ပုံ</th><th>အမည်</th><th>ယူနစ်</th><th>ဝယ်/ရောင်း</th><th>Stock</th><th>Action</th></tr></thead>
                 <tbody id="inv-body"></tbody>
             </table>
         </div>
@@ -166,7 +166,7 @@
         </div>
         <div class="table-wrap">
             <table>
-                <thead><tr><th>ရက်စွဲ</th><th>ဝယ်သူ/ဝန်ထမ်း</th><th>စုစုပေါင်း</th><th>အမြတ်</th></tr></thead>
+                <thead><tr><th>ရက်စွဲ</th><th>ဝယ်သူ/ဝန်ထမ်း</th><th>စုစုပေါင်း</th><th>အမြတ်</th><th style="text-align:center;">Action</th></tr></thead>
                 <tbody id="rep-body"></tbody>
             </table>
         </div>
@@ -253,7 +253,10 @@
             const invFiltered = products.filter(p => p.name.toLowerCase().includes(qI));
             document.getElementById('inv-body').innerHTML = invFiltered.map(p => `
                 <tr><td><img src="${p.img||''}" style="width:35px;height:35px;object-fit:cover;border-radius:5px;"></td>
-                    <td><b>${p.name}</b></td><td>${p.buy}/${p.sell}</td><td>${p.qty}</td>
+                    <td><b>${p.name}</b></td>
+                    <td><small>${p.unit || '-'}</small></td>
+                    <td>${p.buy}/${p.sell}</td>
+                    <td>${p.qty}</td>
                     <td><button onclick="editProduct(${p.id})" style="border:none;background:#eee;padding:5px;border-radius:5px;"><i class="fas fa-edit"></i></button></td></tr>`).join('');
         }
 
@@ -289,7 +292,6 @@
         function adjustQty(id, d) { const i = cart.find(x => x.id === id); if(i) { i.cQty += d; if(i.cQty <= 0) removeItem(id); renderCart(); } }
         function removeItem(id) { cart = cart.filter(x => x.id !== id); renderCart(); }
 
-        /* --- UPDATED PRINT & SALE LOGIC --- */
         async function processSale() {
             if(!cart.length) return;
             const now = new Date();
@@ -306,19 +308,16 @@
             });
 
             try {
-                // Save to Database
                 await _sb.from('sales').insert([{ date, rev, prof, cust: `${cust} (Clerk: ${staff})`, items }]);
-                // Update Stock
                 for(let i of cart) { await _sb.from('products').update({ qty: i.qty - i.cQty }).eq('id', i.id); }
 
-                // Build Print Layout
                 const html = `
                     <div class="r-center">
                         <div class="r-header-title">ထွန်းတောက်ကြွယ်</div>
                         <div class="r-header-sub">စားသောက်ကုန်နှင့်လူသုံးကုန်လက်ကားဖြန့်ချိရေး</div>
                         <div class="r-header-sub">အမှတ်(၁၅)၊ ထင်းရှူးရိပ်သာ(၁)ပတ်လမ်း၊ ဇေကမ္ဘာဝင်း</div>
                         <div class="r-header-sub">မင်္ဂလာဒုံမြို့နယ်</div>
-                        <div class="r-center" style="margin-top:5px;">******  ******</div>
+                        <div class="r-center" style="margin-top:5px;">****** ******</div>
                         <div class="r-info">
                             CHK# ${now.getTime().toString().slice(-8)}<br>
                             Clerk: ${staff} &nbsp;&nbsp;&nbsp; Guest# 1<br>
@@ -348,10 +347,37 @@
             if(ty==='day') q = q.eq('date', dt); else q = q.like('date', `${dt.slice(0,7)}%`);
             const { data } = await q.order('id', {ascending: false});
             let r=0, p=0, rows="";
-            if(data) { data.forEach(s => { r += s.rev; p += s.prof; rows += `<tr><td>${s.date}</td><td>${s.cust}</td><td>${s.rev.toLocaleString()}</td><td>${s.prof.toLocaleString()}</td></tr>`; }); }
+            if(data) { 
+                data.forEach(s => { 
+                    r += s.rev; p += s.prof; 
+                    rows += `<tr>
+                        <td>${s.date}</td>
+                        <td>${s.cust}</td>
+                        <td>${s.rev.toLocaleString()}</td>
+                        <td>${s.prof.toLocaleString()}</td>
+                        <td style="text-align:center;">
+                            <button onclick="deleteSale(${s.id})" style="border:none;background:var(--red);color:white;padding:5px 8px;border-radius:5px;">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>`; 
+                }); 
+            }
             document.getElementById('sum-rev').innerText = r.toLocaleString();
             document.getElementById('sum-prof').innerText = p.toLocaleString();
             document.getElementById('rep-body').innerHTML = rows;
+        }
+
+        async function deleteSale(id) {
+            if(confirm("ဤအရောင်းမှတ်တမ်းကို ဖျက်ရန် သေချာပါသလား?")) {
+                const { error } = await _sb.from('sales').delete().eq('id', id);
+                if(!error) {
+                    alert("ဖျက်ပြီးပါပြီ။");
+                    runReport();
+                } else {
+                    alert("Error: မဖျက်နိုင်ပါ");
+                }
+            }
         }
 
         function navTo(tid, btn) {
