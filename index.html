@@ -16,6 +16,7 @@
         .db-status { font-size: 11px; display: flex; align-items: center; gap: 5px; background: rgba(255,255,255,0.1); padding: 4px 8px; border-radius: 20px; }
         .dot { width: 8px; height: 8px; border-radius: 50%; background: #666; }
         .dot.online { background: var(--green); box-shadow: 0 0 8px var(--green); }
+        .dot.offline { background: var(--red); box-shadow: 0 0 8px var(--red); }
 
         .container { flex: 1; overflow: hidden; display: none; width: 100%; max-width: 900px; margin: auto; position: relative; }
         .container.active { display: flex; flex-direction: column; }
@@ -52,7 +53,7 @@
         td { padding: 12px; border-bottom: 1px solid #f1f5f9; font-size: 13px; }
 
         .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 2000; align-items: center; justify-content: center; padding: 15px; }
-        .modal-card { background: white; padding: 20px; border-radius: 15px; width: 100%; max-width: 450px; max-height: 80dvh; overflow-y: auto; }
+        .modal-card { background: white; padding: 20px; border-radius: 15px; width: 100%; max-width: 450px; max-height: 85dvh; overflow-y: auto; }
         .btn { padding: 10px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 5px; width: 100%; }
         .btn-dark { background: var(--midnight); color: white; }
 
@@ -237,46 +238,61 @@
         };
 
         async function loadProducts() {
-            const { data } = await _sb.from('products').select('*').order('name');
-            if (data) { 
-                products = data; 
+            try {
+                const { data, error } = await _sb.from('products').select('*').order('name');
+                if (error) throw error;
+
+                products = data || [];
                 document.getElementById('status-dot').className = 'dot online';
                 document.getElementById('status-text').innerText = 'Online';
-                refreshUI(); 
+                refreshUI();
+            } catch (err) {
+                console.error("Fetch Error:", err);
+                document.getElementById('status-dot').className = 'dot offline';
+                document.getElementById('status-text').innerText = 'Error Connect';
+                alert("Database နှင့် ချိတ်ဆက်၍မရပါ။ အင်တာနက်ကို စစ်ဆေးပေးပါ။");
             }
         }
 
         function refreshUI() {
-            const qS = document.getElementById('search-box').value.toLowerCase();
+            // POS Grid
+            const qS = (document.getElementById('search-box').value || "").toLowerCase();
             const posFiltered = products.filter(p => (curCat === 'all' || p.category === curCat) && p.name.toLowerCase().includes(qS));
             
-            document.getElementById('pos-grid').innerHTML = posFiltered.map(p => `
+            const grid = document.getElementById('pos-grid');
+            if(posFiltered.length === 0) {
+                grid.innerHTML = '<div style="grid-column: 1/-1; text-align:center; padding:50px; color:#94a3b8;">ပစ္စည်းရှာမတွေ့ပါ</div>';
+            } else {
+                grid.innerHTML = posFiltered.map(p => `
                 <div class="p-card" onclick="addToCart(${p.id})">
                     <span class="stock-tag">S: ${p.qty}</span>
                     <div class="img-wrap">${p.img ? `<img src="${p.img}">` : '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#ccc;"><i class="fas fa-image fa-2x"></i></div>'}</div>
                     <div class="p-info">
                         <div class="p-name">${p.name}</div>
-                        <div class="p-price">${p.sell.toLocaleString()} Ks</div>
+                        <div class="p-price">${(p.sell || 0).toLocaleString()} Ks</div>
                     </div>
                 </div>`).join('');
+            }
 
+            // Stock Table
             document.getElementById('stock-body').innerHTML = products.map(p => `
-                <tr><td><b>${p.name}</b><br><small>${p.unit||'ခု'}</small></td><td>${p.sell.toLocaleString()}</td><td style="text-align:center;"><span style="color:${p.qty<5?'red':'green'}; font-weight:bold;">${p.qty}</span></td></tr>`).join('');
+                <tr><td><b>${p.name}</b><br><small>${p.unit||'ခု'}</small></td><td>${(p.sell||0).toLocaleString()}</td><td style="text-align:center;"><span style="color:${p.qty<5?'red':'green'}; font-weight:bold;">${p.qty}</span></td></tr>`).join('');
 
-            const qI = document.getElementById('inv-search').value.toLowerCase();
+            // Inventory Table
+            const qI = (document.getElementById('inv-search').value || "").toLowerCase();
             const invFiltered = products.filter(p => p.name.toLowerCase().includes(qI));
             document.getElementById('inv-body').innerHTML = invFiltered.map(p => `
-                <tr><td><img src="${p.img||''}" style="width:35px;height:35px;object-fit:cover;border-radius:5px;"></td>
+                <tr><td><img src="${p.img||''}" style="width:35px;height:35px;object-fit:cover;border-radius:5px;" onerror="this.src='https://placehold.co/50x50?text=No+Img'"></td>
                     <td><b>${p.name}</b></td>
                     <td><small>${p.unit || '-'}</small></td>
-                    <td>${p.buy}/${p.sell}</td>
+                    <td>${(p.buy||0).toLocaleString()}/${(p.sell||0).toLocaleString()}</td>
                     <td>${p.qty}</td>
                     <td><button onclick="editProduct(${p.id})" style="border:none;background:#eee;padding:5px;border-radius:5px;"><i class="fas fa-edit"></i></button></td></tr>`).join('');
         }
 
         function addToCart(id) {
             const p = products.find(x => x.id === id);
-            if(p.qty <= 0) return alert("Stock မရှိတော့ပါ");
+            if(!p || p.qty <= 0) return alert("Stock မရှိတော့ပါ");
             const ex = cart.find(x => x.id === id);
             if(ex) { if(ex.cQty < p.qty) ex.cQty++; else alert("Stock မလောက်ပါ"); } else cart.push({...p, cQty: 1});
             renderCart();
@@ -322,8 +338,13 @@
             });
 
             try {
-                await _sb.from('sales').insert([{ date, rev, prof, cust: `${cust} (Clerk: ${staff})`, items }]);
-                for(let i of cart) { await _sb.from('products').update({ qty: i.qty - i.cQty }).eq('id', i.id); }
+                const { error: saleErr } = await _sb.from('sales').insert([{ date, rev, prof, cust: `${cust} (Clerk: ${staff})`, items }]);
+                if(saleErr) throw saleErr;
+
+                for(let i of cart) { 
+                    const { error: updErr } = await _sb.from('products').update({ qty: i.qty - i.cQty }).eq('id', i.id);
+                    if(updErr) console.error("Stock update error for", i.name);
+                }
 
                 const html = `
                     <div class="r-center">
@@ -345,98 +366,99 @@
                         <div class="r-summary">
                             <div class="r-row"><span class="r-label">Subtotal</span><span class="r-val">${rev.toLocaleString()}</span></div>
                             <div class="r-row" style="font-size:18px;"><span class="r-label">Total</span><span class="r-val">${rev.toLocaleString()}</span></div>
-                            <div class="r-row"><span class="r-label">Cash Paid</span><span class="r-val">${rev.toLocaleString()}</span></div>
                         </div>
-                        <div class="r-footer">*** Have a nice day! Please Come again! ***<br>***</div>
+                        <div class="r-footer">*** ကျေးဇူးတင်ပါသည် ပြန်လည်ကြိုဆိုပါသည် ***<br>***</div>
                     </div>`;
 
                 document.getElementById('receipt-render-area').innerHTML = html;
-                setTimeout(() => { window.print(); cart = []; renderCart(); loadProducts(); }, 500);
-            } catch (e) { alert("Error: စာရင်းမဝင်ပါ"); }
+                setTimeout(() => { 
+                    window.print(); 
+                    cart = []; 
+                    document.getElementById('cust-name').value = "";
+                    renderCart(); 
+                    loadProducts(); 
+                }, 500);
+            } catch (e) { 
+                console.error("Sale Error:", e);
+                alert("Error: အရောင်းစာရင်းသွင်း၍ မရပါ။"); 
+            }
         }
 
         async function runReport() {
-            const dt = document.getElementById('rep-date').value, ty = document.getElementById('rep-type').value;
+            const dt = document.getElementById('rep-date').value;
+            const ty = document.getElementById('rep-type').value;
             let q = _sb.from('sales').select('*');
             if(ty==='day') q = q.eq('date', dt); else q = q.like('date', `${dt.slice(0,7)}%`);
-            const { data } = await q.order('id', {ascending: false});
-            salesData = data || []; // Store globally for detail viewing
             
+            const { data, error } = await q.order('id', {ascending: false});
+            if(error) { console.error("Report Error:", error); return; }
+
+            salesData = data || [];
             let r=0, p=0, rows="";
-            if(data) { 
-                data.forEach(s => { 
-                    r += s.rev; p += s.prof; 
-                    rows += `<tr onclick="viewSaleDetails(${s.id})" style="cursor:pointer;">
-                        <td>${s.date}</td>
-                        <td>${s.cust}</td>
-                        <td>${s.rev.toLocaleString()}</td>
-                        <td>${s.prof.toLocaleString()}</td>
-                        <td style="text-align:center;">
-                            <button onclick="event.stopPropagation(); deleteSale(${s.id})" style="border:none;background:var(--red);color:white;padding:5px 8px;border-radius:5px;">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </td>
-                    </tr>`; 
-                }); 
-            }
+            salesData.forEach(s => { 
+                r += s.rev; p += s.prof; 
+                rows += `<tr onclick="viewSaleDetails(${s.id})" style="cursor:pointer;">
+                    <td>${s.date}</td>
+                    <td>${s.cust}</td>
+                    <td>${s.rev.toLocaleString()}</td>
+                    <td>${s.prof.toLocaleString()}</td>
+                    <td style="text-align:center;">
+                        <button onclick="event.stopPropagation(); deleteSale(${s.id})" style="border:none;background:var(--red);color:white;padding:5px 8px;border-radius:5px;">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>`; 
+            }); 
             document.getElementById('sum-rev').innerText = r.toLocaleString();
             document.getElementById('sum-prof').innerText = p.toLocaleString();
-            document.getElementById('rep-body').innerHTML = rows;
+            document.getElementById('rep-body').innerHTML = rows || '<tr><td colspan="5" style="text-align:center;">စာရင်းမရှိပါ</td></tr>';
         }
 
-        // NEW: View detailed items of a sale
         function viewSaleDetails(id) {
             const sale = salesData.find(s => s.id === id);
             if(!sale) return;
             
             let itemHtml = `<div style="margin-bottom:10px;"><b>ဘောင်ချာရှင်:</b> ${sale.cust}</div>
-                            <table style="width:100%; font-size:12px;">
-                                <thead style="background:#f1f5f9;"><tr><th style="padding:5px;">ပစ္စည်း</th><th>Qty</th><th>ဈေးနှုန်း</th><th>စုစုပေါင်း</th></tr></thead>
+                            <table style="width:100%; border-collapse: collapse;">
+                                <thead style="background:#f1f5f9;"><tr><th style="padding:5px; text-align:left;">ပစ္စည်း</th><th>Qty</th><th>ဈေးနှုန်း</th><th>စုစုပေါင်း</th></tr></thead>
                                 <tbody>`;
             
-            sale.items.forEach(item => {
-                itemHtml += `<tr>
-                    <td style="padding:5px;">${item.name}</td>
-                    <td style="text-align:center;">${item.qty} ${item.unit||''}</td>
-                    <td style="text-align:right;">${item.sell.toLocaleString()}</td>
-                    <td style="text-align:right;">${(item.sell * item.qty).toLocaleString()}</td>
-                </tr>`;
-            });
+            if(sale.items && Array.isArray(sale.items)) {
+                sale.items.forEach(item => {
+                    itemHtml += `<tr>
+                        <td style="padding:8px 5px; border-bottom:1px solid #eee;">${item.name}</td>
+                        <td style="text-align:center; border-bottom:1px solid #eee;">${item.qty} ${item.unit||''}</td>
+                        <td style="text-align:right; border-bottom:1px solid #eee;">${item.sell.toLocaleString()}</td>
+                        <td style="text-align:right; border-bottom:1px solid #eee;">${(item.sell * item.qty).toLocaleString()}</td>
+                    </tr>`;
+                });
+            }
             
             itemHtml += `</tbody></table>
-                         <div style="margin-top:15px; text-align:right; border-top:1px solid #eee; padding-top:10px;">
-                            <b>Total: ${sale.rev.toLocaleString()} Ks</b>
+                         <div style="margin-top:15px; text-align:right; border-top:2px solid #eee; padding-top:10px;">
+                            <b style="font-size:16px; color:var(--red);">စုစုပေါင်း: ${sale.rev.toLocaleString()} Ks</b>
                          </div>`;
             
             document.getElementById('detail-content').innerHTML = itemHtml;
             document.getElementById('detail-overlay').style.display = 'flex';
         }
 
-        // UPDATED: Restock products when sale is deleted
         async function deleteSale(id) {
-            if(confirm("ဤအရောင်းမှတ်တမ်းကို ဖျက်ရန် သေချာပါသလား? (ဖျက်လိုက်ပါက ပစ္စည်းအရေအတွက်များ ဂိုထောင်ထဲသို့ အလိုအလျောက် ပြန်ပေါင်းထည့်ပေးပါမည်)")) {
-                
-                // 1. Get the sale items to restock
+            if(confirm("ဤအရောင်းမှတ်တမ်းကို ဖျက်ရန် သေချာပါသလား? (ပစ္စည်းလက်ကျန်များ ဂိုထောင်ထဲသို့ ပြန်ပေါင်းထည့်ပေးပါမည်)")) {
                 const sale = salesData.find(s => s.id === id);
                 if(sale && sale.items) {
                     for(let item of sale.items) {
-                        // Find current product in our local list or DB
                         const product = products.find(p => p.id === item.id);
                         if(product) {
-                            const newQty = product.qty + item.qty;
-                            await _sb.from('products').update({ qty: newQty }).eq('id', item.id);
+                            await _sb.from('products').update({ qty: product.qty + item.qty }).eq('id', item.id);
                         }
                     }
                 }
-
-                // 2. Delete the sale record
                 const { error } = await _sb.from('sales').delete().eq('id', id);
                 if(!error) {
-                    alert("ဖျက်ပြီးပါပြီ။ ပစ္စည်းလက်ကျန်များကိုလည်း ပြန်ညှိပေးထားပါသည်။");
-                    await loadProducts(); // Refresh products to get new quantities
+                    alert("ဖျက်ပြီးပါပြီ။");
+                    await loadProducts();
                     runReport();
-                } else {
-                    alert("Error: မဖျက်နိုင်ပါ");
                 }
             }
         }
@@ -454,10 +476,22 @@
         function closeOverlay(id) { document.getElementById(id).style.display='none'; }
         function logout() { isAdmin=false; sessionStorage.clear(); location.reload(); }
         function setCategory(c, b) { curCat = c; document.querySelectorAll('.cat-btn').forEach(x => x.classList.remove('active')); b.classList.add('active'); refreshUI(); }
-        function openAddModal() { document.getElementById('edit-id').value = ""; document.getElementById('del-btn').style.display='none'; document.getElementById('add-overlay').style.display='flex'; }
         
+        function openAddModal() { 
+            document.getElementById('edit-id').value = ""; 
+            document.getElementById('p-name').value = "";
+            document.getElementById('p-unit').value = "";
+            document.getElementById('p-buy').value = "";
+            document.getElementById('p-sell').value = "";
+            document.getElementById('p-qty').value = "";
+            tempImg = "";
+            document.getElementById('del-btn').style.display='none'; 
+            document.getElementById('add-overlay').style.display='flex'; 
+        }
+
         function editProduct(id) {
             const p = products.find(x => x.id === id);
+            if(!p) return;
             document.getElementById('edit-id').value = p.id;
             document.getElementById('p-name').value = p.name;
             document.getElementById('p-unit').value = p.unit;
@@ -471,28 +505,44 @@
         }
 
         async function saveProduct() {
-            const id = document.getElementById('edit-id').value, name = document.getElementById('p-name').value;
-            const buy = parseInt(document.getElementById('p-buy').value), sell = parseInt(document.getElementById('p-sell').value), qty = parseInt(document.getElementById('p-qty').value);
-            if(!name) return;
+            const id = document.getElementById('edit-id').value;
+            const name = document.getElementById('p-name').value;
+            const buy = parseInt(document.getElementById('p-buy').value || 0);
+            const sell = parseInt(document.getElementById('p-sell').value || 0);
+            const qty = parseInt(document.getElementById('p-qty').value || 0);
+            
+            if(!name) return alert("အမည်ထည့်ပေးပါ");
             const obj = { name, unit: document.getElementById('p-unit').value, buy, sell, qty, category: document.getElementById('p-cat').value, img: tempImg };
-            if(id) await _sb.from('products').update(obj).eq('id', id); else await _sb.from('products').insert([obj]);
-            closeOverlay('add-overlay'); loadProducts();
+            
+            try {
+                if(id) await _sb.from('products').update(obj).eq('id', id); 
+                else await _sb.from('products').insert([obj]);
+                closeOverlay('add-overlay'); 
+                loadProducts();
+            } catch (err) { alert("Error saving product."); }
         }
 
         async function deleteProduct() { if(confirm("ဖျက်မှာ သေချာလား?")) { await _sb.from('products').delete().eq('id', document.getElementById('edit-id').value); closeOverlay('add-overlay'); loadProducts(); } }
         
         function handleImg(e) { 
+            const file = e.target.files[0];
+            if(!file) return;
             const reader = new FileReader(); 
             reader.onload = (ev) => { 
                 const img = new Image(); 
                 img.onload = () => { 
-                    const canv = document.createElement('canvas'); canv.width = 200; canv.height = 200; 
-                    canv.getContext('2d').drawImage(img, 0, 0, 200, 200); 
-                    tempImg = canv.toDataURL('image/jpeg', 0.6); 
+                    const canv = document.createElement('canvas'); 
+                    const max = 300;
+                    let w = img.width, h = img.height;
+                    if (w > h) { if (w > max) { h *= max / w; w = max; } }
+                    else { if (h > max) { w *= max / h; h = max; } }
+                    canv.width = w; canv.height = h; 
+                    canv.getContext('2d').drawImage(img, 0, 0, w, h); 
+                    tempImg = canv.toDataURL('image/jpeg', 0.7); 
                 }; 
                 img.src = ev.target.result; 
             }; 
-            if(e.target.files[0]) reader.readAsDataURL(e.target.files[0]); 
+            reader.readAsDataURL(file); 
         }
     </script>
 </body>
