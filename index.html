@@ -52,7 +52,7 @@
         td { padding: 12px; border-bottom: 1px solid #f1f5f9; font-size: 13px; }
 
         .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 2000; align-items: center; justify-content: center; padding: 15px; }
-        .modal-card { background: white; padding: 20px; border-radius: 15px; width: 100%; max-width: 450px; }
+        .modal-card { background: white; padding: 20px; border-radius: 15px; width: 100%; max-width: 450px; max-height: 80dvh; overflow-y: auto; }
         .btn { padding: 10px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 5px; width: 100%; }
         .btn-dark { background: var(--midnight); color: white; }
 
@@ -215,12 +215,20 @@
         </div>
     </div>
 
+    <div id="detail-overlay" class="overlay">
+        <div class="modal-card">
+            <h3 style="text-align:center; border-bottom:1px solid #eee; padding-bottom:10px;">အရောင်းအသေးစိတ်</h3>
+            <div id="detail-content" style="margin-top:15px; font-size:13px;"></div>
+            <button class="btn btn-dark" style="margin-top:20px;" onclick="closeOverlay('detail-overlay')">ပိတ်မည်</button>
+        </div>
+    </div>
+
     <script>
         const SUPA_URL = "https://iyhskfxxpemtpspohjve.supabase.co";
         const SUPA_KEY = "sb_publishable_pJ6ewySbcvru7PNQdY0RAQ_8DLnS3j8";
         const _sb = supabase.createClient(SUPA_URL, SUPA_KEY);
 
-        let products = [], cart = [], isAdmin = false, curCat = "all", tempImg = "", nextTab = "";
+        let products = [], cart = [], isAdmin = false, curCat = "all", tempImg = "", nextTab = "", salesData = [];
 
         window.onload = () => {
             document.getElementById('rep-date').value = new Date().toISOString().split('T')[0];
@@ -310,7 +318,7 @@
             const items = cart.map(i => {
                 let sub = i.sell * i.cQty; rev += sub; prof += (i.sell - i.buy) * i.cQty;
                 rows += `<tr><td class="c-name">${i.name}</td><td class="c-qty">${i.cQty}</td><td class="c-unit">${i.unit||'ခု'}</td><td class="c-price">${i.sell.toLocaleString()}</td><td class="c-amt">${sub.toLocaleString()}</td></tr>`;
-                return { id: i.id, name: i.name, qty: i.cQty, sell: i.sell, buy: i.buy };
+                return { id: i.id, name: i.name, qty: i.cQty, sell: i.sell, buy: i.buy, unit: i.unit };
             });
 
             try {
@@ -352,17 +360,19 @@
             let q = _sb.from('sales').select('*');
             if(ty==='day') q = q.eq('date', dt); else q = q.like('date', `${dt.slice(0,7)}%`);
             const { data } = await q.order('id', {ascending: false});
+            salesData = data || []; // Store globally for detail viewing
+            
             let r=0, p=0, rows="";
             if(data) { 
                 data.forEach(s => { 
                     r += s.rev; p += s.prof; 
-                    rows += `<tr>
+                    rows += `<tr onclick="viewSaleDetails(${s.id})" style="cursor:pointer;">
                         <td>${s.date}</td>
                         <td>${s.cust}</td>
                         <td>${s.rev.toLocaleString()}</td>
                         <td>${s.prof.toLocaleString()}</td>
                         <td style="text-align:center;">
-                            <button onclick="deleteSale(${s.id})" style="border:none;background:var(--red);color:white;padding:5px 8px;border-radius:5px;">
+                            <button onclick="event.stopPropagation(); deleteSale(${s.id})" style="border:none;background:var(--red);color:white;padding:5px 8px;border-radius:5px;">
                                 <i class="fas fa-trash"></i>
                             </button>
                         </td>
@@ -374,11 +384,56 @@
             document.getElementById('rep-body').innerHTML = rows;
         }
 
+        // NEW: View detailed items of a sale
+        function viewSaleDetails(id) {
+            const sale = salesData.find(s => s.id === id);
+            if(!sale) return;
+            
+            let itemHtml = `<div style="margin-bottom:10px;"><b>ဘောင်ချာရှင်:</b> ${sale.cust}</div>
+                            <table style="width:100%; font-size:12px;">
+                                <thead style="background:#f1f5f9;"><tr><th style="padding:5px;">ပစ္စည်း</th><th>Qty</th><th>ဈေးနှုန်း</th><th>စုစုပေါင်း</th></tr></thead>
+                                <tbody>`;
+            
+            sale.items.forEach(item => {
+                itemHtml += `<tr>
+                    <td style="padding:5px;">${item.name}</td>
+                    <td style="text-align:center;">${item.qty} ${item.unit||''}</td>
+                    <td style="text-align:right;">${item.sell.toLocaleString()}</td>
+                    <td style="text-align:right;">${(item.sell * item.qty).toLocaleString()}</td>
+                </tr>`;
+            });
+            
+            itemHtml += `</tbody></table>
+                         <div style="margin-top:15px; text-align:right; border-top:1px solid #eee; padding-top:10px;">
+                            <b>Total: ${sale.rev.toLocaleString()} Ks</b>
+                         </div>`;
+            
+            document.getElementById('detail-content').innerHTML = itemHtml;
+            document.getElementById('detail-overlay').style.display = 'flex';
+        }
+
+        // UPDATED: Restock products when sale is deleted
         async function deleteSale(id) {
-            if(confirm("ဤအရောင်းမှတ်တမ်းကို ဖျက်ရန် သေချာပါသလား?")) {
+            if(confirm("ဤအရောင်းမှတ်တမ်းကို ဖျက်ရန် သေချာပါသလား? (ဖျက်လိုက်ပါက ပစ္စည်းအရေအတွက်များ ဂိုထောင်ထဲသို့ အလိုအလျောက် ပြန်ပေါင်းထည့်ပေးပါမည်)")) {
+                
+                // 1. Get the sale items to restock
+                const sale = salesData.find(s => s.id === id);
+                if(sale && sale.items) {
+                    for(let item of sale.items) {
+                        // Find current product in our local list or DB
+                        const product = products.find(p => p.id === item.id);
+                        if(product) {
+                            const newQty = product.qty + item.qty;
+                            await _sb.from('products').update({ qty: newQty }).eq('id', item.id);
+                        }
+                    }
+                }
+
+                // 2. Delete the sale record
                 const { error } = await _sb.from('sales').delete().eq('id', id);
                 if(!error) {
-                    alert("ဖျက်ပြီးပါပြီ။");
+                    alert("ဖျက်ပြီးပါပြီ။ ပစ္စည်းလက်ကျန်များကိုလည်း ပြန်ညှိပေးထားပါသည်။");
+                    await loadProducts(); // Refresh products to get new quantities
                     runReport();
                 } else {
                     alert("Error: မဖျက်နိုင်ပါ");
@@ -400,6 +455,7 @@
         function logout() { isAdmin=false; sessionStorage.clear(); location.reload(); }
         function setCategory(c, b) { curCat = c; document.querySelectorAll('.cat-btn').forEach(x => x.classList.remove('active')); b.classList.add('active'); refreshUI(); }
         function openAddModal() { document.getElementById('edit-id').value = ""; document.getElementById('del-btn').style.display='none'; document.getElementById('add-overlay').style.display='flex'; }
+        
         function editProduct(id) {
             const p = products.find(x => x.id === id);
             document.getElementById('edit-id').value = p.id;
@@ -413,6 +469,7 @@
             document.getElementById('del-btn').style.display='block';
             document.getElementById('add-overlay').style.display='flex';
         }
+
         async function saveProduct() {
             const id = document.getElementById('edit-id').value, name = document.getElementById('p-name').value;
             const buy = parseInt(document.getElementById('p-buy').value), sell = parseInt(document.getElementById('p-sell').value), qty = parseInt(document.getElementById('p-qty').value);
@@ -421,7 +478,9 @@
             if(id) await _sb.from('products').update(obj).eq('id', id); else await _sb.from('products').insert([obj]);
             closeOverlay('add-overlay'); loadProducts();
         }
+
         async function deleteProduct() { if(confirm("ဖျက်မှာ သေချာလား?")) { await _sb.from('products').delete().eq('id', document.getElementById('edit-id').value); closeOverlay('add-overlay'); loadProducts(); } }
+        
         function handleImg(e) { 
             const reader = new FileReader(); 
             reader.onload = (ev) => { 
