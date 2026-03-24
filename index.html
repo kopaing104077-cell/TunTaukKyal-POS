@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ထွန်းတောက်ကြွယ် POS</title>
+    <title>ထွန်းတောက်ကြယ် POS</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
@@ -94,7 +94,7 @@
 
     <header class="header">
         <div style="font-weight:bold; font-size: 1.1rem; display: flex; align-items: center; gap: 8px;">
-            <i class="fas fa-star" style="color:var(--gold)"></i> ထွန်းတောက်ကြွယ်
+            <i class="fas fa-star" style="color:var(--gold)"></i> ထွန်းတောက်ကြယ်
         </div>
         <div style="display:flex; align-items:center; gap:10px;">
             <button id="logout-btn" onclick="logout()" style="display:none; background:var(--red); color:white; border:none; padding:4px 8px; border-radius:5px; font-size:10px;">ထွက်ရန်</button>
@@ -365,7 +365,7 @@
 
                 const html = `
                     <div class="r-center">
-                        <div class="r-header-title">ထွန်းတောက်ကြွယ်</div>
+                        <div class="r-header-title">ထွန်းတောက်ကြယ်</div>
                         <div class="r-header-sub">စားသောက်ကုန်နှင့်လူသုံးကုန်လက်ကားဖြန့်ချိရေး</div>
                         <div class="r-header-sub">အမှတ်(၁၅)၊ ထင်းရှူးရိပ်သာ(၁)ပတ်လမ်း၊ ဇေကမ္ဘာဝင်း</div>
                         <div class="r-header-sub">မင်္ဂလာဒုံမြို့နယ်</div>
@@ -384,7 +384,7 @@
                             <div class="r-row"><span class="r-label">Subtotal</span><span class="r-val">${rev.toLocaleString()}</span></div>
                             <div class="r-row" style="font-size:18px;"><span class="r-label">Total</span><span class="r-val">${rev.toLocaleString()}</span></div>
                         </div>
-                        <div class="r-footer">*** ကျေးဇူးတင်ပါသည် ပြန်လည်ကြိုဆိုပါသည် ***<br>***</div>
+                        <div class="r-footer">*** ဝယ်ယူအားပေးမှုကို ကျေးဇူးအထူးတင်ရှိပါသည်။ ***<br>***</div>
                     </div>`;
 
                 document.getElementById('receipt-render-area').innerHTML = html;
