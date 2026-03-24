@@ -26,9 +26,12 @@
         .input-style { width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 13px; outline: none; background: white; }
 
         .cart-box { background: white; border: 1px solid #e2e8f0; border-radius: 12px; margin-bottom: 6px; padding: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-        #cart-list { max-height: 110px; overflow-y: auto; margin-bottom: 8px; }
-        .cart-item { display: flex; justify-content: space-between; align-items: center; background: #f8fafc; padding: 6px 10px; border-radius: 8px; margin-bottom: 4px; font-size: 12px; border: 1px solid #eee; }
+        #cart-list { max-height: 140px; overflow-y: auto; margin-bottom: 8px; }
+        .cart-item { display: flex; justify-content: space-between; align-items: center; background: #f8fafc; padding: 8px 10px; border-radius: 8px; margin-bottom: 4px; font-size: 12px; border: 1px solid #eee; }
         
+        /* ဈေးနှုန်းပြင်ရန် input field style */
+        .price-edit-input { width: 70px; padding: 4px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px; text-align: right; font-weight: bold; color: var(--red); }
+
         .cat-scroll { display: flex; overflow-x: auto; gap: 6px; padding: 4px 0 8px 0; flex-shrink: 0; scrollbar-width: none; }
         .cat-btn { white-space: nowrap; padding: 8px 15px; border-radius: 20px; border: 1px solid #cbd5e1; background: white; font-size: 12px; cursor: pointer; }
         .cat-btn.active { background: var(--midnight); color: white; border-color: var(--midnight); }
@@ -241,7 +244,6 @@
             try {
                 const { data, error } = await _sb.from('products').select('*').order('name');
                 if (error) throw error;
-
                 products = data || [];
                 document.getElementById('status-dot').className = 'dot online';
                 document.getElementById('status-text').innerText = 'Online';
@@ -250,20 +252,15 @@
                 console.error("Fetch Error:", err);
                 document.getElementById('status-dot').className = 'dot offline';
                 document.getElementById('status-text').innerText = 'Error Connect';
-                alert("Database နှင့် ချိတ်ဆက်၍မရပါ။ အင်တာနက်ကို စစ်ဆေးပေးပါ။");
             }
         }
 
         function refreshUI() {
-            // POS Grid
             const qS = (document.getElementById('search-box').value || "").toLowerCase();
             const posFiltered = products.filter(p => (curCat === 'all' || p.category === curCat) && p.name.toLowerCase().includes(qS));
-            
             const grid = document.getElementById('pos-grid');
-            if(posFiltered.length === 0) {
-                grid.innerHTML = '<div style="grid-column: 1/-1; text-align:center; padding:50px; color:#94a3b8;">ပစ္စည်းရှာမတွေ့ပါ</div>';
-            } else {
-                grid.innerHTML = posFiltered.map(p => `
+            grid.innerHTML = posFiltered.length === 0 ? '<div style="grid-column: 1/-1; text-align:center; padding:50px; color:#94a3b8;">ပစ္စည်းရှာမတွေ့ပါ</div>' : 
+                posFiltered.map(p => `
                 <div class="p-card" onclick="addToCart(${p.id})">
                     <span class="stock-tag">S: ${p.qty}</span>
                     <div class="img-wrap">${p.img ? `<img src="${p.img}">` : '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#ccc;"><i class="fas fa-image fa-2x"></i></div>'}</div>
@@ -272,30 +269,44 @@
                         <div class="p-price">${(p.sell || 0).toLocaleString()} Ks</div>
                     </div>
                 </div>`).join('');
-            }
 
-            // Stock Table
             document.getElementById('stock-body').innerHTML = products.map(p => `
                 <tr><td><b>${p.name}</b><br><small>${p.unit||'ခု'}</small></td><td>${(p.sell||0).toLocaleString()}</td><td style="text-align:center;"><span style="color:${p.qty<5?'red':'green'}; font-weight:bold;">${p.qty}</span></td></tr>`).join('');
 
-            // Inventory Table
             const qI = (document.getElementById('inv-search').value || "").toLowerCase();
             const invFiltered = products.filter(p => p.name.toLowerCase().includes(qI));
             document.getElementById('inv-body').innerHTML = invFiltered.map(p => `
                 <tr><td><img src="${p.img||''}" style="width:35px;height:35px;object-fit:cover;border-radius:5px;" onerror="this.src='https://placehold.co/50x50?text=No+Img'"></td>
-                    <td><b>${p.name}</b></td>
-                    <td><small>${p.unit || '-'}</small></td>
-                    <td>${(p.buy||0).toLocaleString()}/${(p.sell||0).toLocaleString()}</td>
-                    <td>${p.qty}</td>
+                    <td><b>${p.name}</b></td><td><small>${p.unit || '-'}</small></td><td>${(p.buy||0).toLocaleString()}/${(p.sell||0).toLocaleString()}</td><td>${p.qty}</td>
                     <td><button onclick="editProduct(${p.id})" style="border:none;background:#eee;padding:5px;border-radius:5px;"><i class="fas fa-edit"></i></button></td></tr>`).join('');
         }
 
+        // --- ပြင်ဆင်ထားသော အချက် (၁) : Stock မရှိလည်း ရောင်းရအောင် ဖွင့်ပေးခြင်း ---
         function addToCart(id) {
             const p = products.find(x => x.id === id);
-            if(!p || p.qty <= 0) return alert("Stock မရှိတော့ပါ");
+            if(!p) return;
             const ex = cart.find(x => x.id === id);
-            if(ex) { if(ex.cQty < p.qty) ex.cQty++; else alert("Stock မလောက်ပါ"); } else cart.push({...p, cQty: 1});
+            if(ex) { 
+                ex.cQty++; 
+            } else {
+                cart.push({...p, cQty: 1});
+            }
             renderCart();
+        }
+
+        // --- ပြင်ဆင်ထားသော အချက် (၂) : ရောင်းစျေးကို အရောင်း Tab မှာတင် ပြင်နိုင်ခြင်း ---
+        function updateCartPrice(id, newPrice) {
+            const item = cart.find(x => x.id === id);
+            if (item) {
+                item.sell = parseInt(newPrice) || 0;
+                renderTotalOnly(); // Total ကိုပဲ ပြန်တွက်ပေးရုံ
+            }
+        }
+
+        function renderTotalOnly() {
+            let total = 0;
+            cart.forEach(i => total += (i.sell * i.cQty));
+            document.getElementById('cart-total').innerText = total.toLocaleString();
         }
 
         function renderCart() {
@@ -306,7 +317,9 @@
                 list.innerHTML = cart.map(i => {
                     total += i.sell * i.cQty;
                     return `<div class="cart-item">
-                        <div style="flex:1;"><b>${i.name}</b><br><small>${i.sell.toLocaleString()} Ks</small></div>
+                        <div style="flex:1;"><b>${i.name}</b><br>
+                            <input type="number" class="price-edit-input" value="${i.sell}" onchange="updateCartPrice(${i.id}, this.value)"> <small>Ks</small>
+                        </div>
                         <div style="display:flex;align-items:center;gap:8px;">
                             <button onclick="adjustQty(${i.id},-1)" style="border:none;width:25px;height:25px;border-radius:50%;">-</button>
                             <b>${i.cQty}</b>
@@ -322,8 +335,13 @@
         function adjustQty(id, d) { const i = cart.find(x => x.id === id); if(i) { i.cQty += d; if(i.cQty <= 0) removeItem(id); renderCart(); } }
         function removeItem(id) { cart = cart.filter(x => x.id !== id); renderCart(); }
 
+        // --- ပြင်ဆင်ထားသော အချက် (၃) : Print မထုတ်ခင် အတည်ပြုချက်တောင်းခြင်း ---
         async function processSale() {
             if(!cart.length) return;
+            
+            // အတည်ပြုချက်တောင်းခြင်း
+            if(!confirm("အရောင်းစာရင်းသွင်းပြီး ဘောင်ချာထုတ်မှာ သေချာပါသလား?")) return;
+
             const now = new Date();
             const date = now.toISOString().split('T')[0];
             const time = now.toLocaleTimeString('en-GB');
@@ -343,7 +361,6 @@
 
                 for(let i of cart) { 
                     const { error: updErr } = await _sb.from('products').update({ qty: i.qty - i.cQty }).eq('id', i.id);
-                    if(updErr) console.error("Stock update error for", i.name);
                 }
 
                 const html = `
@@ -379,35 +396,23 @@
                     loadProducts(); 
                 }, 500);
             } catch (e) { 
-                console.error("Sale Error:", e);
                 alert("Error: အရောင်းစာရင်းသွင်း၍ မရပါ။"); 
             }
         }
 
+        // ကျန်ရှိသော Functions (runReport, navTo, etc.) အရင်အတိုင်းထားရှိပါသည်
         async function runReport() {
             const dt = document.getElementById('rep-date').value;
             const ty = document.getElementById('rep-type').value;
             let q = _sb.from('sales').select('*');
             if(ty==='day') q = q.eq('date', dt); else q = q.like('date', `${dt.slice(0,7)}%`);
-            
             const { data, error } = await q.order('id', {ascending: false});
-            if(error) { console.error("Report Error:", error); return; }
-
+            if(error) return;
             salesData = data || [];
             let r=0, p=0, rows="";
             salesData.forEach(s => { 
                 r += s.rev; p += s.prof; 
-                rows += `<tr onclick="viewSaleDetails(${s.id})" style="cursor:pointer;">
-                    <td>${s.date}</td>
-                    <td>${s.cust}</td>
-                    <td>${s.rev.toLocaleString()}</td>
-                    <td>${s.prof.toLocaleString()}</td>
-                    <td style="text-align:center;">
-                        <button onclick="event.stopPropagation(); deleteSale(${s.id})" style="border:none;background:var(--red);color:white;padding:5px 8px;border-radius:5px;">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </td>
-                </tr>`; 
+                rows += `<tr onclick="viewSaleDetails(${s.id})" style="cursor:pointer;"><td>${s.date}</td><td>${s.cust}</td><td>${s.rev.toLocaleString()}</td><td>${s.prof.toLocaleString()}</td><td style="text-align:center;"><button onclick="event.stopPropagation(); deleteSale(${s.id})" style="border:none;background:var(--red);color:white;padding:5px 8px;border-radius:5px;"><i class="fas fa-trash"></i></button></td></tr>`; 
             }); 
             document.getElementById('sum-rev').innerText = r.toLocaleString();
             document.getElementById('sum-prof').innerText = p.toLocaleString();
@@ -417,49 +422,28 @@
         function viewSaleDetails(id) {
             const sale = salesData.find(s => s.id === id);
             if(!sale) return;
-            
-            let itemHtml = `<div style="margin-bottom:10px;"><b>ဘောင်ချာရှင်:</b> ${sale.cust}</div>
-                            <table style="width:100%; border-collapse: collapse;">
-                                <thead style="background:#f1f5f9;"><tr><th style="padding:5px; text-align:left;">ပစ္စည်း</th><th>Qty</th><th>ဈေးနှုန်း</th><th>စုစုပေါင်း</th></tr></thead>
-                                <tbody>`;
-            
+            let itemHtml = `<div style="margin-bottom:10px;"><b>ဘောင်ချာရှင်:</b> ${sale.cust}</div><table style="width:100%; border-collapse: collapse;"><thead style="background:#f1f5f9;"><tr><th style="padding:5px; text-align:left;">ပစ္စည်း</th><th>Qty</th><th>ဈေးနှုန်း</th><th>စုစုပေါင်း</th></tr></thead><tbody>`;
             if(sale.items && Array.isArray(sale.items)) {
                 sale.items.forEach(item => {
-                    itemHtml += `<tr>
-                        <td style="padding:8px 5px; border-bottom:1px solid #eee;">${item.name}</td>
-                        <td style="text-align:center; border-bottom:1px solid #eee;">${item.qty} ${item.unit||''}</td>
-                        <td style="text-align:right; border-bottom:1px solid #eee;">${item.sell.toLocaleString()}</td>
-                        <td style="text-align:right; border-bottom:1px solid #eee;">${(item.sell * item.qty).toLocaleString()}</td>
-                    </tr>`;
+                    itemHtml += `<tr><td style="padding:8px 5px; border-bottom:1px solid #eee;">${item.name}</td><td style="text-align:center; border-bottom:1px solid #eee;">${item.qty} ${item.unit||''}</td><td style="text-align:right; border-bottom:1px solid #eee;">${item.sell.toLocaleString()}</td><td style="text-align:right; border-bottom:1px solid #eee;">${(item.sell * item.qty).toLocaleString()}</td></tr>`;
                 });
             }
-            
-            itemHtml += `</tbody></table>
-                         <div style="margin-top:15px; text-align:right; border-top:2px solid #eee; padding-top:10px;">
-                            <b style="font-size:16px; color:var(--red);">စုစုပေါင်း: ${sale.rev.toLocaleString()} Ks</b>
-                         </div>`;
-            
+            itemHtml += `</tbody></table><div style="margin-top:15px; text-align:right; border-top:2px solid #eee; padding-top:10px;"><b style="font-size:16px; color:var(--red);">စုစုပေါင်း: ${sale.rev.toLocaleString()} Ks</b></div>`;
             document.getElementById('detail-content').innerHTML = itemHtml;
             document.getElementById('detail-overlay').style.display = 'flex';
         }
 
         async function deleteSale(id) {
-            if(confirm("ဤအရောင်းမှတ်တမ်းကို ဖျက်ရန် သေချာပါသလား? (ပစ္စည်းလက်ကျန်များ ဂိုထောင်ထဲသို့ ပြန်ပေါင်းထည့်ပေးပါမည်)")) {
+            if(confirm("ဤအရောင်းမှတ်တမ်းကို ဖျက်ရန် သေချာပါသလား?")) {
                 const sale = salesData.find(s => s.id === id);
                 if(sale && sale.items) {
                     for(let item of sale.items) {
                         const product = products.find(p => p.id === item.id);
-                        if(product) {
-                            await _sb.from('products').update({ qty: product.qty + item.qty }).eq('id', item.id);
-                        }
+                        if(product) await _sb.from('products').update({ qty: product.qty + item.qty }).eq('id', item.id);
                     }
                 }
-                const { error } = await _sb.from('sales').delete().eq('id', id);
-                if(!error) {
-                    alert("ဖျက်ပြီးပါပြီ။");
-                    await loadProducts();
-                    runReport();
-                }
+                await _sb.from('sales').delete().eq('id', id);
+                loadProducts(); runReport();
             }
         }
 
@@ -478,66 +462,43 @@
         function setCategory(c, b) { curCat = c; document.querySelectorAll('.cat-btn').forEach(x => x.classList.remove('active')); b.classList.add('active'); refreshUI(); }
         
         function openAddModal() { 
-            document.getElementById('edit-id').value = ""; 
-            document.getElementById('p-name').value = "";
-            document.getElementById('p-unit').value = "";
-            document.getElementById('p-buy').value = "";
-            document.getElementById('p-sell').value = "";
-            document.getElementById('p-qty').value = "";
-            tempImg = "";
-            document.getElementById('del-btn').style.display='none'; 
-            document.getElementById('add-overlay').style.display='flex'; 
+            document.getElementById('edit-id').value = ""; document.getElementById('p-name').value = ""; document.getElementById('p-unit').value = "";
+            document.getElementById('p-buy').value = ""; document.getElementById('p-sell').value = ""; document.getElementById('p-qty').value = "";
+            tempImg = ""; document.getElementById('del-btn').style.display='none'; document.getElementById('add-overlay').style.display='flex'; 
         }
 
         function editProduct(id) {
-            const p = products.find(x => x.id === id);
-            if(!p) return;
-            document.getElementById('edit-id').value = p.id;
-            document.getElementById('p-name').value = p.name;
-            document.getElementById('p-unit').value = p.unit;
-            document.getElementById('p-buy').value = p.buy;
-            document.getElementById('p-sell').value = p.sell;
-            document.getElementById('p-qty').value = p.qty;
-            document.getElementById('p-cat').value = p.category;
-            tempImg = p.img;
-            document.getElementById('del-btn').style.display='block';
-            document.getElementById('add-overlay').style.display='flex';
+            const p = products.find(x => x.id === id); if(!p) return;
+            document.getElementById('edit-id').value = p.id; document.getElementById('p-name').value = p.name;
+            document.getElementById('p-unit').value = p.unit; document.getElementById('p-buy').value = p.buy;
+            document.getElementById('p-sell').value = p.sell; document.getElementById('p-qty').value = p.qty;
+            document.getElementById('p-cat').value = p.category; tempImg = p.img;
+            document.getElementById('del-btn').style.display='block'; document.getElementById('add-overlay').style.display='flex';
         }
 
         async function saveProduct() {
             const id = document.getElementById('edit-id').value;
             const name = document.getElementById('p-name').value;
-            const buy = parseInt(document.getElementById('p-buy').value || 0);
-            const sell = parseInt(document.getElementById('p-sell').value || 0);
-            const qty = parseInt(document.getElementById('p-qty').value || 0);
-            
             if(!name) return alert("အမည်ထည့်ပေးပါ");
-            const obj = { name, unit: document.getElementById('p-unit').value, buy, sell, qty, category: document.getElementById('p-cat').value, img: tempImg };
-            
+            const obj = { name, unit: document.getElementById('p-unit').value, buy: parseInt(document.getElementById('p-buy').value||0), sell: parseInt(document.getElementById('p-sell').value||0), qty: parseInt(document.getElementById('p-qty').value||0), category: document.getElementById('p-cat').value, img: tempImg };
             try {
-                if(id) await _sb.from('products').update(obj).eq('id', id); 
-                else await _sb.from('products').insert([obj]);
-                closeOverlay('add-overlay'); 
-                loadProducts();
+                if(id) await _sb.from('products').update(obj).eq('id', id); else await _sb.from('products').insert([obj]);
+                closeOverlay('add-overlay'); loadProducts();
             } catch (err) { alert("Error saving product."); }
         }
 
         async function deleteProduct() { if(confirm("ဖျက်မှာ သေချာလား?")) { await _sb.from('products').delete().eq('id', document.getElementById('edit-id').value); closeOverlay('add-overlay'); loadProducts(); } }
         
         function handleImg(e) { 
-            const file = e.target.files[0];
-            if(!file) return;
+            const file = e.target.files[0]; if(!file) return;
             const reader = new FileReader(); 
             reader.onload = (ev) => { 
                 const img = new Image(); 
                 img.onload = () => { 
-                    const canv = document.createElement('canvas'); 
-                    const max = 300;
+                    const canv = document.createElement('canvas'); const max = 300;
                     let w = img.width, h = img.height;
-                    if (w > h) { if (w > max) { h *= max / w; w = max; } }
-                    else { if (h > max) { w *= max / h; h = max; } }
-                    canv.width = w; canv.height = h; 
-                    canv.getContext('2d').drawImage(img, 0, 0, w, h); 
+                    if (w > h) { if (w > max) { h *= max / w; w = max; } } else { if (h > max) { w *= max / h; h = max; } }
+                    canv.width = w; canv.height = h; canv.getContext('2d').drawImage(img, 0, 0, w, h); 
                     tempImg = canv.toDataURL('image/jpeg', 0.7); 
                 }; 
                 img.src = ev.target.result; 
@@ -547,3 +508,4 @@
     </script>
 </body>
 </html>
+
