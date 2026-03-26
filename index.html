@@ -29,7 +29,6 @@
         #cart-list { max-height: 140px; overflow-y: auto; margin-bottom: 8px; }
         .cart-item { display: flex; justify-content: space-between; align-items: center; background: #f8fafc; padding: 8px 10px; border-radius: 8px; margin-bottom: 4px; font-size: 12px; border: 1px solid #eee; }
         
-        /* ဈေးနှုန်းပြင်ရန် input field style */
         .price-edit-input { width: 70px; padding: 4px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px; text-align: right; font-weight: bold; color: var(--red); }
 
         .cat-scroll { display: flex; overflow-x: auto; gap: 6px; padding: 4px 0 8px 0; flex-shrink: 0; scrollbar-width: none; }
@@ -281,7 +280,6 @@
                     <td><button onclick="editProduct(${p.id})" style="border:none;background:#eee;padding:5px;border-radius:5px;"><i class="fas fa-edit"></i></button></td></tr>`).join('');
         }
 
-        // --- ပြင်ဆင်ထားသော အချက် (၁) : Stock မရှိလည်း ရောင်းရအောင် ဖွင့်ပေးခြင်း ---
         function addToCart(id) {
             const p = products.find(x => x.id === id);
             if(!p) return;
@@ -294,12 +292,11 @@
             renderCart();
         }
 
-        // --- ပြင်ဆင်ထားသော အချက် (၂) : ရောင်းစျေးကို အရောင်း Tab မှာတင် ပြင်နိုင်ခြင်း ---
         function updateCartPrice(id, newPrice) {
             const item = cart.find(x => x.id === id);
             if (item) {
                 item.sell = parseInt(newPrice) || 0;
-                renderTotalOnly(); // Total ကိုပဲ ပြန်တွက်ပေးရုံ
+                renderTotalOnly();
             }
         }
 
@@ -335,11 +332,8 @@
         function adjustQty(id, d) { const i = cart.find(x => x.id === id); if(i) { i.cQty += d; if(i.cQty <= 0) removeItem(id); renderCart(); } }
         function removeItem(id) { cart = cart.filter(x => x.id !== id); renderCart(); }
 
-        // --- ပြင်ဆင်ထားသော အချက် (၃) : Print မထုတ်ခင် အတည်ပြုချက်တောင်းခြင်း ---
         async function processSale() {
             if(!cart.length) return;
-            
-            // အတည်ပြုချက်တောင်းခြင်း
             if(!confirm("အရောင်းစာရင်းသွင်းပြီး ဘောင်ချာထုတ်မှာ သေချာပါသလား?")) return;
 
             const now = new Date();
@@ -400,7 +394,6 @@
             }
         }
 
-        // ကျန်ရှိသော Functions (runReport, navTo, etc.) အရင်အတိုင်းထားရှိပါသည်
         async function runReport() {
             const dt = document.getElementById('rep-date').value;
             const ty = document.getElementById('rep-type').value;
@@ -419,6 +412,7 @@
             document.getElementById('rep-body').innerHTML = rows || '<tr><td colspan="5" style="text-align:center;">စာရင်းမရှိပါ</td></tr>';
         }
 
+        // --- ပြင်ဆင်ထားသော ViewSaleDetails: Print ခလုတ် ထပ်ပေါင်းထည့်ထားသည် ---
         function viewSaleDetails(id) {
             const sale = salesData.find(s => s.id === id);
             if(!sale) return;
@@ -429,8 +423,56 @@
                 });
             }
             itemHtml += `</tbody></table><div style="margin-top:15px; text-align:right; border-top:2px solid #eee; padding-top:10px;"><b style="font-size:16px; color:var(--red);">စုစုပေါင်း: ${sale.rev.toLocaleString()} Ks</b></div>`;
+            
+            // Print ခလုတ် ထည့်ခြင်း
+            itemHtml += `
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:20px;">
+                    <button class="btn btn-dark" style="background:var(--green);" onclick="reprintVoucher(${sale.id})"><i class="fas fa-print"></i> ဘောင်ချာပြန်ထုတ်မည်</button>
+                    <button class="btn btn-dark" onclick="closeOverlay('detail-overlay')">ပိတ်မည်</button>
+                </div>
+            `;
+
             document.getElementById('detail-content').innerHTML = itemHtml;
             document.getElementById('detail-overlay').style.display = 'flex';
+        }
+
+        // --- ဘောင်ချာ ပြန်ထုတ်ရန် Function အသစ် ---
+        function reprintVoucher(id) {
+            const sale = salesData.find(s => s.id === id);
+            if(!sale) return;
+
+            let rows = "";
+            sale.items.forEach(i => {
+                let sub = i.sell * i.qty;
+                rows += `<tr><td class="c-name">${i.name}</td><td class="c-qty">${i.qty}</td><td class="c-unit">${i.unit||'ခု'}</td><td class="c-price">${i.sell.toLocaleString()}</td><td class="c-amt">${sub.toLocaleString()}</td></tr>`;
+            });
+
+            const html = `
+                <div class="r-center">
+                    <div class="r-header-title">ထွန်းတောက်ကြယ်</div>
+                    <div class="r-header-sub">စားသောက်ကုန်နှင့်လူသုံးကုန်လက်ကားဖြန့်ချိရေး</div>
+                    <div class="r-header-sub">အမှတ်(၁၅)၊ ထင်းရှူးရိပ်သာ(၁)ပတ်လမ်း၊ ဇေကမ္ဘာဝင်း</div>
+                    <div class="r-header-sub">မင်္ဂလာဒုံမြို့နယ်</div>
+                    <div class="r-center" style="margin-top:5px;">*** REPRINT VOUCHER ***</div>
+                    <div class="r-info">
+                        CHK# ${sale.id}<br>
+                        Date: ${sale.date}<br>
+                        Customer: ${sale.cust}
+                    </div>
+                    <table class="r-table">
+                        <thead><tr><th class="c-name">NAME</th><th class="c-qty">QTY</th><th class="c-unit">Unit</th><th class="c-price">PRICE</th><th class="c-amt">AMOUNT</th></tr></thead>
+                        <tbody>${rows}</tbody>
+                    </table>
+                    <div class="r-summary">
+                        <div class="r-row"><span class="r-label">Subtotal</span><span class="r-val">${sale.rev.toLocaleString()}</span></div>
+                        <div class="r-row" style="font-size:18px;"><span class="r-label">Total</span><span class="r-val">${sale.rev.toLocaleString()}</span></div>
+                    </div>
+                    <div class="r-footer">*** ဝယ်ယူအားပေးမှုကို ကျေးဇူးအထူးတင်ရှိပါသည်။ ***<br>***</div>
+                </div>`;
+
+            document.getElementById('receipt-render-area').innerHTML = html;
+            closeOverlay('detail-overlay');
+            setTimeout(() => { window.print(); }, 500);
         }
 
         async function deleteSale(id) {
@@ -508,4 +550,3 @@
     </script>
 </body>
 </html>
-
