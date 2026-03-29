@@ -35,27 +35,34 @@
         .cat-btn { white-space: nowrap; padding: 8px 15px; border-radius: 20px; border: 1px solid #cbd5e1; background: white; font-size: 12px; cursor: pointer; }
         .cat-btn.active { background: var(--midnight); color: white; border-color: var(--midnight); }
 
-        /* Grid System ပြင်ဆင်ချက် - Mobile မှာ ၂ ခု၊ Tablet မှာ ၃ ခု၊ Computer မှာ ၅ ခု */
+        /* Grid Area ပြင်ဆင်ချက်: ၅ခု တစ်တန်း */
         .grid-area { 
-            flex: 1; 
-            overflow-y: auto; 
-            padding: 5px 10px 80px 10px; 
+            flex: 1; overflow-y: auto; padding: 10px 10px 80px 10px; 
             display: grid; 
-            grid-template-columns: repeat(2, 1fr); 
-            gap: 12px; 
-            align-content: start; 
+            grid-template-columns: repeat(5, 1fr); /* Default 5 columns for Computer/Tablet */
+            gap: 10px; align-content: start; 
         }
-        @media (min-width: 600px) { .grid-area { grid-template-columns: repeat(3, 1fr); } }
-        @media (min-width: 1000px) { .grid-area { grid-template-columns: repeat(5, 1fr); } }
+        
+        /* Mobile ဖုန်းများအတွက် အလိုအလျောက် ချိန်ညှိပေးရန် (စာလုံးတွေ ထပ်မနေစေရန်) */
+        @media (max-width: 768px) { .grid-area { grid-template-columns: repeat(4, 1fr); } }
+        @media (max-width: 480px) { .grid-area { grid-template-columns: repeat(3, 1fr); } }
 
-        .p-card { background: white; border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0; display: flex; flex-direction: column; position: relative; min-height: 170px; cursor: pointer; transition: 0.2s; }
+        /* Product Card ပြင်ဆင်ချက်: ပုံမပါဘဲ စာသားသီးသန့် (Name, Price, Stock) */
+        .p-card { 
+            background: white; border-radius: 8px; border: 1px solid #e2e8f0; 
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            position: relative; min-height: 85px; padding: 15px 5px; cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05); text-align: center;
+        }
         .p-card:active { transform: scale(0.98); }
-        .img-wrap { width: 100%; height: 110px; background: #e2e8f0; position: relative; }
-        .img-wrap img { width: 100%; height: 100%; object-fit: cover; display: block; }
-        .stock-tag { position: absolute; top: 6px; right: 6px; background: rgba(0,0,0,0.6); color: white; font-size: 9px; padding: 3px 6px; border-radius: 6px; z-index: 5; }
-        .p-info { padding: 8px; text-align: center; flex: 1; display: flex; flex-direction: column; justify-content: center; }
-        .p-name { font-size: 13px; font-weight: bold; color: #1e293b; margin-bottom: 4px; }
-        .p-price { font-size: 13px; color: var(--red); font-weight: bold; }
+        .stock-tag { 
+            position: absolute; top: 4px; right: 4px; 
+            background: #f1f5f9; color: var(--primary); font-size: 10px; 
+            padding: 2px 5px; border-radius: 4px; font-weight: bold; border: 1px solid #cbd5e1;
+        }
+        .p-info { display: flex; flex-direction: column; gap: 5px; width: 100%; margin-top: 5px; }
+        .p-name { font-size: 13px; font-weight: bold; color: #1e293b; line-height: 1.2; word-wrap: break-word; }
+        .p-price { font-size: 13px; color: var(--green); font-weight: bold; }
 
         .nav { background: white; height: 65px; display: flex; border-top: 1px solid #eee; flex-shrink: 0; width: 100%; z-index: 1000; padding-bottom: env(safe-area-inset-bottom); }
         .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; background: none; border: none; color: #94a3b8; font-size: 11px; cursor: pointer; }
@@ -72,33 +79,41 @@
         .btn { padding: 10px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 5px; width: 100%; }
         .btn-dark { background: var(--midnight); color: white; }
 
-        /* --- PRINT VOUCHER CSS --- */
+        /* --- PRINT VOUCHER CSS (Optimized for PC & RawBT Mobile) --- */
         #receipt-render-area { display: none; }
+        
         @media print {
-            body * { visibility: hidden !important; }
-            #receipt-render-area, #receipt-render-area * { visibility: visible !important; }
+            /* Hide all app UI elements */
+            .header, .nav, .container, .overlay { display: none !important; }
+            body { background: white !important; margin: 0; padding: 0; }
+            
+            /* Show only receipt area */
             #receipt-render-area { 
-                display: block !important; position: absolute; left: 0; top: 0; width: 76mm !important; 
-                padding: 0; margin: 0; color: #000; background: #fff;
+                display: block !important; 
+                width: 100% !important; max-width: 80mm; /* Standard Thermal Size */
+                margin: 0 auto; padding: 0;
+                color: #000; font-family: 'Pyidaungsu', sans-serif;
             }
             .r-center { width: 100%; text-align: center; }
             .r-header-title { font-size: 20px; font-weight: bold; }
             .r-header-sub { font-size: 11px; margin-top: 2px; }
             .r-info { text-align: left; font-size: 11px; margin: 10px 0; border-top: 1px dashed #000; padding-top: 5px; line-height: 1.5; }
-            .r-table { width: 100%; border-collapse: collapse; font-size: 10px; table-layout: fixed; margin: 5px 0; }
+            
+            .r-table { width: 100%; border-collapse: collapse; font-size: 11px; table-layout: fixed; margin: 5px 0; }
             .r-table th { border-top: 1px dashed #000; border-bottom: 1px dashed #000; padding: 5px 0; text-align: center; }
-            .c-name { width: 35%; text-align: left; }
-            .c-qty { width: 10%; text-align: center; }
-            .c-unit { width: 12%; text-align: center; }
+            .c-name { width: 40%; text-align: left; }
+            .c-qty { width: 15%; text-align: center; }
             .c-price { width: 20%; text-align: right; }
-            .c-amt { width: 23%; text-align: right; }
+            .c-amt { width: 25%; text-align: right; }
             .r-table td { padding: 4px 0; vertical-align: top; word-break: break-word; }
+            
             .r-summary { border-top: 1px dashed #000; margin-top: 5px; padding-top: 5px; font-size: 14px; }
             .r-row { display: flex; justify-content: flex-end; margin-bottom: 2px; }
             .r-label { width: 60%; text-align: right; padding-right: 15px; }
-            .r-val { width: 35%; text-align: right; font-weight: bold; }
-            .r-footer { margin-top: 15px; font-size: 10px; border-top: 1px dashed #000; padding-top: 5px; text-align: center; }
-            @page { margin: 0; }
+            .r-val { width: 40%; text-align: right; font-weight: bold; }
+            .r-footer { margin-top: 15px; font-size: 11px; border-top: 1px dashed #000; padding-top: 5px; text-align: center; }
+            
+            @page { margin: 0; size: auto; } /* Let printer driver manage paper height automatically */
         }
     </style>
 </head>
@@ -125,7 +140,7 @@
             <input type="text" id="search-box" class="input-style" placeholder="ပစ္စည်းရှာဖွေရန်..." onkeyup="refreshUI()" style="margin-bottom:8px;">
             <div class="cart-box">
                 <div id="cart-list"><div style="text-align:center; color:#94a3b8; font-size:12px;">ခြင်းတောင်းထဲတွင် ပစ္စည်းမရှိသေးပါ</div></div>
-                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap: wrap; gap: 10px;">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
                     <b style="font-size:17px;">Total: <span id="cart-total" style="color:var(--red)">0</span> Ks</b>
                     <button class="btn btn-dark" style="width:auto; padding:8px 15px;" onclick="processSale()"><i class="fas fa-print"></i> ဘောင်ချာထုတ်မည်</button>
                 </div>
@@ -162,7 +177,7 @@
         </div>
         <div class="table-wrap">
             <table>
-                <thead><tr><th>ပုံ</th><th>အမည်</th><th>ယူနစ်</th><th>ဝယ်/ရောင်း</th><th>Stock</th><th>Action</th></tr></thead>
+                <thead><tr><th>အမည်</th><th>ယူနစ်</th><th>ဝယ်/ရောင်း</th><th>Stock</th><th>Action</th></tr></thead>
                 <tbody id="inv-body"></tbody>
             </table>
         </div>
@@ -224,7 +239,6 @@
                 <option value="လူသုံးကုန်">လူသုံးကုန်</option>
                 <option value="အခြား">အခြား</option>
             </select>
-            <input type="file" accept="image/*" class="input-style" onchange="handleImg(event)" style="margin-top:10px;">
             <button class="btn btn-dark" style="background:var(--green); margin-top:20px;" onclick="saveProduct()">သိမ်းမည်</button>
             <button id="del-btn" class="btn" style="background:var(--red); color:white; margin-top:10px; display:none;" onclick="deleteProduct()">ဖျက်မည်</button>
             <button class="btn" style="margin-top:10px;" onclick="closeOverlay('add-overlay')">မလုပ်တော့ပါ</button>
@@ -244,7 +258,7 @@
         const SUPA_KEY = "sb_publishable_pJ6ewySbcvru7PNQdY0RAQ_8DLnS3j8";
         const _sb = supabase.createClient(SUPA_URL, SUPA_KEY);
 
-        let products = [], cart = [], isAdmin = false, curCat = "all", tempImg = "", nextTab = "", salesData = [];
+        let products = [], cart = [], isAdmin = false, curCat = "all", nextTab = "", salesData = [];
 
         window.onload = () => {
             document.getElementById('rep-date').value = new Date().toISOString().split('T')[0];
@@ -271,11 +285,12 @@
             const qS = (document.getElementById('search-box').value || "").toLowerCase();
             const posFiltered = products.filter(p => (curCat === 'all' || p.category === curCat) && p.name.toLowerCase().includes(qS));
             const grid = document.getElementById('pos-grid');
+            
+            // အရောင်း Tab ပစ္စည်း Card မှ ပုံများကို ဖယ်ရှားပြီး Name, Price, Stock သာ ပြထားပါသည်
             grid.innerHTML = posFiltered.length === 0 ? '<div style="grid-column: 1/-1; text-align:center; padding:50px; color:#94a3b8;">ပစ္စည်းရှာမတွေ့ပါ</div>' : 
                 posFiltered.map(p => `
                 <div class="p-card" onclick="addToCart(${p.id})">
-                    <span class="stock-tag">S: ${p.qty}</span>
-                    <div class="img-wrap">${p.img ? `<img src="${p.img}">` : '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#ccc;"><i class="fas fa-image fa-2x"></i></div>'}</div>
+                    <div class="stock-tag">S: ${p.qty}</div>
                     <div class="p-info">
                         <div class="p-name">${p.name}</div>
                         <div class="p-price">${(p.sell || 0).toLocaleString()} Ks</div>
@@ -287,10 +302,13 @@
 
             const qI = (document.getElementById('inv-search').value || "").toLowerCase();
             const invFiltered = products.filter(p => p.name.toLowerCase().includes(qI));
+            
+            // ဂိုထောင် Tab ဇယားမှ ပုံပြသည့် အပိုင်းကို ဖယ်ရှားထားပါသည်
             document.getElementById('inv-body').innerHTML = invFiltered.map(p => `
-                <tr><td><img src="${p.img||''}" style="width:35px;height:35px;object-fit:cover;border-radius:5px;" onerror="this.src='https://placehold.co/50x50?text=No+Img'"></td>
+                <tr>
                     <td><b>${p.name}</b></td><td><small>${p.unit || '-'}</small></td><td>${(p.buy||0).toLocaleString()}/${(p.sell||0).toLocaleString()}</td><td>${p.qty}</td>
-                    <td><button onclick="editProduct(${p.id})" style="border:none;background:#eee;padding:5px;border-radius:5px;"><i class="fas fa-edit"></i></button></td></tr>`).join('');
+                    <td><button onclick="editProduct(${p.id})" style="border:none;background:#eee;padding:5px;border-radius:5px;"><i class="fas fa-edit"></i></button></td>
+                </tr>`).join('');
         }
 
         function addToCart(id) {
@@ -358,7 +376,7 @@
 
             const items = cart.map(i => {
                 let sub = i.sell * i.cQty; rev += sub; prof += (i.sell - i.buy) * i.cQty;
-                rows += `<tr><td class="c-name">${i.name}</td><td class="c-qty">${i.cQty}</td><td class="c-unit">${i.unit||'ခု'}</td><td class="c-price">${i.sell.toLocaleString()}</td><td class="c-amt">${sub.toLocaleString()}</td></tr>`;
+                rows += `<tr><td class="c-name">${i.name}</td><td class="c-qty">${i.cQty} ${i.unit||''}</td><td class="c-price">${i.sell.toLocaleString()}</td><td class="c-amt">${sub.toLocaleString()}</td></tr>`;
                 return { id: i.id, name: i.name, qty: i.cQty, sell: i.sell, buy: i.buy, unit: i.unit };
             });
 
@@ -380,21 +398,23 @@
                         <div class="r-info">
                             CHK# ${now.getTime().toString().slice(-8)}<br>
                             Clerk: ${staff} &nbsp;&nbsp;&nbsp; Guest# 1<br>
-                            Print Time: ${date.replace(/-/g,'/')} ${time}<br>
+                            Time: ${date.replace(/-/g,'/')} ${time}<br>
                             Customer: ${cust}
                         </div>
                         <table class="r-table">
-                            <thead><tr><th class="c-name">NAME</th><th class="c-qty">QTY</th><th class="c-unit">Unit</th><th class="c-price">PRICE</th><th class="c-amt">AMOUNT</th></tr></thead>
+                            <thead><tr><th class="c-name">Item</th><th class="c-qty">Qty</th><th class="c-price">Price</th><th class="c-amt">Amount</th></tr></thead>
                             <tbody>${rows}</tbody>
                         </table>
                         <div class="r-summary">
                             <div class="r-row"><span class="r-label">Subtotal</span><span class="r-val">${rev.toLocaleString()}</span></div>
-                            <div class="r-row" style="font-size:18px;"><span class="r-label">Total</span><span class="r-val">${rev.toLocaleString()}</span></div>
+                            <div class="r-row" style="font-size:16px;"><span class="r-label">Total</span><span class="r-val">${rev.toLocaleString()} Ks</span></div>
                         </div>
-                        <div class="r-footer">*** ဝယ်ယူအားပေးမှုကို ကျေးဇူးအထူးတင်ရှိပါသည်။ ***<br>***</div>
+                        <div class="r-footer">*** ဝယ်ယူအားပေးမှုကို ကျေးဇူးအထူးတင်ရှိပါသည်။ ***</div>
                     </div>`;
 
                 document.getElementById('receipt-render-area').innerHTML = html;
+                
+                // Print command (PC နှင့် Mobile RawBT နှစ်မျိုးလုံးအတွက် အဆင်ပြေဆုံးဖြစ်ပါသည်)
                 setTimeout(() => { 
                     window.print(); 
                     cart = []; 
@@ -438,7 +458,7 @@
             
             itemHtml += `
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:20px;">
-                    <button class="btn btn-dark" style="background:var(--green);" onclick="reprintVoucher(${sale.id})"><i class="fas fa-print"></i> ဘောင်ချာပြန်ထုတ်မည်</button>
+                    <button class="btn btn-dark" style="background:var(--green);" onclick="reprintVoucher(${sale.id})"><i class="fas fa-print"></i> ပြန်ထုတ်မည်</button>
                     <button class="btn btn-dark" onclick="closeOverlay('detail-overlay')">ပိတ်မည်</button>
                 </div>
             `;
@@ -454,7 +474,7 @@
             let rows = "";
             sale.items.forEach(i => {
                 let sub = i.sell * i.qty;
-                rows += `<tr><td class="c-name">${i.name}</td><td class="c-qty">${i.qty}</td><td class="c-unit">${i.unit||'ခု'}</td><td class="c-price">${i.sell.toLocaleString()}</td><td class="c-amt">${sub.toLocaleString()}</td></tr>`;
+                rows += `<tr><td class="c-name">${i.name}</td><td class="c-qty">${i.qty} ${i.unit||''}</td><td class="c-price">${i.sell.toLocaleString()}</td><td class="c-amt">${sub.toLocaleString()}</td></tr>`;
             });
 
             const html = `
@@ -470,14 +490,14 @@
                         Customer: ${sale.cust}
                     </div>
                     <table class="r-table">
-                        <thead><tr><th class="c-name">NAME</th><th class="c-qty">QTY</th><th class="c-unit">Unit</th><th class="c-price">PRICE</th><th class="c-amt">AMOUNT</th></tr></thead>
+                        <thead><tr><th class="c-name">Item</th><th class="c-qty">Qty</th><th class="c-price">Price</th><th class="c-amt">Amount</th></tr></thead>
                         <tbody>${rows}</tbody>
                     </table>
                     <div class="r-summary">
                         <div class="r-row"><span class="r-label">Subtotal</span><span class="r-val">${sale.rev.toLocaleString()}</span></div>
-                        <div class="r-row" style="font-size:18px;"><span class="r-label">Total</span><span class="r-val">${sale.rev.toLocaleString()}</span></div>
+                        <div class="r-row" style="font-size:16px;"><span class="r-label">Total</span><span class="r-val">${sale.rev.toLocaleString()} Ks</span></div>
                     </div>
-                    <div class="r-footer">*** ဝယ်ယူအားပေးမှုကို ကျေးဇူးအထူးတင်ရှိပါသည်။ ***<br>***</div>
+                    <div class="r-footer">*** ဝယ်ယူအားပေးမှုကို ကျေးဇူးအထူးတင်ရှိပါသည်။ ***</div>
                 </div>`;
 
             document.getElementById('receipt-render-area').innerHTML = html;
@@ -516,7 +536,7 @@
         function openAddModal() { 
             document.getElementById('edit-id').value = ""; document.getElementById('p-name').value = ""; document.getElementById('p-unit').value = "";
             document.getElementById('p-buy').value = ""; document.getElementById('p-sell').value = ""; document.getElementById('p-qty').value = "";
-            tempImg = ""; document.getElementById('del-btn').style.display='none'; document.getElementById('add-overlay').style.display='flex'; 
+            document.getElementById('del-btn').style.display='none'; document.getElementById('add-overlay').style.display='flex'; 
         }
 
         function editProduct(id) {
@@ -524,7 +544,7 @@
             document.getElementById('edit-id').value = p.id; document.getElementById('p-name').value = p.name;
             document.getElementById('p-unit').value = p.unit; document.getElementById('p-buy').value = p.buy;
             document.getElementById('p-sell').value = p.sell; document.getElementById('p-qty').value = p.qty;
-            document.getElementById('p-cat').value = p.category; tempImg = p.img;
+            document.getElementById('p-cat').value = p.category;
             document.getElementById('del-btn').style.display='block'; document.getElementById('add-overlay').style.display='flex';
         }
 
@@ -532,7 +552,10 @@
             const id = document.getElementById('edit-id').value;
             const name = document.getElementById('p-name').value;
             if(!name) return alert("အမည်ထည့်ပေးပါ");
-            const obj = { name, unit: document.getElementById('p-unit').value, buy: parseInt(document.getElementById('p-buy').value||0), sell: parseInt(document.getElementById('p-sell').value||0), qty: parseInt(document.getElementById('p-qty').value||0), category: document.getElementById('p-cat').value, img: tempImg };
+            
+            // Image data (tempImg) ဖယ်ရှားထားပါသည်
+            const obj = { name, unit: document.getElementById('p-unit').value, buy: parseInt(document.getElementById('p-buy').value||0), sell: parseInt(document.getElementById('p-sell').value||0), qty: parseInt(document.getElementById('p-qty').value||0), category: document.getElementById('p-cat').value };
+            
             try {
                 if(id) await _sb.from('products').update(obj).eq('id', id); else await _sb.from('products').insert([obj]);
                 closeOverlay('add-overlay'); loadProducts();
@@ -541,23 +564,6 @@
 
         async function deleteProduct() { if(confirm("ဖျက်မှာ သေချာလား?")) { await _sb.from('products').delete().eq('id', document.getElementById('edit-id').value); closeOverlay('add-overlay'); loadProducts(); } }
         
-        function handleImg(e) { 
-            const file = e.target.files[0]; if(!file) return;
-            const reader = new FileReader(); 
-            reader.onload = (ev) => { 
-                const img = new Image(); 
-                img.onload = () => { 
-                    const canv = document.createElement('canvas'); const max = 300;
-                    let w = img.width, h = img.height;
-                    if (w > h) { if (w > max) { h *= max / w; w = max; } } else { if (h > max) { w *= max / h; h = max; } }
-                    canv.width = w; canv.height = h; canv.getContext('2d').drawImage(img, 0, 0, w, h); 
-                    tempImg = canv.toDataURL('image/jpeg', 0.7); 
-                }; 
-                img.src = ev.target.result; 
-            }; 
-            reader.readAsDataURL(file); 
-        }
     </script>
 </body>
 </html>
-
