@@ -22,30 +22,57 @@
         .dot.offline { background: var(--red); box-shadow: 0 0 8px var(--red); }
 
         /* Main Container */
-        .container { flex: 1; overflow: hidden; display: none; width: 100%; max-width: 1200px; margin: auto; position: relative; }
-        .container.active { display: flex; flex-direction: column; }
+        .container { flex: 1; overflow: hidden; display: none; width: 100%; max-width: 100%; margin: auto; position: relative; }
+        .container.active { display: flex; flex-direction: row; } /* Horizontal layout for Sales */
         
-        /* Sales Tab UI */
-        .sales-sticky { flex-shrink: 0; background: var(--bg); padding: 8px 10px 4px 10px; z-index: 10; border-bottom: 1px solid #e2e8f0; }
+        /* Layout logic for Sales Tab */
+        #tab-sales.active { display: flex; flex-direction: row; }
+        @media (max-width: 900px) { #tab-sales.active { flex-direction: column; } }
+
+        /* Left Side: Sales/Cart */
+        .sales-sidebar { 
+            width: 380px; 
+            background: #fff; 
+            border-right: 1px solid #e2e8f0; 
+            display: flex; 
+            flex-direction: column; 
+            flex-shrink: 0;
+            padding: 10px;
+            overflow-y: auto;
+        }
+        @media (max-width: 900px) { .sales-sidebar { width: 100%; border-right: none; border-bottom: 1px solid #e2e8f0; height: auto; max-height: 50%; } }
+
         .input-group { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 6px; }
         .input-style { width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 13px; outline: none; background: white; }
 
-        .cart-box { background: white; border: 1px solid #e2e8f0; border-radius: 12px; margin-bottom: 6px; padding: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-        #cart-list { max-height: 140px; overflow-y: auto; margin-bottom: 8px; }
-        .cart-item { display: flex; justify-content: space-between; align-items: center; background: #f8fafc; padding: 8px 10px; border-radius: 8px; margin-bottom: 4px; font-size: 12px; border: 1px solid #eee; }
+        .cart-box { 
+            flex: 1; 
+            display: flex; 
+            flex-direction: column; 
+            background: #f8fafc; 
+            border: 1px solid #e2e8f0; 
+            border-radius: 12px; 
+            padding: 10px; 
+            margin-bottom: 10px; 
+            overflow: hidden;
+        }
+        #cart-list { flex: 1; overflow-y: auto; margin-bottom: 8px; min-height: 100px; }
+        .cart-item { display: flex; justify-content: space-between; align-items: center; background: #fff; padding: 8px 10px; border-radius: 8px; margin-bottom: 6px; font-size: 12px; border: 1px solid #eee; box-shadow: 0 1px 2px rgba(0,0,0,0.03); }
         
         .price-edit-input { width: 70px; padding: 4px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px; text-align: right; font-weight: bold; color: var(--red); }
 
-        .cat-scroll { display: flex; overflow-x: auto; gap: 6px; padding: 4px 0 8px 0; flex-shrink: 0; scrollbar-width: none; }
+        /* Right Side: Product Catalog */
+        .product-area { flex: 1; display: flex; flex-direction: column; overflow: hidden; background: #fff; }
+        .product-header { padding: 10px; border-bottom: 1px solid #eee; }
+        .cat-scroll { display: flex; overflow-x: auto; gap: 6px; padding: 4px 0 8px 0; scrollbar-width: none; }
         .cat-btn { white-space: nowrap; padding: 8px 15px; border-radius: 20px; border: 1px solid #cbd5e1; background: white; font-size: 12px; cursor: pointer; }
         .cat-btn.active { background: var(--midnight); color: white; border-color: var(--midnight); }
 
         /* Grid Items */
-        .grid-area { flex: 1; overflow-y: auto; padding: 10px 10px 80px 10px; display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; align-content: start; }
-        @media (max-width: 768px) { .grid-area { grid-template-columns: repeat(4, 1fr); } }
-        @media (max-width: 480px) { .grid-area { grid-template-columns: repeat(3, 1fr); } }
+        .grid-area { flex: 1; overflow-y: auto; padding: 10px; display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 10px; align-content: start; }
 
-        .p-card { background: white; border-radius: 8px; border: 1px solid #e2e8f0; display: flex; flex-direction: column; justify-content: center; align-items: center; position: relative; min-height: 85px; padding: 15px 5px; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.05); text-align: center; }
+        .p-card { background: white; border-radius: 8px; border: 1px solid #e2e8f0; display: flex; flex-direction: column; justify-content: center; align-items: center; position: relative; min-height: 90px; padding: 10px 5px; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.05); text-align: center; }
+        .p-card:hover { border-color: var(--midnight); }
         .p-card:active { transform: scale(0.98); }
         .stock-tag { position: absolute; top: 4px; right: 4px; background: #f1f5f9; color: var(--primary); font-size: 10px; padding: 2px 5px; border-radius: 4px; font-weight: bold; border: 1px solid #cbd5e1; }
         .p-info { display: flex; flex-direction: column; gap: 5px; width: 100%; margin-top: 5px; }
@@ -58,10 +85,11 @@
         .nav-item.active { color: var(--midnight); font-weight: bold; border-top: 3px solid var(--midnight); }
         .nav-item i { font-size: 18px; margin-bottom: 4px; }
 
-        /* Tables */
+        /* Standard Table View (for non-sales tabs) */
+        .tab-content-vertical { flex-direction: column !important; }
         .table-wrap { flex: 1; overflow-y: auto; background: white; margin: 10px; border-radius: 12px; border: 1px solid #e2e8f0; }
         table { width: 100%; border-collapse: collapse; }
-        th { background: #f8fafc; padding: 12px; font-size: 13px; text-align: left; position: sticky; top: 0; border-bottom: 2px solid #e2e8f0; }
+        th { background: #f8fafc; padding: 12px; font-size: 13px; text-align: left; position: sticky; top: 0; border-bottom: 2px solid #e2e8f0; z-index: 10; }
         td { padding: 12px; border-bottom: 1px solid #f1f5f9; font-size: 13px; }
 
         /* Modals */
@@ -115,32 +143,48 @@
     <div id="receipt-render-area"></div>
 
     <main id="tab-sales" class="container active">
-        <div class="sales-sticky">
+        <div class="sales-sidebar">
             <div class="input-group">
                 <input type="text" id="cust-name" class="input-style" placeholder="ဝယ်သူအမည်">
                 <input type="text" id="staff-name" class="input-style" placeholder="အရောင်းဝန်ထမ်း">
             </div>
-            <input type="text" id="search-box" class="input-style" placeholder="ပစ္စည်းရှာဖွေရန်..." onkeyup="refreshUI()" style="margin-bottom:8px;">
+            
             <div class="cart-box">
-                <div id="cart-list"><div style="text-align:center; color:#94a3b8; font-size:12px;">ခြင်းတောင်းထဲတွင် ပစ္စည်းမရှိသေးပါ</div></div>
-                <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <b style="font-size:17px;">Total: <span id="cart-total" style="color:var(--red)">0</span> Ks</b>
-                    <button class="btn btn-dark" style="width:auto; padding:8px 15px;" onclick="processSale()"><i class="fas fa-print"></i> ဘောင်ချာထုတ်မည်</button>
+                <div style="margin-bottom:8px; border-bottom:1px solid #e2e8f0; padding-bottom:5px;">
+                    <small style="font-weight:bold; color:var(--primary);">ခြင်းတောင်းထဲမှ ပစ္စည်းများ</small>
+                </div>
+                <div id="cart-list">
+                    <div style="text-align:center; color:#94a3b8; font-size:12px; margin-top: 20px;">ခြင်းတောင်းထဲတွင် ပစ္စည်းမရှိသေးပါ</div>
+                </div>
+                <div style="border-top: 1px solid #e2e8f0; padding-top:10px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                        <span style="font-size:14px; color:#64748b;">Total Amount:</span>
+                        <b style="font-size:18px;"><span id="cart-total" style="color:var(--red)">0</span> Ks</b>
+                    </div>
+                    <button class="btn btn-dark" onclick="processSale()">
+                        <i class="fas fa-print"></i> ဘောင်ချာထုတ်မည်
+                    </button>
                 </div>
             </div>
-            <div class="cat-scroll">
-                <button class="cat-btn active" onclick="setCategory('all', this)">အားလုံး</button>
-                <button class="cat-btn" onclick="setCategory('အအေး', this)">အအေး</button>
-                <button class="cat-btn" onclick="setCategory('ကော်ဖီ', this)">ကော်ဖီ</button>
-                <button class="cat-btn" onclick="setCategory('ခေါက်ဆွဲ', this)">ခေါက်ဆွဲ</button>
-                <button class="cat-btn" onclick="setCategory('မီးဖိုချောင်သုံး', this)">မီးဖိုချောင်သုံး</button>
-                <button class="cat-btn" onclick="setCategory('လူသုံးကုန်', this)">လူသုံးကုန်</button>
-            </div>
         </div>
-        <div id="pos-grid" class="grid-area"></div>
+
+        <div class="product-area">
+            <div class="product-header">
+                <input type="text" id="search-box" class="input-style" placeholder="ပစ္စည်းရှာဖွေရန်..." onkeyup="refreshUI()" style="margin-bottom:8px;">
+                <div class="cat-scroll">
+                    <button class="cat-btn active" onclick="setCategory('all', this)">အားလုံး</button>
+                    <button class="cat-btn" onclick="setCategory('အအေး', this)">အအေး</button>
+                    <button class="cat-btn" onclick="setCategory('ကော်ဖီ', this)">ကော်ဖီ</button>
+                    <button class="cat-btn" onclick="setCategory('ခေါက်ဆွဲ', this)">ခေါက်ဆွဲ</button>
+                    <button class="cat-btn" onclick="setCategory('မီးဖိုချောင်သုံး', this)">မီးဖိုချောင်သုံး</button>
+                    <button class="cat-btn" onclick="setCategory('လူသုံးကုန်', this)">လူသုံးကုန်</button>
+                </div>
+            </div>
+            <div id="pos-grid" class="grid-area"></div>
+        </div>
     </main>
 
-    <main id="tab-stock" class="container">
+    <main id="tab-stock" class="container tab-content-vertical">
         <div style="padding:15px; flex-shrink:0;">
             <h3><i class="fas fa-list-ul"></i> လက်ရှိလက်ကျန်</h3>
             <div class="cat-scroll" style="margin-top:10px;">
@@ -160,7 +204,7 @@
         </div>
     </main>
 
-    <main id="tab-inv" class="container">
+    <main id="tab-inv" class="container tab-content-vertical">
         <div style="padding:15px; background: white; margin: 10px; border-radius: 12px; border: 1px solid #e2e8f0;">
             <div style="display:flex; justify-content:space-between; align-items:center;">
                 <h3><i class="fas fa-warehouse"></i> ဂိုထောင်</h3>
@@ -176,7 +220,7 @@
         </div>
     </main>
 
-    <main id="tab-rep" class="container">
+    <main id="tab-rep" class="container tab-content-vertical">
         <div style="padding:15px; background: white; margin: 10px; border-radius: 12px; border: 1px solid #e2e8f0;">
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom: 10px;">
                 <select id="rep-type" class="input-style" onchange="runReport()">
@@ -357,7 +401,7 @@
 
         function renderCart() {
             let total = 0; const list = document.getElementById('cart-list');
-            if(cart.length === 0) { list.innerHTML = '<div style="text-align:center; color:#94a3b8; font-size:12px;">ခြင်းတောင်းထဲတွင် ပစ္စည်းမရှိသေးပါ</div>'; }
+            if(cart.length === 0) { list.innerHTML = '<div style="text-align:center; color:#94a3b8; font-size:12px; margin-top:20px;">ခြင်းတောင်းထဲတွင် ပစ္စည်းမရှိသေးပါ</div>'; }
             else {
                 list.innerHTML = cart.map(i => {
                     total += i.sell * i.cQty;
@@ -366,10 +410,10 @@
                             <input type="number" class="price-edit-input" value="${i.sell}" onchange="updateCartPrice(${i.id}, this.value)"> <small>Ks</small>
                         </div>
                         <div style="display:flex;align-items:center;gap:8px;">
-                            <button onclick="adjustQty(${i.id},-1)" style="border:none;width:25px;height:25px;border-radius:50%;">-</button>
+                            <button onclick="adjustQty(${i.id},-1)" style="border:none;width:25px;height:25px;border-radius:50%;cursor:pointer;">-</button>
                             <b>${i.cQty}</b>
-                            <button onclick="adjustQty(${i.id},1)" style="border:none;width:25px;height:25px;border-radius:50%;">+</button>
-                            <i class="fas fa-trash" style="color:red;margin-left:5px;" onclick="removeItem(${i.id})"></i>
+                            <button onclick="adjustQty(${i.id},1)" style="border:none;width:25px;height:25px;border-radius:50%;cursor:pointer;">+</button>
+                            <i class="fas fa-trash" style="color:red;margin-left:5px;cursor:pointer;" onclick="removeItem(${i.id})"></i>
                         </div>
                     </div>`;
                 }).join('');
@@ -578,4 +622,3 @@
     </script>
 </body>
 </html>
-
