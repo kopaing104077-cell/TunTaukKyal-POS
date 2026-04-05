@@ -191,7 +191,7 @@
         </div>
         <div class="table-wrap">
             <table>
-                <thead><tr><th>ရက်စွဲ</th><th>ဝယ်သူ/ဝန်ထမ်း</th><th>စုစုပေါင်း</th><th style="text-align:center;">Action</th></tr></thead>
+                <thead><tr><th>Voucher #</th><th>ရက်စွဲ</th><th>ဝယ်သူ/ဝန်ထမ်း</th><th>စုစုပေါင်း</th><th style="text-align:center;">Action</th></tr></thead>
                 <tbody id="rep-body"></tbody>
             </table>
         </div>
@@ -290,6 +290,11 @@
             if(sessionStorage.getItem('TTK_ADMIN')) { isAdmin=true; document.getElementById('logout-btn').style.display='block'; }
         };
 
+        // Formatting Function for Voucher (0000001)
+        function formatVoucher(id) {
+            return id.toString().padStart(7, '0');
+        }
+
         async function loadProducts() {
             try {
                 const { data, error } = await _sb.from('products').select('*').order('name');
@@ -386,7 +391,7 @@
                 <div class="r-header-sub">အမှတ်(၁၅)၊ ထင်းရှူးရိပ်သာ(၁)ပတ်လမ်း၊ ဇေကမ္ဘာဝင်း</div>
                 <div class="r-header-sub">မင်္ဂလာဒုံမြို့နယ်</div>
                 <div class="r-header-sub">09-777715161, 09-940005161</div>
-                <div class="r-info">${isReprint ? '[RE-PRINT]<br>' : ''}VOUCHER# ${data.id}<br>Date: ${data.date}<br>Time: ${data.time || '-'}<br>Cust: ${data.cust}</div>
+                <div class="r-info">${isReprint ? '[RE-PRINT]<br>' : ''}VOUCHER# ${formatVoucher(data.id)}<br>Date: ${data.date}<br>Time: ${data.time || '-'}<br>Cust: ${data.cust}</div>
                 <table class="r-table"><thead><tr><th class="c-name">Item</th><th class="c-qty">Qty</th><th class="c-price">Price</th><th class="c-amt">Amount</th></tr></thead><tbody>${rows}</tbody></table>
                 <div class="r-summary"><div class="r-row"><span class="r-label">Total</span><span class="r-val">${data.rev.toLocaleString()} Ks</span></div></div>
                 <div class="r-footer">*** ဝယ်ယူအားပေးမှုကို ကျေးဇူးတင်ပါသည်။ ***</div></div>`;
@@ -432,7 +437,7 @@
             salesData.forEach(s => { 
                 r += s.rev; p += s.prof; 
                 rows += `<tr onclick="viewSaleDetails(${s.id})" style="cursor:pointer;">
-                    <td>${s.date}</td><td>${s.cust}</td><td>${s.rev.toLocaleString()}</td>
+                    <td><b>${formatVoucher(s.id)}</b></td><td>${s.date}</td><td>${s.cust}</td><td>${s.rev.toLocaleString()}</td>
                     <td style="text-align:center; display:flex; gap:5px; justify-content:center;">
                         <button onclick="event.stopPropagation(); rePrintSale(${s.id})" style="border:none;background:var(--midnight);color:white;padding:5px 8px;border-radius:5px;" title="Print"><i class="fas fa-print"></i></button>
                         <button onclick="event.stopPropagation(); exportSaleToExcel(${s.id})" style="border:none;background:var(--excel);color:white;padding:5px 8px;border-radius:5px;" title="Export Excel"><i class="fas fa-file-excel"></i></button>
@@ -441,17 +446,16 @@
             }); 
             document.getElementById('sum-rev').innerText = r.toLocaleString();
             document.getElementById('sum-prof').innerText = p.toLocaleString();
-            document.getElementById('rep-body').innerHTML = rows || '<tr><td colspan="4" style="text-align:center;">စာရင်းမရှိပါ</td></tr>';
+            document.getElementById('rep-body').innerHTML = rows || '<tr><td colspan="5" style="text-align:center;">စာရင်းမရှိပါ</td></tr>';
         }
 
         function exportSaleToExcel(id) {
             const sale = salesData.find(s => s.id === id);
             if (!sale) return;
 
-            // Prepare Data for Sheet
             const reportRows = [
                 ["ထွန်းတောက်ကြယ် - အရောင်းဘောင်ချာ"],
-                ["ဘောင်ချာနံပါတ်", sale.id],
+                ["ဘောင်ချာနံပါတ်", formatVoucher(sale.id)],
                 ["ရက်စွဲ", sale.date],
                 ["ဝယ်သူ/ဝန်ထမ်း", sale.cust],
                 [""],
@@ -475,8 +479,7 @@
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, "Sale_Voucher");
 
-            // Save File
-            const fileName = `TTK_Voucher_${sale.id}_${sale.date}.xlsx`;
+            const fileName = `TTK_Voucher_${formatVoucher(sale.id)}_${sale.date}.xlsx`;
             XLSX.writeFile(wb, fileName);
         }
 
@@ -490,7 +493,7 @@
         function viewSaleDetails(id) {
             const sale = salesData.find(s => s.id === id);
             if(!sale) return;
-            let itemHtml = `<b>ဘောင်ချာရှင်:</b> ${sale.cust}<br><br><table style="width:100%;"><thead><tr><th>ပစ္စည်း</th><th>Qty</th><th>ဈေး</th><th>စုစုပေါင်း</th></tr></thead><tbody>`;
+            let itemHtml = `<b>ဘောင်ချာနံပါတ်:</b> ${formatVoucher(sale.id)}<br><b>ဘောင်ချာရှင်:</b> ${sale.cust}<br><br><table style="width:100%;"><thead><tr><th>ပစ္စည်း</th><th>Qty</th><th>ဈေး</th><th>စုစုပေါင်း</th></tr></thead><tbody>`;
             sale.items.forEach(item => {
                 itemHtml += `<tr><td>${item.name}</td><td style="text-align:center;">${item.qty}</td><td style="text-align:right;">${item.sell.toLocaleString()}</td><td style="text-align:right;">${(item.sell * item.qty).toLocaleString()}</td></tr>`;
             });
@@ -559,7 +562,6 @@
             let finalQty = currentQty + newQtyIn;
             let finalBuy = currentBuy;
 
-            // Weighted Average Cost Calculation
             if (newQtyIn > 0 && newBuyIn > 0) {
                 let totalCost = (currentQty * currentBuy) + (newQtyIn * newBuyIn);
                 finalBuy = Math.round(totalCost / finalQty);
@@ -576,3 +578,4 @@
     </script>
 </body>
 </html>
+
