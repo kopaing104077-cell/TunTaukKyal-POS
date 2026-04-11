@@ -12,7 +12,7 @@
         :root { --midnight: #020617; --primary: #1e293b; --green: #10b981; --red: #ef4444; --gold: #fbbf24; --bg: #f8fafc; --excel: #1d6f42; }
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Pyidaungsu', sans-serif; }
         
-        body { background: var(--bg); height: 100dvh; display: flex; flex-direction: column; overflow: hidden; width: 100%; }
+        body { background: var(--bg); height: 100dvh; display: flex; flex-direction: column; overflow: hidden; position: fixed; width: 100%; }
 
         /* Header & Status */
         .header { background: var(--midnight); color: white; height: 55px; padding: 0 15px; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; z-index: 1000; }
@@ -20,6 +20,10 @@
         .dot { width: 8px; height: 8px; border-radius: 50%; background: #666; }
         .dot.online { background: var(--green); box-shadow: 0 0 8px var(--green); }
         .dot.offline { background: var(--red); box-shadow: 0 0 8px var(--red); }
+
+        /* View Mode for Link */
+        #view-only-mode { display: none; background: #fff; min-height: 100vh; padding: 20px; z-index: 5000; position: fixed; inset: 0; overflow-y: auto; }
+        .view-card { max-width: 400px; margin: auto; }
 
         /* Main Container */
         .container { flex: 1; overflow: hidden; display: none; width: 100%; max-width: 1200px; margin: auto; position: relative; }
@@ -73,17 +77,13 @@
 
         .stock-in-section { background: #f1f5f9; padding: 10px; border-radius: 10px; margin-top: 10px; border: 1px dashed var(--primary); }
 
-        /* Link/View Mode Style */
-        #view-only-mode { display: none; background: #eee; min-height: 100vh; padding: 20px 10px; }
-        .view-card { background: white; max-width: 400px; margin: auto; padding: 20px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-
         #receipt-render-area { display: none; }
         
         /* Print Styles */
         @media print {
             .header, .nav, .container, .overlay, .no-print { display: none !important; }
             body { background: white !important; margin: 0; padding: 0; }
-            #receipt-render-area { display: block !important; width: 100% !important; max-width: 80mm; margin: 0 auto; padding: 0; color: #000; font-family: 'Pyidaungsu', sans-serif; }
+            #receipt-render-area, #view-only-mode { display: block !important; width: 100% !important; max-width: 80mm; margin: 0 auto; padding: 0; color: #000; font-family: 'Pyidaungsu', sans-serif; }
             .r-center { width: 100%; text-align: center; }
             .r-header-title { font-size: 20px; font-weight: bold; }
             .r-header-sub { font-size: 11px; margin-top: 2px; }
@@ -112,7 +112,7 @@
             <button class="btn btn-dark no-print" onclick="window.print()" style="margin-top:20px;">
                 <i class="fas fa-print"></i> Printer ဖြင့်ထုတ်မည်
             </button>
-            <button class="btn no-print" onclick="window.location.href=window.location.pathname" style="margin-top:10px; background:#ddd;">
+            <button class="btn no-print" onclick="window.location.href=window.location.pathname" style="margin-top:10px; background:#eee;">
                 <i class="fas fa-home"></i> ဆိုင်သို့ပြန်သွားရန်
             </button>
         </div>
@@ -207,7 +207,7 @@
         </div>
         <div class="table-wrap">
             <table>
-                <thead><tr><th>Voucher #</th><th>ရက်စွဲ</th><th>ဝယ်သူ</th><th>စုစုပေါင်း</th><th style="text-align:center;">Action</th></tr></thead>
+                <thead><tr><th>Voucher #</th><th>ရက်စွဲ</th><th>ဝယ်သူ/ဝန်ထမ်း</th><th>စုစုပေါင်း</th><th style="text-align:center;">Action</th></tr></thead>
                 <tbody id="rep-body"></tbody>
             </table>
         </div>
@@ -236,18 +236,18 @@
             <label style="font-size: 11px; color: #666;">ပစ္စည်းအမည်</label>
             <input type="text" id="p-name" class="input-style" placeholder="ပစ္စည်းအမည်" style="margin-bottom:10px;">
             <label style="font-size: 11px; color: #666;">ယူနစ်</label>
-            <input type="text" id="p-unit" class="input-style" placeholder="ယူနစ်" style="margin-bottom:10px;">
+            <input type="text" id="p-unit" class="input-style" placeholder="ယူနစ် (ဥပမာ- ခု)" style="margin-bottom:10px;">
             <div class="input-group">
-                <div><label style="font-size: 11px; color: #666;">ဝယ်ဈေး</label><input type="number" id="p-buy" class="input-style"></div>
+                <div><label style="font-size: 11px; color: #666;">ဝယ်ဈေး (ပျမ်းမျှ)</label><input type="number" id="p-buy" class="input-style"></div>
                 <div><label style="font-size: 11px; color: #666;">ရောင်းဈေး</label><input type="number" id="p-sell" class="input-style"></div>
             </div>
-            <label style="font-size: 11px; color: #666;">လက်ကျန်</label>
+            <label style="font-size: 11px; color: #666;">လက်ရှိလက်ကျန်</label>
             <input type="number" id="p-qty" class="input-style" style="margin-bottom:10px;">
-            <div class="stock-in-section">
-                <p style="font-size: 12px; font-weight: bold;">+ အသစ်ဝယ်ယူမှု</p>
+            <div id="stock-in-area" class="stock-in-section">
+                <p style="font-size: 12px; font-weight: bold; margin-bottom: 5px;">+ အသစ်ဝယ်ယူမှု ထည့်ရန်</p>
                 <div class="input-group">
                     <input type="number" id="p-new-qty" class="input-style" placeholder="အရေအတွက်" value="0">
-                    <input type="number" id="p-new-buy" class="input-style" placeholder="ဈေး" value="0">
+                    <input type="number" id="p-new-buy" class="input-style" placeholder="အသစ်ဝယ်ဈေး" value="0">
                 </div>
             </div>
             <select id="p-cat" class="input-style" style="margin-top:10px;">
@@ -261,7 +261,7 @@
 
     <div id="detail-overlay" class="overlay">
         <div class="modal-card">
-            <h3 style="text-align:center;">အရောင်းအသေးစိတ်</h3>
+            <h3 style="text-align:center; border-bottom:1px solid #eee; padding-bottom:10px;">အရောင်းအသေးစိတ်</h3>
             <div id="detail-content" style="margin-top:15px; font-size:13px;"></div>
             <button class="btn btn-dark" style="margin-top:20px;" onclick="closeOverlay('detail-overlay')">ပိတ်မည်</button>
         </div>
@@ -275,17 +275,14 @@
         let products = [], cart = [], isAdmin = false, curCat = "all", curStockCat = "all", nextTab = "", salesData = [];
 
         window.onload = async () => {
-            // URL မှာ Voucher ID ပါလာသလား စစ်ဆေးခြင်း
             const params = new URLSearchParams(window.location.search);
             const vId = params.get('v');
             
             if (vId) {
-                // Link Mode
                 document.querySelectorAll('.main-ui').forEach(el => el.style.display = 'none');
                 document.getElementById('view-only-mode').style.display = 'block';
                 await loadLinkVoucher(vId);
             } else {
-                // POS Mode
                 document.getElementById('rep-date').value = new Date().toISOString().split('T')[0];
                 if(sessionStorage.getItem('TTK_ADMIN')) { isAdmin=true; document.getElementById('logout-btn').style.display='block'; }
                 loadProducts();
@@ -295,16 +292,10 @@
         async function loadLinkVoucher(id) {
             try {
                 const { data, error } = await _sb.from('sales').select('*').eq('id', id).single();
-                if (error || !data) {
-                    document.getElementById('link-receipt-content').innerHTML = "Voucher ရှာမတွေ့ပါ";
-                    return;
-                }
+                if (error || !data) { document.getElementById('link-receipt-content').innerHTML = "Voucher ရှာမတွေ့ပါ။"; return; }
                 const html = generateReceiptHTML(data);
                 document.getElementById('link-receipt-content').innerHTML = html;
-                document.getElementById('receipt-render-area').innerHTML = html;
-            } catch (e) {
-                document.getElementById('link-receipt-content').innerHTML = "Error connecting to server";
-            }
+            } catch (e) { document.getElementById('link-receipt-content').innerHTML = "Error connecting..."; }
         }
 
         function formatVoucher(id) { return id.toString().padStart(7, '0'); }
@@ -317,9 +308,7 @@
                 document.getElementById('status-dot').className = 'dot online';
                 document.getElementById('status-text').innerText = 'Online';
                 refreshUI();
-            } catch (err) {
-                document.getElementById('status-dot').className = 'dot offline';
-            }
+            } catch (err) { document.getElementById('status-dot').className = 'dot offline'; }
         }
 
         function refreshUI() {
@@ -350,16 +339,6 @@
             renderCart();
         }
 
-        function updateCartPrice(id, newPrice) {
-            const item = cart.find(x => x.id === id);
-            if (item) { item.sell = parseInt(newPrice) || 0; renderTotalOnly(); }
-        }
-
-        function renderTotalOnly() {
-            let total = 0; cart.forEach(i => total += (i.sell * i.cQty));
-            document.getElementById('cart-total').innerText = total.toLocaleString();
-        }
-
         function renderCart() {
             let total = 0; const list = document.getElementById('cart-list');
             if(cart.length === 0) list.innerHTML = '<div style="text-align:center; color:#94a3b8; font-size:12px;">ခြင်းတောင်းထဲတွင် ပစ္စည်းမရှိသေးပါ</div>';
@@ -368,17 +347,19 @@
                     total += i.sell * i.cQty;
                     return `<div class="cart-item"><div style="flex:1;"><b>${i.name}</b><br>
                         <input type="number" class="price-edit-input" value="${i.sell}" onchange="updateCartPrice(${i.id}, this.value)"> <small>Ks</small></div>
-                        <div style="display:flex;align-items:center;gap:8px;"><button onclick="adjustQty(${i.id},-1)">-</button><b>${i.cQty}</b><button onclick="adjustQty(${i.id},1)">+</button>
-                        <i class="fas fa-trash" style="color:red;" onclick="removeItem(${i.id})"></i></div></div>`;
+                        <div style="display:flex;align-items:center;gap:8px;"><button onclick="adjustQty(${i.id},-1)" style="border:none;width:25px;height:25px;border-radius:50%;">-</button>
+                        <b>${i.cQty}</b><button onclick="adjustQty(${i.id},1)" style="border:none;width:25px;height:25px;border-radius:50%;">+</button>
+                        <i class="fas fa-trash" style="color:red;margin-left:5px;" onclick="removeItem(${i.id})"></i></div></div>`;
                 }).join('');
             }
             document.getElementById('cart-total').innerText = total.toLocaleString();
         }
 
+        function updateCartPrice(id, newPrice) { const item = cart.find(x => x.id === id); if (item) { item.sell = parseInt(newPrice) || 0; renderTotalOnly(); } }
+        function renderTotalOnly() { let total = 0; cart.forEach(i => total += (i.sell * i.cQty)); document.getElementById('cart-total').innerText = total.toLocaleString(); }
         function adjustQty(id, d) { const i = cart.find(x => x.id === id); if(i) { i.cQty += d; if(i.cQty <= 0) removeItem(id); renderCart(); } }
         function removeItem(id) { cart = cart.filter(x => x.id !== id); renderCart(); }
 
-        // PRINT & LINK LOGIC
         function generateReceiptHTML(data, isReprint = false) {
             let rows = "";
             data.items.forEach(i => {
@@ -394,20 +375,8 @@
                 <div class="r-footer">*** ဝယ်ယူအားပေးမှုကို ကျေးဇူးတင်ပါသည်။ ***</div></div>`;
         }
 
-        function shareVoucherLink(id) {
-            const link = `${window.location.origin}${window.location.pathname}?v=${id}`;
-            if (navigator.share) {
-                navigator.share({ title: 'Htun Tauk Kywal Voucher', url: link });
-            } else {
-                navigator.clipboard.writeText(link);
-                alert("ဘောင်ချာ Link ကို Copy ကူးလိုက်ပါပြီ။");
-            }
-        }
-
         async function processSale() {
             if(!cart.length) return;
-            const now = new Date();
-            const date = now.toISOString().split('T')[0];
             const staff = document.getElementById('staff-name').value || "Admin";
             const cust = document.getElementById('cust-name').value || "Guest";
             let rev=0, prof=0;
@@ -417,12 +386,12 @@
             });
 
             try {
-                const { data: inserted, error: saleErr } = await _sb.from('sales').insert([{ date, rev, prof, cust: `${cust} (${staff})`, items }]).select();
-                if(saleErr) throw saleErr;
+                const { data: inserted, error } = await _sb.from('sales').insert([{ date: new Date().toISOString().split('T')[0], rev, prof, cust: `${cust} (${staff})`, items }]).select();
+                if(error) throw error;
                 for(let i of cart) { await _sb.from('products').update({ qty: i.qty - i.cQty }).eq('id', i.id); }
                 document.getElementById('receipt-render-area').innerHTML = generateReceiptHTML(inserted[0]);
                 setTimeout(() => { window.print(); cart = []; renderCart(); loadProducts(); }, 500);
-            } catch (e) { alert("Error."); }
+            } catch (e) { alert("Error processing sale."); }
         }
 
         async function runReport() {
@@ -436,15 +405,47 @@
             let r=0, p=0;
             document.getElementById('rep-body').innerHTML = salesData.map(s => { 
                 r += s.rev; p += s.prof; 
-                return `<tr onclick="viewSaleDetails(${s.id})">
+                return `<tr onclick="viewSaleDetails(${s.id})" style="cursor:pointer;">
                     <td><b>${formatVoucher(s.id)}</b></td><td>${s.date}</td><td>${s.cust}</td><td>${s.rev.toLocaleString()}</td>
-                    <td style="display:flex; gap:5px; justify-content:center;">
-                        <button onclick="event.stopPropagation(); shareVoucherLink(${s.id})" style="background:#0ea5e9; color:white; border:none; padding:5px; border-radius:5px;"><i class="fas fa-share-alt"></i></button>
-                        <button onclick="event.stopPropagation(); rePrintSale(${s.id})" style="background:var(--midnight);color:white;border:none;padding:5px;border-radius:5px;"><i class="fas fa-print"></i></button>
+                    <td style="text-align:center; display:flex; gap:5px; justify-content:center;">
+                        <button onclick="event.stopPropagation(); shareLink(${s.id})" style="background:#0ea5e9;color:white;border:none;padding:5px;border-radius:5px;" title="Link Share"><i class="fas fa-share-alt"></i></button>
+                        <button onclick="event.stopPropagation(); rePrintSale(${s.id})" style="background:var(--midnight);color:white;border:none;padding:5px;border-radius:5px;" title="Print"><i class="fas fa-print"></i></button>
+                        <button onclick="event.stopPropagation(); exportToExcel(${s.id})" style="background:var(--excel);color:white;border:none;padding:5px;border-radius:5px;" title="Excel"><i class="fas fa-file-excel"></i></button>
+                        <button onclick="event.stopPropagation(); deleteSale(${s.id})" style="background:var(--red);color:white;border:none;padding:5px;border-radius:5px;" title="Delete"><i class="fas fa-trash"></i></button>
                     </td></tr>`; 
-            }).join('') || '<tr><td colspan="5" style="text-align:center;">မရှိပါ</td></tr>';
+            }).join('') || '<tr><td colspan="5" style="text-align:center;">စာရင်းမရှိပါ။</td></tr>';
             document.getElementById('sum-rev').innerText = r.toLocaleString();
             document.getElementById('sum-prof').innerText = p.toLocaleString();
+        }
+
+        function shareLink(id) {
+            const url = `${window.location.origin}${window.location.pathname}?v=${id}`;
+            if (navigator.share) { navigator.share({ title: 'Voucher', url: url }); } 
+            else { navigator.clipboard.writeText(url); alert("Link ကို Copy ကူးလိုက်ပါပြီ။"); }
+        }
+
+        function exportToExcel(id) {
+            const s = salesData.find(x => x.id === id); if(!s) return;
+            const rows = [["ထွန်းတောက်ကြယ် POS"], ["ဘောင်ချာနံပါတ်", formatVoucher(s.id)], ["ရက်စွဲ", s.date], ["ဝယ်သူ/ဝန်ထမ်း", s.cust], [""], ["ပစ္စည်းအမည်", "အရေအတွက်", "ဈေးနှုန်း", "စုစုပေါင်း"]];
+            s.items.forEach(i => rows.push([i.name, i.qty, i.sell, i.sell * i.qty]));
+            rows.push(["", "", "Total:", s.rev]);
+            const ws = XLSX.utils.aoa_to_sheet(rows);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Sale");
+            XLSX.writeFile(wb, `Voucher_${formatVoucher(s.id)}.xlsx`);
+        }
+
+        async function deleteSale(id) {
+            if(!confirm("ဤဘောင်ချာကို ဖျက်ရန် သေချာပါသလား? Stock များ ပြန်တိုးသွားပါမည်။")) return;
+            const s = salesData.find(x => x.id === id); if(!s) return;
+            try {
+                for(let i of s.items) {
+                    const p = products.find(x => x.id === i.id);
+                    if(p) await _sb.from('products').update({ qty: p.qty + i.qty }).eq('id', i.id);
+                }
+                await _sb.from('sales').delete().eq('id', id);
+                alert("ဖျက်ပြီးပါပြီ။"); loadProducts(); runReport();
+            } catch (e) { alert("Error deleting sale."); }
         }
 
         function rePrintSale(id) {
@@ -455,12 +456,13 @@
 
         function viewSaleDetails(id) {
             const s = salesData.find(x => x.id === id); if(!s) return;
-            document.getElementById('detail-content').innerHTML = `<b>Voucher:</b> ${formatVoucher(s.id)}<br><b>Cust:</b> ${s.cust}<hr><br>` + 
-                s.items.map(i => `${i.name} (${i.qty}) = ${(i.sell*i.qty).toLocaleString()}`).join('<br>') + `<br><br><b>Total: ${s.rev.toLocaleString()}</b>`;
+            let html = `<b>Voucher:</b> ${formatVoucher(s.id)}<br><b>Cust:</b> ${s.cust}<hr><br><table>`;
+            s.items.forEach(i => { html += `<tr><td>${i.name}</td><td>${i.qty}</td><td>${i.sell.toLocaleString()}</td></tr>`; });
+            html += `</table><br><b>Total: ${s.rev.toLocaleString()} Ks</b>`;
+            document.getElementById('detail-content').innerHTML = html;
             document.getElementById('detail-overlay').style.display = 'flex';
         }
 
-        // NAVIGATION
         function navTo(tid, btn) {
             document.querySelectorAll('.container').forEach(c => c.classList.remove('active'));
             document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
@@ -470,17 +472,16 @@
         }
 
         function askPass(tid, btn) { if(isAdmin) navTo(tid, btn); else { nextTab=tid; document.getElementById('login-overlay').style.display='flex'; } }
-        function checkPass() { if(document.getElementById('pass-input').value === "111111") { isAdmin=true; sessionStorage.setItem('TTK_ADMIN','1'); document.getElementById('login-overlay').style.display='none'; navTo(nextTab, document.getElementById('n-' + nextTab.split('-')[1])); } else alert("Error"); }
+        function checkPass() { if(document.getElementById('pass-input').value === "111111") { isAdmin=true; sessionStorage.setItem('TTK_ADMIN','1'); document.getElementById('login-overlay').style.display='none'; navTo(nextTab, document.getElementById('n-' + nextTab.split('-')[1])); } else alert("Password မှားနေပါသည်။"); }
         function closeOverlay(id) { document.getElementById(id).style.display='none'; }
         function logout() { sessionStorage.clear(); location.reload(); }
         function setCategory(c, b) { curCat = c; document.querySelectorAll('#tab-sales .cat-btn').forEach(x => x.classList.remove('active')); b.classList.add('active'); refreshUI(); }
         function setStockCategory(c, b) { curStockCat = c; document.querySelectorAll('#tab-stock .cat-btn').forEach(x => x.classList.remove('active')); b.classList.add('active'); refreshUI(); }
 
-        // PRODUCT MGMT
         function openAddModal() { 
             document.getElementById('edit-id').value = ""; document.getElementById('p-name').value = ""; document.getElementById('p-buy').value = "";
-            document.getElementById('p-sell').value = ""; document.getElementById('p-qty').value = ""; document.getElementById('del-btn').style.display='none';
-            document.getElementById('add-overlay').style.display='flex'; 
+            document.getElementById('p-sell').value = ""; document.getElementById('p-qty').value = ""; document.getElementById('p-new-qty').value = 0; 
+            document.getElementById('p-new-buy').value = 0; document.getElementById('del-btn').style.display='none'; document.getElementById('add-overlay').style.display='flex'; 
         }
 
         function editProduct(id) {
@@ -506,7 +507,7 @@
             closeOverlay('add-overlay'); loadProducts();
         }
 
-        async function deleteProduct() { if(confirm("ဖျက်မှာလား?")) { await _sb.from('products').delete().eq('id', document.getElementById('edit-id').value); closeOverlay('add-overlay'); loadProducts(); } }
+        async function deleteProduct() { if(confirm("ဤပစ္စည်းကို ဖျက်မှာ သေချာလား?")) { await _sb.from('products').delete().eq('id', document.getElementById('edit-id').value); closeOverlay('add-overlay'); loadProducts(); } }
     </script>
 </body>
 </html>
