@@ -9,7 +9,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     
     <style>
-        :root { --midnight: #020617; --primary: #1e293b; --green: #10b981; --red: #ef4444; --gold: #fbbf24; --bg: #f8fafc; --excel: #1d6f42; }
+        :root { --midnight: #020617; --primary: #1e293b; --green: #10b981; --red: #ef4444; --gold: #fbbf24; --bg: #f8fafc; --excel: #1d6f42; --viber: #7360f2; }
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Pyidaungsu', sans-serif; }
         
         body { background: var(--bg); height: 100dvh; display: flex; flex-direction: column; overflow: hidden; position: fixed; width: 100%; }
@@ -70,14 +70,21 @@
         .btn { padding: 10px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 5px; width: 100%; }
         .btn-dark { background: var(--midnight); color: white; }
         .btn-excel { background: var(--excel); color: white; }
+        .btn-viber { background: var(--viber); color: white; }
 
         .stock-in-section { background: #f1f5f9; padding: 10px; border-radius: 10px; margin-top: 10px; border: 1px dashed var(--primary); }
 
         #receipt-render-area { display: none; }
         
+        /* Share View Hide UI */
+        body.share-mode .header, 
+        body.share-mode .nav, 
+        body.share-mode .container { display: none !important; }
+        body.share-mode #receipt-render-area { display: block !important; padding: 20px; background: white; height: 100dvh; overflow-y: auto; }
+
         /* Print Styles */
         @media print {
-            .header, .nav, .container, .overlay { display: none !important; }
+            .header, .nav, .container, .overlay, .no-print { display: none !important; }
             body { background: white !important; margin: 0; padding: 0; }
             #receipt-render-area { display: block !important; width: 100% !important; max-width: 80mm; margin: 0 auto; padding: 0; color: #000; font-family: 'Pyidaungsu', sans-serif; }
             .r-center { width: 100%; text-align: center; }
@@ -142,7 +149,12 @@
 
     <main id="tab-stock" class="container">
         <div style="padding:15px; flex-shrink:0;">
-            <h3><i class="fas fa-list-ul"></i> လက်ရှိလက်ကျန်</h3>
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <h3><i class="fas fa-list-ul"></i> လက်ရှိလက်ကျန်</h3>
+                <button class="btn btn-viber" style="width:auto; padding:5px 10px; font-size:12px;" onclick="shareStockToViber()">
+                    <i class="fab fa-viber"></i> စာရင်း Share မည်
+                </button>
+            </div>
             <div class="cat-scroll" style="margin-top:10px;">
                 <button class="cat-btn active" onclick="setStockCategory('all', this)">အားလုံး</button>
                 <button class="cat-btn" onclick="setStockCategory('အအေး', this)">အအေး</button>
@@ -285,12 +297,38 @@
         let products = [], cart = [], isAdmin = false, curCat = "all", curStockCat = "all", nextTab = "", salesData = [];
 
         window.onload = () => {
-            document.getElementById('rep-date').value = new Date().toISOString().split('T')[0];
-            loadProducts();
-            if(sessionStorage.getItem('TTK_ADMIN')) { isAdmin=true; document.getElementById('logout-btn').style.display='block'; }
+            const urlParams = new URLSearchParams(window.location.search);
+            const shareVoucherId = urlParams.get('v');
+            
+            if (shareVoucherId) {
+                handleShareView(shareVoucherId);
+            } else {
+                document.getElementById('rep-date').value = new Date().toISOString().split('T')[0];
+                loadProducts();
+                if(sessionStorage.getItem('TTK_ADMIN')) { isAdmin=true; document.getElementById('logout-btn').style.display='block'; }
+            }
         };
 
-        // Formatting Function for Voucher (0000001)
+        // SHARED VOUCHER VIEW LOGIC
+        async function handleShareView(id) {
+            document.body.classList.add('share-mode');
+            const renderArea = document.getElementById('receipt-render-area');
+            renderArea.innerHTML = "<div style='text-align:center; padding:50px;'>ဘောင်ချာကို ရှာဖွေနေပါသည်...</div>";
+            
+            try {
+                const { data, error } = await _sb.from('sales').select('*').eq('id', id).single();
+                if (error || !data) throw error;
+                
+                renderArea.innerHTML = generateReceiptHTML(data) + `
+                    <div class="no-print" style="margin-top:30px; display:flex; flex-direction:column; gap:10px;">
+                        <button class="btn btn-dark" onclick="window.print()"><i class="fas fa-print"></i> Bluetooth Printer ဖြင့်ထုတ်မည်</button>
+                        <button class="btn" style="background:#eee;" onclick="window.location.href=window.location.pathname">ပင်မစာမျက်နှာသို့</button>
+                    </div>`;
+            } catch (e) {
+                renderArea.innerHTML = "<div style='text-align:center; padding:50px; color:red;'>ဘောင်ချာရှာမတွေ့ပါ သို့မဟုတ် ပျက်သွားပါပြီ။</div>";
+            }
+        }
+
         function formatVoucher(id) {
             return id.toString().padStart(7, '0');
         }
@@ -383,15 +421,16 @@
         // PRINT LOGIC
         function generateReceiptHTML(data, isReprint = false) {
             let rows = "";
-            data.items.forEach(i => {
+            const items = Array.isArray(data.items) ? data.items : JSON.parse(data.items || '[]');
+            items.forEach(i => {
                 rows += `<tr><td class="c-name">${i.name}</td><td class="c-qty">${i.qty} ${i.unit||''}</td><td class="c-price">${i.sell.toLocaleString()}</td><td class="c-amt">${(i.sell * i.qty).toLocaleString()}</td></tr>`;
             });
             return `<div class="r-center">
                 <div class="r-header-title">ထွန်းတောက်ကြယ်</div>
-                <div class="r-header-sub">အမှတ်(၁၅)၊ ထင်းရှူးရိပ်သာ(၁)ပတ်လမ်း၊ ဇေကမ္ဘာဝင်း</div>
+                <div class="r-header-sub">အမှတ်(၁၁၅)၊ ထင်းရှူးရိပ်သာ(၁)ပတ်လမ်း၊ ဇေကမ္ဘာဝင်း</div>
                 <div class="r-header-sub">မင်္ဂလာဒုံမြို့နယ်</div>
                 <div class="r-header-sub">09-777715161, 09-940005161</div>
-                <div class="r-info">${isReprint ? '[RE-PRINT]<br>' : ''}VOUCHER# ${formatVoucher(data.id)}<br>Date: ${data.date}<br>Time: ${data.time || '-'}<br>Cust: ${data.cust}</div>
+                <div class="r-info">${isReprint ? '[RE-PRINT]<br>' : ''}VOUCHER# ${formatVoucher(data.id)}<br>Date: ${data.date}<br>Cust: ${data.cust}</div>
                 <table class="r-table"><thead><tr><th class="c-name">Item</th><th class="c-qty">Qty</th><th class="c-price">Price</th><th class="c-amt">Amount</th></tr></thead><tbody>${rows}</tbody></table>
                 <div class="r-summary"><div class="r-row"><span class="r-label">Total</span><span class="r-val">${data.rev.toLocaleString()} Ks</span></div></div>
                 <div class="r-footer">*** ဝယ်ယူအားပေးမှုကို ကျေးဇူးတင်ပါသည်။ ***</div></div>`;
@@ -403,7 +442,6 @@
 
             const now = new Date();
             const date = now.toISOString().split('T')[0];
-            const time = now.toLocaleTimeString('en-GB');
             const staff = document.getElementById('staff-name').value || "Admin";
             const cust = document.getElementById('cust-name').value || "Guest";
             let rev=0, prof=0;
@@ -419,9 +457,19 @@
 
                 for(let i of cart) { await _sb.from('products').update({ qty: i.qty - i.cQty }).eq('id', i.id); }
 
-                document.getElementById('receipt-render-area').innerHTML = generateReceiptHTML({ id: inserted[0].id, date, time, cust: `${cust} (Clerk: ${staff})`, rev, items });
+                document.getElementById('receipt-render-area').innerHTML = generateReceiptHTML({ id: inserted[0].id, date, cust: `${cust} (Clerk: ${staff})`, rev, items });
                 setTimeout(() => { window.print(); cart = []; document.getElementById('cust-name').value = ""; renderCart(); loadProducts(); }, 500);
             } catch (e) { alert("Error processing sale."); }
+        }
+
+        // SHARE VOUCHER FUNCTION
+        function shareVoucherLink(id) {
+            const shareUrl = `${window.location.origin}${window.location.pathname}?v=${id}`;
+            if (navigator.share) {
+                navigator.share({ title: 'Htun Tauk Kywal Voucher', text: 'ထွန်းတောက်ကြယ် အရောင်းဘောင်ချာ', url: shareUrl });
+            } else {
+                prompt("Copy this link to share:", shareUrl);
+            }
         }
 
         // REPORT & EXCEL EXPORT
@@ -439,6 +487,7 @@
                 rows += `<tr onclick="viewSaleDetails(${s.id})" style="cursor:pointer;">
                     <td><b>${formatVoucher(s.id)}</b></td><td>${s.date}</td><td>${s.cust}</td><td>${s.rev.toLocaleString()}</td>
                     <td style="text-align:center; display:flex; gap:5px; justify-content:center;">
+                        <button onclick="event.stopPropagation(); shareVoucherLink(${s.id})" style="border:none;background:#4a90e2;color:white;padding:5px 8px;border-radius:5px;" title="Share Link"><i class="fas fa-share-alt"></i></button>
                         <button onclick="event.stopPropagation(); rePrintSale(${s.id})" style="border:none;background:var(--midnight);color:white;padding:5px 8px;border-radius:5px;" title="Print"><i class="fas fa-print"></i></button>
                         <button onclick="event.stopPropagation(); exportSaleToExcel(${s.id})" style="border:none;background:var(--excel);color:white;padding:5px 8px;border-radius:5px;" title="Export Excel"><i class="fas fa-file-excel"></i></button>
                         <button onclick="event.stopPropagation(); deleteSale(${s.id})" style="border:none;background:var(--red);color:white;padding:5px 8px;border-radius:5px;" title="Delete"><i class="fas fa-trash"></i></button>
@@ -449,38 +498,51 @@
             document.getElementById('rep-body').innerHTML = rows || '<tr><td colspan="5" style="text-align:center;">စာရင်းမရှိပါ</td></tr>';
         }
 
+        // STOCK SHARE TO VIBER (AS EXCEL)
+        async function shareStockToViber() {
+            const categories = ["အအေး", "ကော်ဖီ", "ခေါက်ဆွဲ", "မီးဖိုချောင်သုံး", "လူသုံးကုန်", "အခြား"];
+            const wb = XLSX.utils.book_new();
+
+            categories.forEach(cat => {
+                const catItems = products.filter(p => p.category === cat);
+                if (catItems.length > 0) {
+                    const wsData = [
+                        ["ထွန်းတောက်ကြယ် လက်ကျန်စာရင်း - " + cat],
+                        ["ရက်စွဲ - " + new Date().toLocaleDateString()],
+                        [""],
+                        ["ပစ္စည်းအမည်", "ယူနစ်", "ရောင်းဈေး", "လက်ကျန်အရေအတွက်"]
+                    ];
+                    catItems.forEach(i => wsData.push([i.name, i.unit || "ခု", i.sell, i.qty]));
+                    const ws = XLSX.utils.aoa_to_sheet(wsData);
+                    XLSX.utils.book_append_sheet(wb, ws, cat);
+                }
+            });
+
+            const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+            const file = new File([wbout], `Stock_Report_${new Date().toISOString().split('T')[0]}.xlsx`, { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+
+            if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                navigator.share({
+                    files: [file],
+                    title: 'Stock Report',
+                    text: 'ထွန်းတောက်ကြယ် လက်ကျန်ပစ္စည်းစာရင်းများ'
+                });
+            } else {
+                XLSX.writeFile(wb, `Stock_Report.xlsx`);
+                alert("Excel File ကို Download ပြုလုပ်လိုက်ပါပြီ။ Viber မှတစ်ဆင့် ပြန်လည် Share ပေးနိုင်ပါသည်။");
+            }
+        }
+
         function exportSaleToExcel(id) {
             const sale = salesData.find(s => s.id === id);
             if (!sale) return;
-
-            const reportRows = [
-                ["ထွန်းတောက်ကြယ် - အရောင်းဘောင်ချာ"],
-                ["ဘောင်ချာနံပါတ်", formatVoucher(sale.id)],
-                ["ရက်စွဲ", sale.date],
-                ["ဝယ်သူ/ဝန်ထမ်း", sale.cust],
-                [""],
-                ["ပစ္စည်းအမည်", "အရေအတွက်", "ယူနစ်", "ဈေးနှုန်း", "စုစုပေါင်း"]
-            ];
-
-            sale.items.forEach(item => {
-                reportRows.push([
-                    item.name,
-                    item.qty,
-                    item.unit || "-",
-                    item.sell,
-                    item.sell * item.qty
-                ]);
-            });
-
-            reportRows.push([""]);
-            reportRows.push(["", "", "", "စုစုပေါင်း", sale.rev]);
-
+            const reportRows = [["ထွန်းတောက်ကြယ် - အရောင်းဘောင်ချာ"],["ဘောင်ချာနံပါတ်", formatVoucher(sale.id)],["ရက်စွဲ", sale.date],["ဝယ်သူ/ဝန်ထမ်း", sale.cust],[""],["ပစ္စည်းအမည်", "အရေအတွက်", "ယူနစ်", "ဈေးနှုန်း", "စုစုပေါင်း"]];
+            sale.items.forEach(item => { reportRows.push([item.name, item.qty, item.unit || "-", item.sell, item.sell * item.qty]); });
+            reportRows.push([""], ["", "", "", "စုစုပေါင်း", sale.rev]);
             const ws = XLSX.utils.aoa_to_sheet(reportRows);
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, "Sale_Voucher");
-
-            const fileName = `TTK_Voucher_${formatVoucher(sale.id)}_${sale.date}.xlsx`;
-            XLSX.writeFile(wb, fileName);
+            XLSX.writeFile(wb, `TTK_Voucher_${formatVoucher(sale.id)}.xlsx`);
         }
 
         function rePrintSale(id) {
@@ -494,9 +556,8 @@
             const sale = salesData.find(s => s.id === id);
             if(!sale) return;
             let itemHtml = `<b>ဘောင်ချာနံပါတ်:</b> ${formatVoucher(sale.id)}<br><b>ဘောင်ချာရှင်:</b> ${sale.cust}<br><br><table style="width:100%;"><thead><tr><th>ပစ္စည်း</th><th>Qty</th><th>ဈေး</th><th>စုစုပေါင်း</th></tr></thead><tbody>`;
-            sale.items.forEach(item => {
-                itemHtml += `<tr><td>${item.name}</td><td style="text-align:center;">${item.qty}</td><td style="text-align:right;">${item.sell.toLocaleString()}</td><td style="text-align:right;">${(item.sell * item.qty).toLocaleString()}</td></tr>`;
-            });
+            const items = Array.isArray(sale.items) ? sale.items : JSON.parse(sale.items || '[]');
+            items.forEach(item => { itemHtml += `<tr><td>${item.name}</td><td style="text-align:center;">${item.qty}</td><td style="text-align:right;">${item.sell.toLocaleString()}</td><td style="text-align:right;">${(item.sell * item.qty).toLocaleString()}</td></tr>`; });
             itemHtml += `</tbody></table><div style="text-align:right; margin-top:10px;"><b>စုစုပေါင်း: ${sale.rev.toLocaleString()} Ks</b></div>`;
             document.getElementById('detail-content').innerHTML = itemHtml;
             document.getElementById('detail-overlay').style.display = 'flex';
@@ -505,7 +566,8 @@
         async function deleteSale(id) {
             if(confirm("ဖျက်ရန် သေချာပါသလား?")) {
                 const sale = salesData.find(s => s.id === id);
-                for(let item of sale.items) {
+                const items = Array.isArray(sale.items) ? sale.items : JSON.parse(sale.items || '[]');
+                for(let item of items) {
                     const product = products.find(p => p.id === item.id);
                     if(product) await _sb.from('products').update({ qty: product.qty + item.qty }).eq('id', item.id);
                 }
@@ -553,20 +615,12 @@
             const id = document.getElementById('edit-id').value;
             const name = document.getElementById('p-name').value;
             if(!name) return alert("အမည်ထည့်ပေးပါ");
-
             let currentBuy = parseInt(document.getElementById('p-buy').value || 0);
             let currentQty = parseInt(document.getElementById('p-qty').value || 0);
             let newQtyIn = parseInt(document.getElementById('p-new-qty').value || 0);
             let newBuyIn = parseInt(document.getElementById('p-new-buy').value || 0);
-
             let finalQty = currentQty + newQtyIn;
-            let finalBuy = currentBuy;
-
-            if (newQtyIn > 0 && newBuyIn > 0) {
-                let totalCost = (currentQty * currentBuy) + (newQtyIn * newBuyIn);
-                finalBuy = Math.round(totalCost / finalQty);
-            }
-
+            let finalBuy = (newQtyIn > 0 && newBuyIn > 0) ? Math.round(((currentQty * currentBuy) + (newQtyIn * newBuyIn)) / finalQty) : currentBuy;
             const obj = { name, unit: document.getElementById('p-unit').value, buy: finalBuy, sell: parseInt(document.getElementById('p-sell').value || 0), qty: finalQty, category: document.getElementById('p-cat').value };
             try {
                 if(id) await _sb.from('products').update(obj).eq('id', id); else await _sb.from('products').insert([obj]);
@@ -578,4 +632,3 @@
     </script>
 </body>
 </html>
-
