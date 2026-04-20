@@ -78,7 +78,7 @@
         /* Share Link View Layout */
         body.share-mode { overflow-y: auto; position: static; height: auto; background: white; }
         body.share-mode .header, body.share-mode .nav, body.share-mode .container { display: none !important; }
-        body.share-mode #receipt-render-area { display: block !important; width: 100%; max-width: 500px; margin: 0 auto; padding: 20px; }
+        body.share-mode #receipt-render-area { display: block !important; width: 100%; max-width: 600px; margin: 0 auto; padding: 20px; }
         
         /* Print Styles */
         @media print {
@@ -150,7 +150,7 @@
             <div style="display:flex; justify-content:space-between; align-items:center;">
                 <h3><i class="fas fa-list-ul"></i> လက်ရှိလက်ကျန်</h3>
                 <button class="btn btn-dark" onclick="shareStockLink()" style="width:auto; padding:5px 12px; font-size:12px; background:#4a90e2;">
-                    <i class="fas fa-share-nodes"></i> စာရင်း Link Share မည်
+                    <i class="fas fa-share-nodes"></i> ဈေးနှုန်းစာရင်း Link Share မည်
                 </button>
             </div>
             <div class="cat-scroll" style="margin-top:10px;">
@@ -300,13 +300,10 @@
             const showStock = urlParams.get('stock');
 
             if (shareId) {
-                // Link မှ ဘောင်ချာကြည့်ခြင်း
                 handleShareView(shareId);
             } else if (showStock) {
-                // Link မှ Stock စာရင်းကြည့်ခြင်း
                 handleStockShareView();
             } else {
-                // POS ပုံမှန်အသုံးပြုခြင်း
                 document.getElementById('rep-date').value = new Date().toISOString().split('T')[0];
                 await loadProducts();
                 if(sessionStorage.getItem('TTK_ADMIN')) { isAdmin=true; document.getElementById('logout-btn').style.display='block'; }
@@ -337,23 +334,27 @@
         async function handleStockShareView() {
             document.body.classList.add('share-mode');
             const area = document.getElementById('receipt-render-area');
-            area.innerHTML = "<center style='margin-top:50px;'>လက်ကျန်စာရင်းကို ရှာဖွေနေပါသည်...</center>";
+            area.innerHTML = "<center style='margin-top:50px;'>ဈေးနှုန်းစာရင်းကို ရှာဖွေနေပါသည်...</center>";
 
             try {
                 const { data, error } = await _sb.from('products').select('*').order('category');
                 if (error) throw error;
 
-                let html = `<h3>ထွန်းတောက်ကြယ် လက်ကျန်စာရင်း</h3><p style="font-size:12px; color:#666;">ရက်စွဲ: ${new Date().toLocaleDateString()}</p><br>`;
-                html += `<table style="width:100%; border-collapse:collapse; border:1px solid #ccc; font-size:13px;">
-                            <thead style="background:#eee;">
-                                <tr><th style="border:1px solid #ccc; padding:8px;">အမည်</th><th style="border:1px solid #ccc; padding:8px;">အမျိုးအစား</th><th style="border:1px solid #ccc; padding:8px;">Stock</th></tr>
+                let html = `<h2 style="text-align:center;">ထွန်းတောက်ကြယ် ဈေးနှုန်းစာရင်း</h2><p style="text-align:center; font-size:12px; color:#666;">ရက်စွဲ: ${new Date().toLocaleDateString()}</p><br>`;
+                html += `<table style="width:100%; border-collapse:collapse; border:1px solid #ccc; font-size:14px;">
+                            <thead style="background:#f1f5f9;">
+                                <tr>
+                                    <th style="border:1px solid #ccc; padding:10px; text-align:left;">အမည်</th>
+                                    <th style="border:1px solid #ccc; padding:10px; text-align:left;">အမျိုးအစား</th>
+                                    <th style="border:1px solid #ccc; padding:10px; text-align:right;">ဈေးနှုန်း</th>
+                                </tr>
                             </thead><tbody>`;
                 
                 data.forEach(p => {
                     html += `<tr>
-                                <td style="border:1px solid #ccc; padding:8px;">${p.name}</td>
-                                <td style="border:1px solid #ccc; padding:8px;">${p.category}</td>
-                                <td style="border:1px solid #ccc; padding:8px; text-align:center; font-weight:bold; color:${p.qty<5?'red':'black'}">${p.qty}</td>
+                                <td style="border:1px solid #ccc; padding:10px;">${p.name}</td>
+                                <td style="border:1px solid #ccc; padding:10px;">${p.category}</td>
+                                <td style="border:1px solid #ccc; padding:10px; text-align:right; font-weight:bold; color:var(--green);">${(p.sell || 0).toLocaleString()} Ks</td>
                              </tr>`;
                 });
                 html += `</tbody></table>`;
@@ -375,7 +376,7 @@
 
         function shareStockLink() {
             const shareUrl = `${window.location.origin}${window.location.pathname}?stock=all`;
-            copyToClipboard(shareUrl, "လက်ကျန်စာရင်းကြည့်ရန် Link ကို Copy ကူးလိုက်ပါပြီ။");
+            copyToClipboard(shareUrl, "ဈေးနှုန်းစာရင်းကြည့်ရန် Link ကို Copy ကူးလိုက်ပါပြီ။");
         }
 
         function copyToClipboard(text, msg) {
