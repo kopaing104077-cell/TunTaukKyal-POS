@@ -9,7 +9,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     
     <style>
-        :root { --midnight: #020617; --primary: #1e293b; --green: #10b981; --red: #ef4444; --gold: #fbbf24; --bg: #f8fafc; --excel: #1d6f42; --viber: #7360f2; --blue: #3b82f6; }
+        :root { --midnight: #020617; --primary: #1e293b; --green: #10b981; --red: #ef4444; --gold: #fbbf24; --bg: #f8fafc; --excel: #1d6f42; }
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Pyidaungsu', sans-serif; }
         
         body { background: var(--bg); height: 100dvh; display: flex; flex-direction: column; overflow: hidden; position: fixed; width: 100%; }
@@ -70,15 +70,15 @@
         .btn { padding: 10px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 5px; width: 100%; }
         .btn-dark { background: var(--midnight); color: white; }
         .btn-excel { background: var(--excel); color: white; }
-        .btn-viber { background: var(--viber); color: white; }
 
         .stock-in-section { background: #f1f5f9; padding: 10px; border-radius: 10px; margin-top: 10px; border: 1px dashed var(--primary); }
 
         #receipt-render-area { display: none; }
 
-        /* Share Page Mode */
+        /* Share Link View Layout */
+        body.share-mode { overflow-y: auto; position: static; height: auto; background: white; }
         body.share-mode .header, body.share-mode .nav, body.share-mode .container { display: none !important; }
-        body.share-mode #receipt-render-area { display: block !important; background: white; height: 100dvh; overflow-y: auto; padding: 20px; }
+        body.share-mode #receipt-render-area { display: block !important; width: 100%; max-width: 500px; margin: 0 auto; padding: 20px; }
         
         /* Print Styles */
         @media print {
@@ -149,8 +149,8 @@
         <div style="padding:15px; flex-shrink:0;">
             <div style="display:flex; justify-content:space-between; align-items:center;">
                 <h3><i class="fas fa-list-ul"></i> လက်ရှိလက်ကျန်</h3>
-                <button class="btn btn-viber" style="width:auto; font-size:12px;" onclick="shareStockList()">
-                    <i class="fab fa-viber"></i> Viber Share (Excel)
+                <button class="btn btn-dark" onclick="shareStockLink()" style="width:auto; padding:5px 12px; font-size:12px; background:#4a90e2;">
+                    <i class="fas fa-share-nodes"></i> စာရင်း Link Share မည်
                 </button>
             </div>
             <div class="cat-scroll" style="margin-top:10px;">
@@ -294,44 +294,103 @@
 
         let products = [], cart = [], isAdmin = false, curCat = "all", curStockCat = "all", nextTab = "", salesData = [];
 
-        // App Initialization
         window.onload = async () => {
             const urlParams = new URLSearchParams(window.location.search);
-            const voucherId = urlParams.get('v');
+            const shareId = urlParams.get('v');
+            const showStock = urlParams.get('stock');
 
-            if (voucherId) {
-                // Share View Logic
-                await loadSharedVoucher(voucherId);
+            if (shareId) {
+                // Link မှ ဘောင်ချာကြည့်ခြင်း
+                handleShareView(shareId);
+            } else if (showStock) {
+                // Link မှ Stock စာရင်းကြည့်ခြင်း
+                handleStockShareView();
             } else {
+                // POS ပုံမှန်အသုံးပြုခြင်း
                 document.getElementById('rep-date').value = new Date().toISOString().split('T')[0];
-                loadProducts();
+                await loadProducts();
                 if(sessionStorage.getItem('TTK_ADMIN')) { isAdmin=true; document.getElementById('logout-btn').style.display='block'; }
             }
         };
 
-        // SHARED VOUCHER LOGIC (Remote View)
-        async function loadSharedVoucher(id) {
+        // --- SHARED VIEW HANDLERS ---
+
+        async function handleShareView(id) {
             document.body.classList.add('share-mode');
-            document.getElementById('receipt-render-area').innerHTML = "<div style='text-align:center; padding-top:100px;'>ဘောင်ချာကို ရှာဖွေနေပါသည်...</div>";
+            const area = document.getElementById('receipt-render-area');
+            area.innerHTML = "<center style='margin-top:50px;'>ဘောင်ချာကို ရှာဖွေနေပါသည်...</center>";
             
             try {
                 const { data, error } = await _sb.from('sales').select('*').eq('id', id).single();
                 if (error || !data) throw error;
                 
-                document.getElementById('receipt-render-area').innerHTML = generateReceiptHTML(data) + `
-                    <div class="no-print" style="margin-top:30px; text-align:center; display:flex; flex-direction:column; gap:10px;">
-                        <button class="btn btn-dark" onclick="window.print()"><i class="fas fa-print"></i> Printer ဖြင့်ထုတ်မည်</button>
-                        <button class="btn" style="background:#eee;" onclick="window.location.href=window.location.pathname">ပင်မစာမျက်နှာသို့</button>
+                area.innerHTML = generateReceiptHTML(data) + `
+                    <div class="no-print" style="margin-top:20px; display:flex; flex-direction:column; gap:10px;">
+                        <button class="btn btn-dark" onclick="window.print()"><i class="fas fa-print"></i> Bluetooth Printer ဖြင့်ထုတ်မည်</button>
+                        <button class="btn" onclick="window.location.href=window.location.pathname" style="background:#ddd;">ပင်မစာမျက်နှာသို့</button>
                     </div>`;
             } catch (e) {
-                document.getElementById('receipt-render-area').innerHTML = "<div style='text-align:center; padding-top:100px; color:red;'>ဘောင်ချာ ရှာမတွေ့ပါ သို့မဟုတ် ပျက်သွားပါပြီ။</div>";
+                area.innerHTML = "<center style='margin-top:50px; color:red;'>ဘောင်ချာရှာမတွေ့ပါ သို့မဟုတ် ပျက်သွားပါပြီ။</center>";
             }
         }
 
-        // Voucher Number Formatter
-        function formatVoucher(id) {
-            return id.toString().padStart(7, '0');
+        async function handleStockShareView() {
+            document.body.classList.add('share-mode');
+            const area = document.getElementById('receipt-render-area');
+            area.innerHTML = "<center style='margin-top:50px;'>လက်ကျန်စာရင်းကို ရှာဖွေနေပါသည်...</center>";
+
+            try {
+                const { data, error } = await _sb.from('products').select('*').order('category');
+                if (error) throw error;
+
+                let html = `<h3>ထွန်းတောက်ကြယ် လက်ကျန်စာရင်း</h3><p style="font-size:12px; color:#666;">ရက်စွဲ: ${new Date().toLocaleDateString()}</p><br>`;
+                html += `<table style="width:100%; border-collapse:collapse; border:1px solid #ccc; font-size:13px;">
+                            <thead style="background:#eee;">
+                                <tr><th style="border:1px solid #ccc; padding:8px;">အမည်</th><th style="border:1px solid #ccc; padding:8px;">အမျိုးအစား</th><th style="border:1px solid #ccc; padding:8px;">Stock</th></tr>
+                            </thead><tbody>`;
+                
+                data.forEach(p => {
+                    html += `<tr>
+                                <td style="border:1px solid #ccc; padding:8px;">${p.name}</td>
+                                <td style="border:1px solid #ccc; padding:8px;">${p.category}</td>
+                                <td style="border:1px solid #ccc; padding:8px; text-align:center; font-weight:bold; color:${p.qty<5?'red':'black'}">${p.qty}</td>
+                             </tr>`;
+                });
+                html += `</tbody></table>`;
+                html += `<div class="no-print" style="margin-top:20px;">
+                            <button class="btn btn-dark" onclick="window.location.href=window.location.pathname">ပင်မစာမျက်နှာသို့</button>
+                         </div>`;
+                area.innerHTML = html;
+            } catch (e) {
+                area.innerHTML = "<center style='margin-top:50px; color:red;'>စာရင်းရှာမတွေ့ပါ။</center>";
+            }
         }
+
+        // --- SHARE LINK GENERATORS ---
+
+        function shareVoucherLink(id) {
+            const shareUrl = `${window.location.origin}${window.location.pathname}?v=${id}`;
+            copyToClipboard(shareUrl, "ဘောင်ချာကြည့်ရန် Link ကို Copy ကူးလိုက်ပါပြီ။");
+        }
+
+        function shareStockLink() {
+            const shareUrl = `${window.location.origin}${window.location.pathname}?stock=all`;
+            copyToClipboard(shareUrl, "လက်ကျန်စာရင်းကြည့်ရန် Link ကို Copy ကူးလိုက်ပါပြီ။");
+        }
+
+        function copyToClipboard(text, msg) {
+            const el = document.createElement('textarea');
+            el.value = text;
+            document.body.appendChild(el);
+            el.select();
+            document.execCommand('copy');
+            document.body.removeChild(el);
+            alert(msg);
+        }
+
+        // --- CORE FUNCTIONS ---
+
+        function formatVoucher(id) { return id.toString().padStart(7, '0'); }
 
         async function loadProducts() {
             try {
@@ -418,7 +477,6 @@
         function adjustQty(id, d) { const i = cart.find(x => x.id === id); if(i) { i.cQty += d; if(i.cQty <= 0) removeItem(id); renderCart(); } }
         function removeItem(id) { cart = cart.filter(x => x.id !== id); renderCart(); }
 
-        // RECEIPT PRINT HTML GENERATOR
         function generateReceiptHTML(data, isReprint = false) {
             let rows = "";
             const items = Array.isArray(data.items) ? data.items : JSON.parse(data.items || '[]');
@@ -427,7 +485,7 @@
             });
             return `<div class="r-center">
                 <div class="r-header-title">ထွန်းတောက်ကြယ်</div>
-                <div class="r-header-sub">အမှတ်(၁၁၅)၊ ထင်းရှူးရိပ်သာ(၁)ပတ်လမ်း၊ ဇေကမ္ဘာဝင်း</div>
+                <div class="r-header-sub">အမှတ်(၁၅)၊ ထင်းရှူးရိပ်သာ(၁)ပတ်လမ်း၊ ဇေကမ္ဘာဝင်း</div>
                 <div class="r-header-sub">မင်္ဂလာဒုံမြို့နယ်</div>
                 <div class="r-header-sub">09-777715161, 09-940005161</div>
                 <div class="r-info">${isReprint ? '[RE-PRINT]<br>' : ''}VOUCHER# ${formatVoucher(data.id)}<br>Date: ${data.date}<br>Cust: ${data.cust}</div>
@@ -462,69 +520,6 @@
             } catch (e) { alert("Error processing sale."); }
         }
 
-        // VOUCHER LINK SHARE FUNCTION
-        function shareVoucherLink(id) {
-            // URL တွင် ?v=ID ထည့်သွင်းခြင်း (browser တိုင်းတွင် အလုပ်လုပ်ရန်)
-            const currentUrl = window.location.href.split('?')[0];
-            const shareUrl = `${currentUrl}?v=${id}`;
-            
-            if (navigator.share) {
-                navigator.share({
-                    title: 'Htun Tauk Kywal Voucher',
-                    text: 'ထွန်းတောက်ကြယ် အရောင်းဘောင်ချာ ကြည့်ရန် Link နှိပ်ပါ',
-                    url: shareUrl
-                }).catch(err => copyToClipboard(shareUrl));
-            } else {
-                copyToClipboard(shareUrl);
-            }
-        }
-
-        function copyToClipboard(text) {
-            const input = document.createElement('input');
-            input.value = text;
-            document.body.appendChild(input);
-            input.select();
-            document.execCommand('copy');
-            document.body.removeChild(input);
-            alert("ဘောင်ချာ Link ကို Copy ယူလိုက်ပါပြီ။ Viber သို့ ပို့နိုင်ပါသည်။");
-        }
-
-        // STOCK SHARE TO VIBER (CATEGORIZED EXCEL)
-        async function shareStockList() {
-            const categories = ["အအေး", "ကော်ဖီ", "ခေါက်ဆွဲ", "မီးဖိုချောင်သုံး", "လူသုံးကုန်", "အခြား"];
-            const wb = XLSX.utils.book_new();
-
-            categories.forEach(cat => {
-                const catItems = products.filter(p => p.category === cat);
-                if (catItems.length > 0) {
-                    const wsData = [
-                        ["ထွန်းတောက်ကြယ် လက်ကျန်ပစ္စည်းစာရင်း - " + cat],
-                        ["ထုတ်ယူသည့်ရက်စွဲ", new Date().toLocaleDateString()],
-                        [""],
-                        ["ပစ္စည်းအမည်", "ယူနစ်", "ရောင်းဈေး", "လက်ကျန်"]
-                    ];
-                    catItems.forEach(i => wsData.push([i.name, i.unit || "-", i.sell, i.qty]));
-                    const ws = XLSX.utils.aoa_to_sheet(wsData);
-                    XLSX.utils.book_append_sheet(wb, ws, cat);
-                }
-            });
-
-            const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-            const file = new File([wbout], `TTK_Stock_${new Date().toISOString().split('T')[0]}.xlsx`, { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
-
-            if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                navigator.share({
-                    files: [file],
-                    title: 'လက်ကျန်စာရင်း',
-                    text: 'ထွန်းတောက်ကြယ် လက်ကျန်စာရင်း (Excel File)'
-                });
-            } else {
-                XLSX.writeFile(wb, `TTK_Stock_Report.xlsx`);
-                alert("Excel File ကို Download လုပ်လိုက်ပါပြီ။ Viber သို့ File ပို့ပေးနိုင်ပါသည်။");
-            }
-        }
-
-        // REPORT MGMT
         async function runReport() {
             const dt = document.getElementById('rep-date').value;
             const ty = document.getElementById('rep-type').value;
@@ -539,7 +534,7 @@
                 rows += `<tr onclick="viewSaleDetails(${s.id})" style="cursor:pointer;">
                     <td><b>${formatVoucher(s.id)}</b></td><td>${s.date}</td><td>${s.cust}</td><td>${s.rev.toLocaleString()}</td>
                     <td style="text-align:center; display:flex; gap:5px; justify-content:center;">
-                        <button onclick="event.stopPropagation(); shareVoucherLink(${s.id})" style="border:none;background:var(--blue);color:white;padding:5px 8px;border-radius:5px;" title="Share Link"><i class="fas fa-share-alt"></i></button>
+                        <button onclick="event.stopPropagation(); shareVoucherLink(${s.id})" style="border:none;background:#4a90e2;color:white;padding:5px 8px;border-radius:5px;" title="Share Link"><i class="fas fa-share-nodes"></i></button>
                         <button onclick="event.stopPropagation(); rePrintSale(${s.id})" style="border:none;background:var(--midnight);color:white;padding:5px 8px;border-radius:5px;" title="Print"><i class="fas fa-print"></i></button>
                         <button onclick="event.stopPropagation(); exportSaleToExcel(${s.id})" style="border:none;background:var(--excel);color:white;padding:5px 8px;border-radius:5px;" title="Export Excel"><i class="fas fa-file-excel"></i></button>
                         <button onclick="event.stopPropagation(); deleteSale(${s.id})" style="border:none;background:var(--red);color:white;padding:5px 8px;border-radius:5px;" title="Delete"><i class="fas fa-trash"></i></button>
@@ -573,8 +568,8 @@
         function viewSaleDetails(id) {
             const sale = salesData.find(s => s.id === id);
             if(!sale) return;
-            const items = Array.isArray(sale.items) ? sale.items : JSON.parse(sale.items || '[]');
             let itemHtml = `<b>ဘောင်ချာနံပါတ်:</b> ${formatVoucher(sale.id)}<br><b>ဘောင်ချာရှင်:</b> ${sale.cust}<br><br><table style="width:100%;"><thead><tr><th>ပစ္စည်း</th><th>Qty</th><th>ဈေး</th><th>စုစုပေါင်း</th></tr></thead><tbody>`;
+            const items = Array.isArray(sale.items) ? sale.items : JSON.parse(sale.items || '[]');
             items.forEach(item => { itemHtml += `<tr><td>${item.name}</td><td style="text-align:center;">${item.qty}</td><td style="text-align:right;">${item.sell.toLocaleString()}</td><td style="text-align:right;">${(item.sell * item.qty).toLocaleString()}</td></tr>`; });
             itemHtml += `</tbody></table><div style="text-align:right; margin-top:10px;"><b>စုစုပေါင်း: ${sale.rev.toLocaleString()} Ks</b></div>`;
             document.getElementById('detail-content').innerHTML = itemHtml;
@@ -590,11 +585,10 @@
                     if(product) await _sb.from('products').update({ qty: product.qty + item.qty }).eq('id', item.id);
                 }
                 await _sb.from('sales').delete().eq('id', id);
-                loadProducts(); runReport();
+                await loadProducts(); await runReport();
             }
         }
 
-        // NAVIGATION & SECURITY
         function navTo(tid, btn) {
             document.querySelectorAll('.container').forEach(c => c.classList.remove('active'));
             document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
@@ -611,7 +605,6 @@
         function setCategory(c, b) { curCat = c; document.querySelectorAll('#tab-sales .cat-btn').forEach(x => x.classList.remove('active')); b.classList.add('active'); refreshUI(); }
         function setStockCategory(c, b) { curStockCat = c; document.querySelectorAll('#tab-stock .cat-btn').forEach(x => x.classList.remove('active')); b.classList.add('active'); refreshUI(); }
         
-        // PRODUCT MGMT
         function openAddModal() { 
             document.getElementById('edit-id').value = ""; document.getElementById('p-name').value = ""; document.getElementById('p-unit').value = "";
             document.getElementById('p-buy').value = ""; document.getElementById('p-sell').value = ""; document.getElementById('p-qty').value = "";
@@ -633,20 +626,17 @@
             const id = document.getElementById('edit-id').value;
             const name = document.getElementById('p-name').value;
             if(!name) return alert("အမည်ထည့်ပေးပါ");
-            let currentBuy = parseInt(document.getElementById('p-buy').value || 0);
-            let currentQty = parseInt(document.getElementById('p-qty').value || 0);
-            let newQtyIn = parseInt(document.getElementById('p-new-qty').value || 0);
-            let newBuyIn = parseInt(document.getElementById('p-new-buy').value || 0);
-            let finalQty = currentQty + newQtyIn;
-            let finalBuy = (newQtyIn > 0 && newBuyIn > 0) ? Math.round(((currentQty * currentBuy) + (newQtyIn * newBuyIn)) / finalQty) : currentBuy;
-            const obj = { name, unit: document.getElementById('p-unit').value, buy: finalBuy, sell: parseInt(document.getElementById('p-sell').value || 0), qty: finalQty, category: document.getElementById('p-cat').value };
+            let cb = parseInt(document.getElementById('p-buy').value || 0), cq = parseInt(document.getElementById('p-qty').value || 0);
+            let nq = parseInt(document.getElementById('p-new-qty').value || 0), nb = parseInt(document.getElementById('p-new-buy').value || 0);
+            let fq = cq + nq, fb = (nq > 0 && nb > 0) ? Math.round(((cq * cb) + (nq * nb)) / fq) : cb;
+            const obj = { name, unit: document.getElementById('p-unit').value, buy: fb, sell: parseInt(document.getElementById('p-sell').value || 0), qty: fq, category: document.getElementById('p-cat').value };
             try {
                 if(id) await _sb.from('products').update(obj).eq('id', id); else await _sb.from('products').insert([obj]);
-                closeOverlay('add-overlay'); loadProducts();
+                closeOverlay('add-overlay'); await loadProducts();
             } catch (err) { alert("Error saving product."); }
         }
 
-        async function deleteProduct() { if(confirm("ဖျက်မှာ သေချာလား?")) { await _sb.from('products').delete().eq('id', document.getElementById('edit-id').value); closeOverlay('add-overlay'); loadProducts(); } }
+        async function deleteProduct() { if(confirm("ဖျက်မှာ သေချာလား?")) { await _sb.from('products').delete().eq('id', document.getElementById('edit-id').value); closeOverlay('add-overlay'); await loadProducts(); } }
     </script>
 </body>
 </html>
