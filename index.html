@@ -3,11 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="theme-color" content="#020617">
     <title>ထွန်းတောက်ကြယ် POS</title>
-    
-    <link rel="manifest" href='data:application/json,{"name":"Htun Tauk Kywal POS","short_name":"TTK-POS","start_url":".","display":"standalone","background_color":"#f8fafc","theme_color":"#020617","icons":[{"src":"https://cdn-icons-png.flaticon.com/512/3081/3081554.png","sizes":"512x512","type":"image/png"}]}'>
-
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -266,6 +262,7 @@
                         <input type="number" id="p-new-buy" class="input-style" placeholder="0" value="0">
                     </div>
                 </div>
+                <p style="font-size: 9px; color: #666; margin-top: 5px;">* စနစ်မှ ပျမ်းမျှဝယ်ဈေးကို အလိုအလျောက် တွက်ချက်ပေးမည် ဖြစ်သည်။</p>
             </div>
 
             <select id="p-cat" class="input-style" style="margin-top:10px;">
@@ -292,20 +289,6 @@
     </div>
 
     <script>
-        // Service Worker Registration for Offline Support
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                const swCode = `
-                    const CACHE_NAME = 'ttk-pos-v1';
-                    const ASSETS = [window.location.href, 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2', 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js', 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css'];
-                    self.addEventListener('install', e => e.waitUntil(caches.open(CACHE_NAME).then(c => c.addAll(ASSETS))));
-                    self.addEventListener('fetch', e => e.respondWith(caches.match(e.request).then(r => r || fetch(e.request))));
-                `;
-                const blob = new Blob([swCode], {type: 'application/javascript'});
-                navigator.serviceWorker.register(URL.createObjectURL(blob));
-            });
-        }
-
         // Supabase Config
         const SUPA_URL = "https://iyhskfxxpemtpspohjve.supabase.co";
         const SUPA_KEY = "sb_publishable_pJ6ewySbcvru7PNQdY0RAQ_8DLnS3j8";
@@ -315,149 +298,68 @@
         let isOnline = navigator.onLine;
 
         window.onload = async () => {
-            // Check connection status
-            window.addEventListener('online', updateOnlineStatus);
-            window.addEventListener('offline', updateOnlineStatus);
-            updateOnlineStatus();
+            // Check status immediately
+            updateStatusUI();
+            
+            // Listen for status changes
+            window.addEventListener('online', () => { isOnline = true; updateStatusUI(); syncOfflineSales(); });
+            window.addEventListener('offline', () => { isOnline = false; updateStatusUI(); });
 
             const urlParams = new URLSearchParams(window.location.search);
-            if (urlParams.get('v')) handleShareView(urlParams.get('v'));
-            else if (urlParams.get('stock')) handleStockShareView();
-            else {
+            const shareId = urlParams.get('v');
+            const showStock = urlParams.get('stock');
+
+            if (shareId) {
+                handleShareView(shareId);
+            } else if (showStock) {
+                handleStockShareView();
+            } else {
                 document.getElementById('rep-date').value = new Date().toISOString().split('T')[0];
                 await loadProducts();
                 if(sessionStorage.getItem('TTK_ADMIN')) { isAdmin=true; document.getElementById('logout-btn').style.display='block'; }
-                syncOfflineSales(); // Try to sync when app starts
             }
         };
 
-        function updateOnlineStatus() {
-            isOnline = navigator.onLine;
+        function updateStatusUI() {
             const dot = document.getElementById('status-dot');
             const txt = document.getElementById('status-text');
-            if(isOnline) {
+            if(navigator.onLine) {
                 dot.className = 'dot online';
                 txt.innerText = 'Online';
-                syncOfflineSales();
             } else {
                 dot.className = 'dot offline';
                 txt.innerText = 'Offline Mode';
             }
         }
 
-        // --- CORE DATA FUNCTIONS ---
-
         async function loadProducts() {
-            // 1. Try to load from LocalStorage first (Fast & Offline)
+            // Load from Cache first so user can use immediately
             const cached = localStorage.getItem('ttk_products');
             if(cached) {
                 products = JSON.parse(cached);
                 refreshUI();
             }
 
-            // 2. If Online, fetch latest from Supabase
-            if(isOnline) {
+            if(navigator.onLine) {
                 try {
                     const { data, error } = await _sb.from('products').select('*').order('name');
-                    if (!error && data) {
-                        products = data;
-                        localStorage.setItem('ttk_products', JSON.stringify(products));
-                        refreshUI();
-                    }
-                } catch (err) { console.log("Load error", err); }
-            }
-        }
-
-        // --- SALES & OFFLINE SYNC ---
-
-        async function processSale() {
-            if(!cart.length) return;
-            if(!confirm("အရောင်းစာရင်းသွင်းပြီး ဘောင်ချာထုတ်မှာ သေချာပါသလား?")) return;
-
-            const now = new Date();
-            const date = now.toISOString().split('T')[0];
-            const staff = document.getElementById('staff-name').value || "Admin";
-            const cust = document.getElementById('cust-name').value || "Guest";
-            let rev=0, prof=0;
-
-            const items = cart.map(i => {
-                rev += i.sell * i.cQty; prof += (i.sell - i.buy) * i.cQty;
-                return { id: i.id, name: i.name, qty: i.cQty, sell: i.sell, buy: i.buy, unit: i.unit };
-            });
-
-            const saleObj = { date, rev, prof, cust: `${cust} (Clerk: ${staff})`, items, tempId: Date.now() };
-
-            // Update Local Stock Immediately
-            for(let item of cart) {
-                const p = products.find(x => x.id === item.id);
-                if(p) p.qty -= item.cQty;
-            }
-            localStorage.setItem('ttk_products', JSON.stringify(products));
-            refreshUI();
-
-            if(isOnline) {
-                try {
-                    const { data, error } = await _sb.from('sales').insert([{ date, rev, prof, cust: saleObj.cust, items }]).select();
-                    if(error) throw error;
-                    
-                    // Update online stock
-                    for(let i of cart) { await _sb.from('products').update({ qty: products.find(p=>p.id===i.id).qty }).eq('id', i.id); }
-                    
-                    saleObj.id = data[0].id; // Get real ID
-                } catch (e) {
-                    saveToOfflineQueue(saleObj);
+                    if (error) throw error;
+                    products = data || [];
+                    localStorage.setItem('ttk_products', JSON.stringify(products)); // Sync cache
+                    refreshUI();
+                } catch (err) {
+                    console.log("Supabase error, using cached data.");
                 }
-            } else {
-                saveToOfflineQueue(saleObj);
             }
-
-            // Print Receipt
-            document.getElementById('receipt-render-area').innerHTML = generateReceiptHTML(saleObj);
-            setTimeout(() => { window.print(); cart = []; document.getElementById('cust-name').value = ""; renderCart(); }, 500);
         }
-
-        function saveToOfflineQueue(sale) {
-            const queue = JSON.parse(localStorage.getItem('ttk_offline_sales') || '[]');
-            queue.push(sale);
-            localStorage.setItem('ttk_offline_sales', JSON.stringify(queue));
-            alert("အော့ဖ်လိုင်းအဖြစ် သိမ်းဆည်းလိုက်ပါသည်။ အင်တာနက်ရလျှင် စနစ်မှ အလိုအလျောက် Sync လုပ်ပေးပါမည်။");
-        }
-
-        async function syncOfflineSales() {
-            const queue = JSON.parse(localStorage.getItem('ttk_offline_sales') || '[]');
-            if(!isOnline || queue.length === 0) return;
-
-            document.getElementById('status-dot').className = 'dot syncing';
-            document.getElementById('status-text').innerText = 'Syncing...';
-
-            const newQueue = [...queue];
-            for(let i = 0; i < queue.length; i++) {
-                const s = queue[i];
-                try {
-                    const { error } = await _sb.from('sales').insert([{ date: s.date, rev: s.rev, prof: s.prof, cust: s.cust, items: s.items }]);
-                    if(!error) {
-                        // After successful sale sync, update the stock online
-                        for(let item of s.items) {
-                            const { data: p } = await _sb.from('products').select('qty').eq('id', item.id).single();
-                            if(p) await _sb.from('products').update({ qty: p.qty - item.qty }).eq('id', item.id);
-                        }
-                        newQueue.shift();
-                    }
-                } catch (e) { break; }
-            }
-
-            localStorage.setItem('ttk_offline_sales', JSON.stringify(newQueue));
-            updateOnlineStatus();
-            loadProducts();
-        }
-
-        // --- UI RENDERERS ---
 
         function refreshUI() {
             const qS = (document.getElementById('search-box').value || "").toLowerCase();
             const posFiltered = products.filter(p => (curCat === 'all' || p.category === curCat) && p.name.toLowerCase().includes(qS));
             const grid = document.getElementById('pos-grid');
             
+            if(!grid) return;
+
             grid.innerHTML = posFiltered.length === 0 ? '<div style="grid-column: 1/-1; text-align:center; padding:50px; color:#94a3b8;">ပစ္စည်းရှာမတွေ့ပါ</div>' : 
                 posFiltered.map(p => `
                 <div class="p-card" onclick="addToCart(${p.id})">
@@ -481,6 +383,86 @@
                 </tr>`).join('');
         }
 
+        // --- SALES & OFFLINE LOGIC ---
+
+        async function processSale() {
+            if(!cart.length) return;
+            if(!confirm("အရောင်းစာရင်းသွင်းပြီး ဘောင်ချာထုတ်မှာ သေချာပါသလား?")) return;
+
+            const now = new Date();
+            const date = now.toISOString().split('T')[0];
+            const staff = document.getElementById('staff-name').value || "Admin";
+            const cust = document.getElementById('cust-name').value || "Guest";
+            let rev=0, prof=0;
+
+            const items = cart.map(i => {
+                rev += i.sell * i.cQty; prof += (i.sell - i.buy) * i.cQty;
+                return { id: i.id, name: i.name, qty: i.cQty, sell: i.sell, buy: i.buy, unit: i.unit };
+            });
+
+            const saleData = { date, rev, prof, cust: `${cust} (Clerk: ${staff})`, items, tempId: Date.now() };
+
+            // Update Local Stock immediately (Offline-first)
+            for(let i of cart) {
+                const p = products.find(x => x.id === i.id);
+                if(p) p.qty -= i.cQty;
+            }
+            localStorage.setItem('ttk_products', JSON.stringify(products));
+            refreshUI();
+
+            if(navigator.onLine) {
+                try {
+                    const { data: inserted, error: saleErr } = await _sb.from('sales').insert([{ date, rev, prof, cust: saleData.cust, items }]).select();
+                    if(saleErr) throw saleErr;
+                    
+                    // Sync stock to server
+                    for(let i of cart) {
+                        const localP = products.find(p => p.id === i.id);
+                        await _sb.from('products').update({ qty: localP.qty }).eq('id', i.id);
+                    }
+                    saleData.id = inserted[0].id;
+                } catch (e) {
+                    saveToOfflineQueue(saleData);
+                }
+            } else {
+                saveToOfflineQueue(saleData);
+            }
+
+            // Print
+            document.getElementById('receipt-render-area').innerHTML = generateReceiptHTML(saleData);
+            setTimeout(() => { window.print(); cart = []; document.getElementById('cust-name').value = ""; renderCart(); }, 500);
+        }
+
+        function saveToOfflineQueue(sale) {
+            const queue = JSON.parse(localStorage.getItem('ttk_offline_queue') || '[]');
+            queue.push(sale);
+            localStorage.setItem('ttk_offline_queue', JSON.stringify(queue));
+            alert("အော့ဖ်လိုင်းအဖြစ် သိမ်းဆည်းထားပါသည်။ အင်တာနက်ရလျှင် အလိုအလျောက် Sync လုပ်ပါမည်။");
+        }
+
+        async function syncOfflineSales() {
+            const queue = JSON.parse(localStorage.getItem('ttk_offline_queue') || '[]');
+            if(queue.length === 0) return;
+
+            document.getElementById('status-dot').className = 'dot syncing';
+            document.getElementById('status-text').innerText = 'Syncing...';
+
+            for(let sale of queue) {
+                try {
+                    const { error } = await _sb.from('sales').insert([{ date: sale.date, rev: sale.rev, prof: sale.prof, cust: sale.cust, items: sale.items }]);
+                    if(!error) {
+                        // Success - remove from queue
+                        let currentQueue = JSON.parse(localStorage.getItem('ttk_offline_queue'));
+                        currentQueue = currentQueue.filter(q => q.tempId !== sale.tempId);
+                        localStorage.setItem('ttk_offline_queue', JSON.stringify(currentQueue));
+                    }
+                } catch (e) { break; }
+            }
+            updateStatusUI();
+        }
+
+        // --- CORE UI FUNCTIONS ---
+
         function addToCart(id) {
             const p = products.find(x => x.id === id);
             if(!p) return;
@@ -491,6 +473,7 @@
 
         function renderCart() {
             let total = 0; const list = document.getElementById('cart-list');
+            if(!list) return;
             if(cart.length === 0) { list.innerHTML = '<div style="text-align:center; color:#94a3b8; font-size:12px;">ခြင်းတောင်းထဲတွင် ပစ္စည်းမရှိသေးပါ</div>'; }
             else {
                 list.innerHTML = cart.map(i => {
@@ -519,9 +502,7 @@
         function adjustQty(id, d) { const i = cart.find(x => x.id === id); if(i) { i.cQty += d; if(i.cQty <= 0) removeItem(id); renderCart(); } }
         function removeItem(id) { cart = cart.filter(x => x.id !== id); renderCart(); }
 
-        // --- SHARED FUNCTIONS (EXISTING) ---
-
-        function formatVoucher(id) { return id ? id.toString().padStart(7, '0') : "TEMP"; }
+        function formatVoucher(id) { return id ? id.toString().padStart(7, '0') : "OFFLINE"; }
 
         function generateReceiptHTML(data, isReprint = false) {
             let rows = "";
@@ -534,14 +515,47 @@
                 <div class="r-header-sub">အမှတ်(၁၅)၊ ထင်းရှူးရိပ်သာ(၁)ပတ်လမ်း၊ ဇေကမ္ဘာဝင်း</div>
                 <div class="r-header-sub">မင်္ဂလာဒုံမြို့နယ်</div>
                 <div class="r-header-sub">09-777715161, 09-940005161</div>
-                <div class="r-info">${isReprint ? '[RE-PRINT]<br>' : ''}VOUCHER# ${formatVoucher(data.id || data.tempId)}<br>Date: ${data.date}<br>Cust: ${data.cust}</div>
+                <div class="r-info">${isReprint ? '[RE-PRINT]<br>' : ''}VOUCHER# ${formatVoucher(data.id)}<br>Date: ${data.date}<br>Cust: ${data.cust}</div>
                 <table class="r-table"><thead><tr><th class="c-name">Item</th><th class="c-qty">Qty</th><th class="c-price">Price</th><th class="c-amt">Amount</th></tr></thead><tbody>${rows}</tbody></table>
                 <div class="r-summary"><div class="r-row"><span class="r-label">Total</span><span class="r-val">${data.rev.toLocaleString()} Ks</span></div></div>
                 <div class="r-footer">*** ဝယ်ယူအားပေးမှုကို ကျေးဇူးတင်ပါသည်။ ***</div></div>`;
         }
 
+        // --- NAVIGATION ---
+
+        function navTo(tid, btn) {
+            document.querySelectorAll('.container').forEach(c => c.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            document.getElementById(tid).classList.add('active');
+            btn.classList.add('active');
+            if(tid==='tab-rep') runReport(); refreshUI();
+        }
+
+        function askPass(tid, btn) { 
+            if(isAdmin) navTo(tid, btn); 
+            else { nextTab=tid; document.getElementById('login-overlay').style.display='flex'; } 
+        }
+
+        function checkPass() { 
+            if(document.getElementById('pass-input').value === "111111") { 
+                isAdmin=true; 
+                sessionStorage.setItem('TTK_ADMIN','1'); 
+                document.getElementById('logout-btn').style.display='block';
+                document.getElementById('login-overlay').style.display='none'; 
+                navTo(nextTab, document.getElementById('n-' + nextTab.split('-')[1])); 
+            } else alert("Password မှားနေပါသည်"); 
+        }
+
+        function closeOverlay(id) { document.getElementById(id).style.display='none'; }
+        function logout() { isAdmin=false; sessionStorage.clear(); location.reload(); }
+
+        // --- OTHER FUNCTIONS (Original Features) ---
+
         async function runReport() {
-            if(!isOnline) return alert("စာရင်းချုပ်ကြည့်ရန် အင်တာနက်လိုအပ်ပါသည်။");
+            if(!navigator.onLine) {
+                document.getElementById('rep-body').innerHTML = '<tr><td colspan="5" style="text-align:center;color:red;">စာရင်းချုပ်ကြည့်ရန် အင်တာနက်လိုအပ်ပါသည်။</td></tr>';
+                return;
+            }
             const dt = document.getElementById('rep-date').value;
             const ty = document.getElementById('rep-type').value;
             let q = _sb.from('sales').select('*');
@@ -566,79 +580,6 @@
             document.getElementById('rep-body').innerHTML = rows || '<tr><td colspan="5" style="text-align:center;">စာရင်းမရှိပါ</td></tr>';
         }
 
-        // --- NAVIGATION & MODALS ---
-
-        function navTo(tid, btn) {
-            document.querySelectorAll('.container').forEach(c => c.classList.remove('active'));
-            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-            document.getElementById(tid).classList.add('active');
-            btn.classList.add('active');
-            if(tid==='tab-rep') runReport();
-            refreshUI();
-        }
-
-        function askPass(tid, btn) { if(isAdmin) navTo(tid, btn); else { nextTab=tid; document.getElementById('login-overlay').style.display='flex'; } }
-        function checkPass() { if(document.getElementById('pass-input').value === "111111") { isAdmin=true; sessionStorage.setItem('TTK_ADMIN','1'); document.getElementById('logout-btn').style.display='block'; document.getElementById('login-overlay').style.display='none'; navTo(nextTab, document.getElementById('n-' + nextTab.split('-')[1])); } else alert("Password မှားနေပါသည်"); }
-        function closeOverlay(id) { document.getElementById(id).style.display='none'; }
-        function logout() { isAdmin=false; sessionStorage.clear(); location.reload(); }
-        
-        function setCategory(c, b) { curCat = c; document.querySelectorAll('#tab-sales .cat-btn').forEach(x => x.classList.remove('active')); b.classList.add('active'); refreshUI(); }
-        function setStockCategory(c, b) { curStockCat = c; document.querySelectorAll('#tab-stock .cat-btn').forEach(x => x.classList.remove('active')); b.classList.add('active'); refreshUI(); }
-        
-        function openAddModal() { 
-            document.getElementById('edit-id').value = ""; document.getElementById('p-name').value = ""; document.getElementById('p-unit').value = "";
-            document.getElementById('p-buy').value = ""; document.getElementById('p-sell').value = ""; document.getElementById('p-qty').value = "";
-            document.getElementById('del-btn').style.display='none'; document.getElementById('add-overlay').style.display='flex'; 
-        }
-
-        function editProduct(id) {
-            const p = products.find(x => x.id === id); if(!p) return;
-            document.getElementById('edit-id').value = p.id; document.getElementById('p-name').value = p.name;
-            document.getElementById('p-unit').value = p.unit; document.getElementById('p-buy').value = p.buy;
-            document.getElementById('p-sell').value = p.sell; document.getElementById('p-qty').value = p.qty;
-            document.getElementById('p-cat').value = p.category;
-            document.getElementById('del-btn').style.display='block'; document.getElementById('add-overlay').style.display='flex';
-        }
-
-        async function saveProduct() {
-            if(!isOnline) return alert("ပစ္စည်းအသစ်ထည့်ရန် အင်တာနက်လိုအပ်ပါသည်။");
-            const id = document.getElementById('edit-id').value;
-            const name = document.getElementById('p-name').value;
-            if(!name) return alert("အမည်ထည့်ပေးပါ");
-            let cb = parseInt(document.getElementById('p-buy').value || 0), cq = parseInt(document.getElementById('p-qty').value || 0);
-            let nq = parseInt(document.getElementById('p-new-qty').value || 0), nb = parseInt(document.getElementById('p-new-buy').value || 0);
-            let fq = cq + nq, fb = (nq > 0 && nb > 0) ? Math.round(((cq * cb) + (nq * nb)) / fq) : cb;
-            const obj = { name, unit: document.getElementById('p-unit').value, buy: fb, sell: parseInt(document.getElementById('p-sell').value || 0), qty: fq, category: document.getElementById('p-cat').value };
-            try {
-                if(id) await _sb.from('products').update(obj).eq('id', id); else await _sb.from('products').insert([obj]);
-                closeOverlay('add-overlay'); await loadProducts();
-            } catch (err) { alert("Error saving product."); }
-        }
-
-        async function deleteProduct() { 
-            if(!isOnline) return alert("အင်တာနက်လိုအပ်ပါသည်။");
-            if(confirm("ဖျက်မှာ သေချာလား?")) { await _sb.from('products').delete().eq('id', document.getElementById('edit-id').value); closeOverlay('add-overlay'); await loadProducts(); } 
-        }
-
-        // Share & Utility
-        function shareStockLink() { copyToClipboard(`${window.location.origin}${window.location.pathname}?stock=all`, "Link Copied!"); }
-        function shareVoucherLink(id) { copyToClipboard(`${window.location.origin}${window.location.pathname}?v=${id}`, "Voucher Link Copied!"); }
-        function copyToClipboard(text, msg) { const el = document.createElement('textarea'); el.value = text; document.body.appendChild(el); el.select(); document.execCommand('copy'); document.body.removeChild(el); alert(msg); }
-        
-        async function deleteSale(id) {
-            if(!isOnline) return alert("အင်တာနက်လိုအပ်ပါသည်။");
-            if(confirm("ဖျက်ရန် သေချာပါသလား?")) {
-                const sale = salesData.find(s => s.id === id);
-                const items = Array.isArray(sale.items) ? sale.items : JSON.parse(sale.items || '[]');
-                for(let item of items) {
-                    const product = products.find(p => p.id === item.id);
-                    if(product) await _sb.from('products').update({ qty: product.qty + item.qty }).eq('id', item.id);
-                }
-                await _sb.from('sales').delete().eq('id', id);
-                await loadProducts(); await runReport();
-            }
-        }
-        
         function exportSaleToExcel(id) {
             const sale = salesData.find(s => s.id === id);
             if (!sale) return;
@@ -652,23 +593,33 @@
             XLSX.writeFile(wb, `TTK_Voucher_${formatVoucher(sale.id)}.xlsx`);
         }
 
-        function rePrintSale(id) {
-            const sale = salesData.find(s => s.id === id);
-            if(!sale) return;
-            document.getElementById('receipt-render-area').innerHTML = generateReceiptHTML(sale, true);
-            setTimeout(() => { window.print(); }, 500);
+        async function saveProduct() {
+            if(!navigator.onLine) return alert("ပစ္စည်းပြင်ဆင်ရန် အင်တာနက်လိုအပ်ပါသည်။");
+            const id = document.getElementById('edit-id').value;
+            const name = document.getElementById('p-name').value;
+            if(!name) return alert("အမည်ထည့်ပေးပါ");
+            let cb = parseInt(document.getElementById('p-buy').value || 0), cq = parseInt(document.getElementById('p-qty').value || 0);
+            let nq = parseInt(document.getElementById('p-new-qty').value || 0), nb = parseInt(document.getElementById('p-new-buy').value || 0);
+            let fq = cq + nq, fb = (nq > 0 && nb > 0) ? Math.round(((cq * cb) + (nq * nb)) / fq) : cb;
+            const obj = { name, unit: document.getElementById('p-unit').value, buy: fb, sell: parseInt(document.getElementById('p-sell').value || 0), qty: fq, category: document.getElementById('p-cat').value };
+            try {
+                if(id) await _sb.from('products').update(obj).eq('id', id); else await _sb.from('products').insert([obj]);
+                closeOverlay('add-overlay'); await loadProducts();
+            } catch (err) { alert("Error saving product."); }
         }
 
-        function viewSaleDetails(id) {
-            const sale = salesData.find(s => s.id === id);
-            if(!sale) return;
-            let itemHtml = `<b>ဘောင်ချာနံပါတ်:</b> ${formatVoucher(sale.id)}<br><b>ဘောင်ချာရှင်:</b> ${sale.cust}<br><br><table style="width:100%;"><thead><tr><th>ပစ္စည်း</th><th>Qty</th><th>ဈေး</th><th>စုစုပေါင်း</th></tr></thead><tbody>`;
-            const items = Array.isArray(sale.items) ? sale.items : JSON.parse(sale.items || '[]');
-            items.forEach(item => { itemHtml += `<tr><td>${item.name}</td><td style="text-align:center;">${item.qty}</td><td style="text-align:right;">${item.sell.toLocaleString()}</td><td style="text-align:right;">${(item.sell * item.qty).toLocaleString()}</td></tr>`; });
-            itemHtml += `</tbody></table><div style="text-align:right; margin-top:10px;"><b>စုစုပေါင်း: ${sale.rev.toLocaleString()} Ks</b></div>`;
-            document.getElementById('detail-content').innerHTML = itemHtml;
-            document.getElementById('detail-overlay').style.display = 'flex';
-        }
+        function setCategory(c, b) { curCat = c; document.querySelectorAll('#tab-sales .cat-btn').forEach(x => x.classList.remove('active')); b.classList.add('active'); refreshUI(); }
+        function setStockCategory(c, b) { curStockCat = c; document.querySelectorAll('#tab-stock .cat-btn').forEach(x => x.classList.remove('active')); b.classList.add('active'); refreshUI(); }
+        function openAddModal() { document.getElementById('edit-id').value = ""; document.getElementById('p-name').value = ""; document.getElementById('p-unit').value = ""; document.getElementById('p-buy').value = ""; document.getElementById('p-sell').value = ""; document.getElementById('p-qty').value = ""; document.getElementById('p-new-qty').value = 0; document.getElementById('p-new-buy').value = 0; document.getElementById('del-btn').style.display='none'; document.getElementById('add-overlay').style.display='flex'; }
+        function editProduct(id) { const p = products.find(x => x.id === id); if(!p) return; document.getElementById('edit-id').value = p.id; document.getElementById('p-name').value = p.name; document.getElementById('p-unit').value = p.unit; document.getElementById('p-buy').value = p.buy; document.getElementById('p-sell').value = p.sell; document.getElementById('p-qty').value = p.qty; document.getElementById('p-cat').value = p.category; document.getElementById('p-new-qty').value = 0; document.getElementById('p-new-buy').value = 0; document.getElementById('del-btn').style.display='block'; document.getElementById('add-overlay').style.display='flex'; }
+        async function deleteProduct() { if(confirm("ဖျက်မှာ သေချာလား?")) { await _sb.from('products').delete().eq('id', document.getElementById('edit-id').value); closeOverlay('add-overlay'); await loadProducts(); } }
+        function shareStockLink() { copyToClipboard(`${window.location.origin}${window.location.pathname}?stock=all`, "Stock Link Copied!"); }
+        function shareVoucherLink(id) { copyToClipboard(`${window.location.origin}${window.location.pathname}?v=${id}`, "Voucher Link Copied!"); }
+        function copyToClipboard(text, msg) { const el = document.createElement('textarea'); el.value = text; document.body.appendChild(el); el.select(); document.execCommand('copy'); document.body.removeChild(el); alert(msg); }
+        function rePrintSale(id) { const sale = salesData.find(s => s.id === id); if(!sale) return; document.getElementById('receipt-render-area').innerHTML = generateReceiptHTML(sale, true); setTimeout(() => { window.print(); }, 500); }
+        function viewSaleDetails(id) { const sale = salesData.find(s => s.id === id); if(!sale) return; let itemHtml = `<b>ဘောင်ချာနံပါတ်:</b> ${formatVoucher(sale.id)}<br><b>ဘောင်ချာရှင်:</b> ${sale.cust}<br><br><table style="width:100%;"><thead><tr><th>ပစ္စည်း</th><th>Qty</th><th>ဈေး</th><th>စုစုပေါင်း</th></tr></thead><tbody>`; const items = Array.isArray(sale.items) ? sale.items : JSON.parse(sale.items || '[]'); items.forEach(item => { itemHtml += `<tr><td>${item.name}</td><td style="text-align:center;">${item.qty}</td><td style="text-align:right;">${item.sell.toLocaleString()}</td><td style="text-align:right;">${(item.sell * item.qty).toLocaleString()}</td></tr>`; }); itemHtml += `</tbody></table><div style="text-align:right; margin-top:10px;"><b>စုစုပေါင်း: ${sale.rev.toLocaleString()} Ks</b></div>`; document.getElementById('detail-content').innerHTML = itemHtml; document.getElementById('detail-overlay').style.display = 'flex'; }
+        async function deleteSale(id) { if(confirm("ဖျက်ရန် သေချာပါသလား?")) { const sale = salesData.find(s => s.id === id); const items = Array.isArray(sale.items) ? sale.items : JSON.parse(sale.items || '[]'); for(let item of items) { const product = products.find(p => p.id === item.id); if(product) await _sb.from('products').update({ qty: product.qty + item.qty }).eq('id', item.id); } await _sb.from('sales').delete().eq('id', id); await loadProducts(); await runReport(); } }
     </script>
 </body>
 </html>
+
