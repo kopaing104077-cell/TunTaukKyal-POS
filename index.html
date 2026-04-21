@@ -20,8 +20,6 @@
         .dot { width: 8px; height: 8px; border-radius: 50%; background: #666; }
         .dot.online { background: var(--green); box-shadow: 0 0 8px var(--green); }
         .dot.offline { background: var(--red); box-shadow: 0 0 8px var(--red); }
-        .dot.syncing { background: var(--gold); animation: blink 1s infinite; }
-        @keyframes blink { 50% { opacity: 0.5; } }
 
         /* Main Container */
         .container { flex: 1; overflow: hidden; display: none; width: 100%; max-width: 1200px; margin: auto; position: relative; }
@@ -295,7 +293,6 @@
         const _sb = supabase.createClient(SUPA_URL, SUPA_KEY);
 
         let products = [], cart = [], isAdmin = false, curCat = "all", curStockCat = "all", nextTab = "", salesData = [];
-        let isSyncing = false;
 
         window.onload = async () => {
             const urlParams = new URLSearchParams(window.location.search);
@@ -310,47 +307,11 @@
                 document.getElementById('rep-date').value = new Date().toISOString().split('T')[0];
                 await loadProducts();
                 if(sessionStorage.getItem('TTK_ADMIN')) { isAdmin=true; document.getElementById('logout-btn').style.display='block'; }
-                
-                // Auto Sync when online
-                window.addEventListener('online', syncOfflineSales);
-                if (navigator.onLine) syncOfflineSales();
             }
         };
 
-        // --- OFFLINE STORAGE HELPERS ---
-        function saveLocal(key, data) { localStorage.setItem('TTK_' + key, JSON.stringify(data)); }
-        function getLocal(key) { return JSON.parse(localStorage.getItem('TTK_' + key)) || []; }
-
-        async function syncOfflineSales() {
-            if (isSyncing || !navigator.onLine) return;
-            const offlineSales = getLocal('pending_sales');
-            if (offlineSales.length === 0) return;
-
-            isSyncing = true;
-            document.getElementById('status-dot').className = 'dot syncing';
-            document.getElementById('status-text').innerText = 'Syncing...';
-
-            try {
-                for (let sale of offlineSales) {
-                    const { error } = await _sb.from('sales').insert([sale]);
-                    if (!error) {
-                        // Remove from local after success
-                        let currentPending = getLocal('pending_sales');
-                        currentPending = currentPending.filter(s => s.local_id !== sale.local_id);
-                        saveLocal('pending_sales', currentPending);
-                    }
-                }
-                document.getElementById('status-dot').className = 'dot online';
-                document.getElementById('status-text').innerText = 'Online';
-            } catch (e) {
-                console.error("Sync Error", e);
-            } finally {
-                isSyncing = false;
-                runReport(); // Refresh report if on that tab
-            }
-        }
-
         // --- SHARED VIEW HANDLERS ---
+
         async function handleShareView(id) {
             document.body.classList.add('share-mode');
             const area = document.getElementById('receipt-render-area');
@@ -407,6 +368,7 @@
         }
 
         // --- SHARE LINK GENERATORS ---
+
         function shareVoucherLink(id) {
             const shareUrl = `${window.location.origin}${window.location.pathname}?v=${id}`;
             copyToClipboard(shareUrl, "ဘောင်ချာကြည့်ရန် Link ကို Copy ကူးလိုက်ပါပြီ။");
@@ -428,31 +390,20 @@
         }
 
         // --- CORE FUNCTIONS ---
-        function formatVoucher(id) { 
-            if (!id) return "PENDING";
-            return id.toString().padStart(7, '0'); 
-        }
+
+        function formatVoucher(id) { return id.toString().padStart(7, '0'); }
 
         async function loadProducts() {
             try {
-                if (navigator.onLine) {
-                    const { data, error } = await _sb.from('products').select('*').order('name');
-                    if (error) throw error;
-                    products = data || [];
-                    saveLocal('products_cache', products); // Cache for offline
-                    document.getElementById('status-dot').className = 'dot online';
-                    document.getElementById('status-text').innerText = 'Online';
-                } else {
-                    products = getLocal('products_cache');
-                    document.getElementById('status-dot').className = 'dot offline';
-                    document.getElementById('status-text').innerText = 'Offline Mode';
-                }
+                const { data, error } = await _sb.from('products').select('*').order('name');
+                if (error) throw error;
+                products = data || [];
+                document.getElementById('status-dot').className = 'dot online';
+                document.getElementById('status-text').innerText = 'Online';
                 refreshUI();
             } catch (err) {
-                products = getLocal('products_cache');
                 document.getElementById('status-dot').className = 'dot offline';
-                document.getElementById('status-text').innerText = 'Connection Error';
-                refreshUI();
+                document.getElementById('status-text').innerText = 'Error Connect';
             }
         }
 
@@ -559,75 +510,35 @@
                 return { id: i.id, name: i.name, qty: i.cQty, sell: i.sell, buy: i.buy, unit: i.unit };
             });
 
-            const saleObj = { date, rev, prof, cust: `${cust} (Clerk: ${staff})`, items, local_id: Date.now() };
+            try {
+                const { data: inserted, error: saleErr } = await _sb.from('sales').insert([{ date, rev, prof, cust: `${cust} (Clerk: ${staff})`, items }]).select();
+                if(saleErr) throw saleErr;
 
-            // Update Stock locally first
-            for(let i of cart) {
-                const pIdx = products.findIndex(p => p.id === i.id);
-                if (pIdx > -1) products[pIdx].qty -= i.cQty;
-            }
-            saveLocal('products_cache', products);
+                for(let i of cart) { await _sb.from('products').update({ qty: i.qty - i.cQty }).eq('id', i.id); }
 
-            if (navigator.onLine) {
-                try {
-                    const { data: inserted, error: saleErr } = await _sb.from('sales').insert([saleObj]).select();
-                    if(saleErr) throw saleErr;
-                    
-                    // Update stock on server
-                    for(let i of cart) { await _sb.from('products').update({ qty: i.qty - i.cQty }).eq('id', i.id); }
-
-                    document.getElementById('receipt-render-area').innerHTML = generateReceiptHTML({ id: inserted[0].id, date, cust: `${cust} (Clerk: ${staff})`, rev, items });
-                } catch (e) {
-                    alert("Online saving failed, saved to offline storage instead.");
-                    saveOffline(saleObj);
-                }
-            } else {
-                saveOffline(saleObj);
-            }
-
-            setTimeout(() => { window.print(); cart = []; document.getElementById('cust-name').value = ""; renderCart(); refreshUI(); }, 500);
-        }
-
-        function saveOffline(saleObj) {
-            const pending = getLocal('pending_sales');
-            pending.push(saleObj);
-            saveLocal('pending_sales', pending);
-            document.getElementById('receipt-render-area').innerHTML = generateReceiptHTML({ id: null, ...saleObj });
-            alert("အင်တာနက်မရှိသဖြင့် Offline အဖြစ် သိမ်းဆည်းလိုက်ပါသည်။ အင်တာနက်ပြန်ရလျှင် Auto Sync လုပ်ပေးပါမည်။");
+                document.getElementById('receipt-render-area').innerHTML = generateReceiptHTML({ id: inserted[0].id, date, cust: `${cust} (Clerk: ${staff})`, rev, items });
+                setTimeout(() => { window.print(); cart = []; document.getElementById('cust-name').value = ""; renderCart(); loadProducts(); }, 500);
+            } catch (e) { alert("Error processing sale."); }
         }
 
         async function runReport() {
             const dt = document.getElementById('rep-date').value;
             const ty = document.getElementById('rep-type').value;
-            
-            let data = [];
-            if (navigator.onLine) {
-                let q = _sb.from('sales').select('*');
-                if(ty==='day') q = q.eq('date', dt); else q = q.like('date', `${dt.slice(0,7)}%`);
-                const { data: onlineData, error } = await q.order('id', {ascending: false});
-                if(!error) data = onlineData || [];
-            }
-
-            // Also show pending offline sales in report
-            const pending = getLocal('pending_sales');
-            const matchingPending = pending.filter(s => {
-                if (ty === 'day') return s.date === dt;
-                return s.date.startsWith(dt.slice(0, 7));
-            });
-
-            salesData = [...matchingPending, ...data];
-            
+            let q = _sb.from('sales').select('*');
+            if(ty==='day') q = q.eq('date', dt); else q = q.like('date', `${dt.slice(0,7)}%`);
+            const { data, error } = await q.order('id', {ascending: false});
+            if(error) return;
+            salesData = data || [];
             let r=0, p=0, rows="";
             salesData.forEach(s => { 
                 r += s.rev; p += s.prof; 
-                const isOffline = s.id ? "" : "<span style='color:red;'> (Offline)</span>";
-                rows += `<tr onclick="viewSaleDetails(${s.local_id || s.id})" style="cursor:pointer;">
-                    <td><b>${formatVoucher(s.id)}${isOffline}</b></td><td>${s.date}</td><td>${s.cust}</td><td>${s.rev.toLocaleString()}</td>
+                rows += `<tr onclick="viewSaleDetails(${s.id})" style="cursor:pointer;">
+                    <td><b>${formatVoucher(s.id)}</b></td><td>${s.date}</td><td>${s.cust}</td><td>${s.rev.toLocaleString()}</td>
                     <td style="text-align:center; display:flex; gap:5px; justify-content:center;">
-                        ${s.id ? `<button onclick="event.stopPropagation(); shareVoucherLink(${s.id})" style="border:none;background:#4a90e2;color:white;padding:5px 8px;border-radius:5px;" title="Share Link"><i class="fas fa-share-nodes"></i></button>` : ''}
-                        <button onclick="event.stopPropagation(); rePrintSale(${s.local_id || s.id})" style="border:none;background:var(--midnight);color:white;padding:5px 8px;border-radius:5px;" title="Print"><i class="fas fa-print"></i></button>
-                        <button onclick="event.stopPropagation(); exportSaleToExcel(${s.local_id || s.id})" style="border:none;background:var(--excel);color:white;padding:5px 8px;border-radius:5px;" title="Export Excel"><i class="fas fa-file-excel"></i></button>
-                        <button onclick="event.stopPropagation(); deleteSale(${s.id}, ${s.local_id})" style="border:none;background:var(--red);color:white;padding:5px 8px;border-radius:5px;" title="Delete"><i class="fas fa-trash"></i></button>
+                        <button onclick="event.stopPropagation(); shareVoucherLink(${s.id})" style="border:none;background:#4a90e2;color:white;padding:5px 8px;border-radius:5px;" title="Share Link"><i class="fas fa-share-nodes"></i></button>
+                        <button onclick="event.stopPropagation(); rePrintSale(${s.id})" style="border:none;background:var(--midnight);color:white;padding:5px 8px;border-radius:5px;" title="Print"><i class="fas fa-print"></i></button>
+                        <button onclick="event.stopPropagation(); exportSaleToExcel(${s.id})" style="border:none;background:var(--excel);color:white;padding:5px 8px;border-radius:5px;" title="Export Excel"><i class="fas fa-file-excel"></i></button>
+                        <button onclick="event.stopPropagation(); deleteSale(${s.id})" style="border:none;background:var(--red);color:white;padding:5px 8px;border-radius:5px;" title="Delete"><i class="fas fa-trash"></i></button>
                     </td></tr>`; 
             }); 
             document.getElementById('sum-rev').innerText = r.toLocaleString();
@@ -636,7 +547,7 @@
         }
 
         function exportSaleToExcel(id) {
-            const sale = salesData.find(s => (s.local_id === id || s.id === id));
+            const sale = salesData.find(s => s.id === id);
             if (!sale) return;
             const reportRows = [["ထွန်းတောက်ကြယ် - အရောင်းဘောင်ချာ"],["ဘောင်ချာနံပါတ်", formatVoucher(sale.id)],["ရက်စွဲ", sale.date],["ဝယ်သူ/ဝန်ထမ်း", sale.cust],[""],["ပစ္စည်းအမည်", "အရေအတွက်", "ယူနစ်", "ဈေးနှုန်း", "စုစုပေါင်း"]];
             const items = Array.isArray(sale.items) ? sale.items : JSON.parse(sale.items || '[]');
@@ -649,14 +560,14 @@
         }
 
         function rePrintSale(id) {
-            const sale = salesData.find(s => (s.local_id === id || s.id === id));
+            const sale = salesData.find(s => s.id === id);
             if(!sale) return;
             document.getElementById('receipt-render-area').innerHTML = generateReceiptHTML(sale, true);
             setTimeout(() => { window.print(); }, 500);
         }
 
         function viewSaleDetails(id) {
-            const sale = salesData.find(s => (s.local_id === id || s.id === id));
+            const sale = salesData.find(s => s.id === id);
             if(!sale) return;
             let itemHtml = `<b>ဘောင်ချာနံပါတ်:</b> ${formatVoucher(sale.id)}<br><b>ဘောင်ချာရှင်:</b> ${sale.cust}<br><br><table style="width:100%;"><thead><tr><th>ပစ္စည်း</th><th>Qty</th><th>ဈေး</th><th>စုစုပေါင်း</th></tr></thead><tbody>`;
             const items = Array.isArray(sale.items) ? sale.items : JSON.parse(sale.items || '[]');
@@ -666,30 +577,15 @@
             document.getElementById('detail-overlay').style.display = 'flex';
         }
 
-        async function deleteSale(id, local_id) {
+        async function deleteSale(id) {
             if(confirm("ဖျက်ရန် သေချာပါသလား?")) {
-                const sale = salesData.find(s => (s.id === id || s.local_id === local_id));
+                const sale = salesData.find(s => s.id === id);
                 const items = Array.isArray(sale.items) ? sale.items : JSON.parse(sale.items || '[]');
-                
-                // Restock locally
                 for(let item of items) {
                     const product = products.find(p => p.id === item.id);
-                    if(product) product.qty += item.qty;
+                    if(product) await _sb.from('products').update({ qty: product.qty + item.qty }).eq('id', item.id);
                 }
-                saveLocal('products_cache', products);
-
-                if (id) {
-                    await _sb.from('sales').delete().eq('id', id);
-                    // Update server stock
-                    for(let item of items) {
-                        const p = products.find(x => x.id === item.id);
-                        if(p) await _sb.from('products').update({ qty: p.qty }).eq('id', p.id);
-                    }
-                } else {
-                    let pending = getLocal('pending_sales');
-                    pending = pending.filter(s => s.local_id !== local_id);
-                    saveLocal('pending_sales', pending);
-                }
+                await _sb.from('sales').delete().eq('id', id);
                 await loadProducts(); await runReport();
             }
         }
@@ -728,7 +624,6 @@
         }
 
         async function saveProduct() {
-            if (!navigator.onLine) return alert("ပစ္စည်းအချက်အလက်ပြင်ဆင်ရန် အင်တာနက်လိုအပ်ပါသည်။");
             const id = document.getElementById('edit-id').value;
             const name = document.getElementById('p-name').value;
             if(!name) return alert("အမည်ထည့်ပေးပါ");
@@ -742,10 +637,8 @@
             } catch (err) { alert("Error saving product."); }
         }
 
-        async function deleteProduct() { 
-            if (!navigator.onLine) return alert("ပစ္စည်းဖျက်ရန် အင်တာနက်လိုအပ်ပါသည်။");
-            if(confirm("ဖျက်မှာ သေချာလား?")) { await _sb.from('products').delete().eq('id', document.getElementById('edit-id').value); closeOverlay('add-overlay'); await loadProducts(); } 
-        }
+        async function deleteProduct() { if(confirm("ဖျက်မှာ သေချာလား?")) { await _sb.from('products').delete().eq('id', document.getElementById('edit-id').value); closeOverlay('add-overlay'); await loadProducts(); } }
     </script>
 </body>
 </html>
+
