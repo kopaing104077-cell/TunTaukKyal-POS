@@ -1,16 +1,4 @@
-{
-  "name": "Htun Tauk Kywal POS",
-  "short_name": "TTK POS",
-  "start_url": "./index.html",
-  "display": "standalone",
-  "background_color": "#020617",
-  "theme_color": "#020617",
-  "icons": [
-    {
-      "src": "https://cdn-icons-png.flaticon.com/512/616/616490.png",
-      "sizes": "512x512",
-      "type": "image/png"
-    }
-  ]
-}
-
+const CACHE_NAME = 'ttk-v3';
+const ASSETS = [ './', './index.html' ];
+self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE_NAME).then(c => c.addAll(ASSETS))); });
+self.addEventListener('fetch', e => { e.respondWith(fetch(e.request).catch(() => caches.match(e.request))); });
