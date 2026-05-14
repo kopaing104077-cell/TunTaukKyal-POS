@@ -347,8 +347,9 @@
                             const { id, ...prodData } = item.data;
                             await _sb.from('products').insert([prodData]);
                         } else {
-                            // Update existing product
-                            await _sb.from('products').update(item.data).eq('id', item.data.id);
+                            // Update existing product - Fixed to remove id from update payload
+                            const { id, ...prodData } = item.data;
+                            await _sb.from('products').update(prodData).eq('id', item.data.id);
                         }
                     }
                     else if (item.action === 'DEL_PRODUCT') {
@@ -479,7 +480,12 @@
             } catch (err) {
                 setStatus('offline', 'Offline');
                 console.log("Loading offline products...");
-                // Already loaded from localStorage in window.onload
+                // Fix: Ensure we reload from local storage and refresh the UI when offline
+                const localProducts = localStorage.getItem('ttk_products');
+                if (localProducts) {
+                    products = JSON.parse(localProducts);
+                }
+                refreshUI(); // This is critical for showing updated prices offline
             }
         }
 
@@ -800,7 +806,9 @@
 
             try {
                 if(id && !id.startsWith('temp_')) {
-                    await _sb.from('products').update(obj).eq('id', obj.id); 
+                    // Fix: Remove ID from update payload to prevent database rejection
+                    const { id: updateId, ...updateData } = obj;
+                    await _sb.from('products').update(updateData).eq('id', obj.id); 
                 } else {
                     const { id: tempId, ...insertObj } = obj; // Remove temp ID before insert
                     await _sb.from('products').insert([insertObj]);
