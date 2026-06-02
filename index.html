@@ -82,6 +82,9 @@
         body.share-mode .header, body.share-mode .nav, body.share-mode .container { display: none !important; }
         body.share-mode #receipt-render-area { display: block !important; width: 100%; max-width: 600px; margin: 0 auto; padding: 20px; }
         
+        /* Edit Return Input */
+        .return-input { width: 60px; padding: 4px; border: 1px solid var(--red); border-radius: 4px; text-align: center; font-weight: bold; }
+
         /* Print Styles */
         @media print {
             .header, .nav, .container, .overlay, .no-print { display: none !important; }
@@ -281,10 +284,12 @@
     </div>
 
     <div id="detail-overlay" class="overlay">
-        <div class="modal-card">
+        <div class="modal-card" style="max-width: 550px;">
             <h3 style="text-align:center; border-bottom:1px solid #eee; padding-bottom:10px;">အရောင်းအသေးစိတ်</h3>
             <div id="detail-content" style="margin-top:15px; font-size:13px;"></div>
-            <button class="btn btn-dark" style="margin-top:20px;" onclick="closeOverlay('detail-overlay')">ပိတ်မည်</button>
+            <div id="detail-actions" style="margin-top:15px; display:flex; gap:10px;">
+                <button class="btn btn-dark" onclick="closeOverlay('detail-overlay')">ပိတ်မည်</button>
+            </div>
         </div>
     </div>
 
@@ -305,11 +310,10 @@
             if (shareId) {
                 handleShareView(shareId);
             } else if (showStock) {
-                handleStockShareView();
+                handleStockShareView(showStock);
             } else {
                 document.getElementById('rep-date').value = new Date().toISOString().split('T')[0];
                 
-                // Offline-First: Load local data instantly
                 const localProducts = localStorage.getItem('ttk_products');
                 if (localProducts) {
                     products = JSON.parse(localProducts);
@@ -338,16 +342,14 @@
             for (let item of offlineQueue) {
                 try {
                     if (item.action === 'ADD_SALE') {
-                        const { id, tempId, ...saleData } = item.data; // remove temp id
+                        const { id, tempId, ...saleData } = item.data;
                         await _sb.from('sales').insert([saleData]);
                     } 
                     else if (item.action === 'SAVE_PRODUCT') {
                         if (typeof item.data.id === 'string' && item.data.id.startsWith('temp_')) {
-                            // New product added offline
                             const { id, ...prodData } = item.data;
                             await _sb.from('products').insert([prodData]);
                         } else {
-                            // Update existing product - Fixed to remove id from update payload
                             const { id, ...prodData } = item.data;
                             await _sb.from('products').update(prodData).eq('id', item.data.id);
                         }
@@ -358,9 +360,13 @@
                     else if (item.action === 'DEL_SALE') {
                         await _sb.from('sales').delete().eq('id', item.data.id);
                     }
+                    else if (item.action === 'UPDATE_SALE') {
+                        const { id, ...saleData } = item.data;
+                        await _sb.from('sales').update(saleData).eq('id', item.data.id);
+                    }
                 } catch (error) {
                     console.error("Sync failed for item:", item, error);
-                    newQueue.push(item); // Keep in queue if failed
+                    newQueue.push(item);
                 }
             }
             
@@ -400,21 +406,27 @@
             }
         }
 
-        async function handleStockShareView() {
+        async function handleStockShareView(category) {
             document.body.classList.add('share-mode');
             const area = document.getElementById('receipt-render-area');
             area.innerHTML = "<center style='margin-top:50px;'>ဈေးနှုန်းစာရင်းကို ရှာဖွေနေပါသည်...</center>";
 
             try {
-                const { data, error } = await _sb.from('products').select('*').order('category');
+                let query = _sb.from('products').select('*');
+                if (category !== 'all') {
+                    query = query.eq('category', category);
+                }
+                const { data, error } = await query.order('name');
                 if (error) throw error;
 
-                let html = `<h2 style="text-align:center;">ထွန်းတောက်ကြယ် ဈေးနှုန်းစာရင်း</h2><p style="text-align:center; font-size:12px; color:#666;">ရက်စွဲ: ${new Date().toLocaleDateString()}</p><br>`;
-                html += `<table style="width:100%; border-collapse:collapse; border:1px solid #ccc; font-size:14px;">
+                let catTitle = category === 'all' ? 'အားလုံး' : category;
+                let html = `<h2 style="text-align:center;">ထွန်းတောက်ကြယ် ဈေးနှုန်းစာရင်း (${catTitle})</h2><p style="text-align:center; font-size:12px; color:#666;">ရက်စွဲ: ${new Date().toLocaleDateString()}</p><br>`;
+                html += `<table id="share-stock-table" style="width:100%; border-collapse:collapse; border:1px solid #ccc; font-size:14px;">
                             <thead style="background:#f1f5f9;">
                                 <tr>
                                     <th style="border:1px solid #ccc; padding:10px; text-align:left;">အမည်</th>
                                     <th style="border:1px solid #ccc; padding:10px; text-align:left;">အမျိုးအစား</th>
+                                    <th style="border:1px solid #ccc; padding:10px; text-align:left;">ယူနစ်</th>
                                     <th style="border:1px solid #ccc; padding:10px; text-align:right;">ဈေးနှုန်း</th>
                                 </tr>
                             </thead><tbody>`;
@@ -423,11 +435,13 @@
                     html += `<tr>
                                 <td style="border:1px solid #ccc; padding:10px;">${p.name}</td>
                                 <td style="border:1px solid #ccc; padding:10px;">${p.category}</td>
+                                <td style="border:1px solid #ccc; padding:10px;">${p.unit || 'ခု'}</td>
                                 <td style="border:1px solid #ccc; padding:10px; text-align:right; font-weight:bold; color:var(--green);">${(p.sell || 0).toLocaleString()} Ks</td>
                              </tr>`;
                 });
                 html += `</tbody></table>`;
-                html += `<div class="no-print" style="margin-top:20px;">
+                html += `<div class="no-print" style="margin-top:20px; display:flex; gap:10px;">
+                            <button class="btn btn-excel" onclick="exportSharedStockToExcel('${catTitle}')"><i class="fas fa-file-excel"></i> 📥 Excel ထုတ်ယူမည်</button>
                             <button class="btn btn-dark" onclick="window.location.href=window.location.pathname">ပင်မစာမျက်နှာသို့</button>
                          </div>`;
                 area.innerHTML = html;
@@ -435,6 +449,12 @@
                 area.innerHTML = "<center style='margin-top:50px; color:red;'>စာရင်းရှာမတွေ့ပါ။</center>";
             }
         }
+
+        window.exportSharedStockToExcel = function(catTitle) {
+            const table = document.getElementById('share-stock-table');
+            const wb = XLSX.utils.table_to_book(table, {sheet: "Stock_List"});
+            XLSX.writeFile(wb, `TTK_Stock_${catTitle}_${new Date().toISOString().split('T')[0]}.xlsx`);
+        };
 
         // --- SHARE LINK GENERATORS ---
 
@@ -445,8 +465,8 @@
         }
 
         function shareStockLink() {
-            const shareUrl = `${window.location.origin}${window.location.pathname}?stock=all`;
-            copyToClipboard(shareUrl, "ဈေးနှုန်းစာရင်းကြည့်ရန် Link ကို Copy ကူးလိုက်ပါပြီ။");
+            const shareUrl = `${window.location.origin}${window.location.pathname}?stock=${curStockCat}`;
+            copyToClipboard(shareUrl, `[${curStockCat === 'all' ? 'အားလုံး' : curStockCat}] လက်ကျန်ဈေးနှုန်းစာရင်း Link ကို Copy ကူးလိုက်ပါပြီ။`);
         }
 
         function copyToClipboard(text, msg) {
@@ -472,20 +492,18 @@
                 if (error) throw error;
                 
                 products = data || [];
-                localStorage.setItem('ttk_products', JSON.stringify(products)); // Update local cache
+                localStorage.setItem('ttk_products', JSON.stringify(products));
                 
                 setStatus('online', 'Online');
-                await processOfflineQueue(); // Sync offline data if any
+                await processOfflineQueue();
                 refreshUI();
             } catch (err) {
                 setStatus('offline', 'Offline');
-                console.log("Loading offline products...");
-                // Fix: Ensure we reload from local storage and refresh the UI when offline
                 const localProducts = localStorage.getItem('ttk_products');
                 if (localProducts) {
                     products = JSON.parse(localProducts);
                 }
-                refreshUI(); // This is critical for showing updated prices offline
+                refreshUI();
             }
         }
 
@@ -590,36 +608,32 @@
 
             const items = cart.map(i => {
                 rev += i.sell * i.cQty; prof += (i.sell - i.buy) * i.cQty;
-                // Update local memory stock instantly
                 const prodIndex = products.findIndex(p => p.id === i.id);
                 if(prodIndex > -1) products[prodIndex].qty -= i.cQty;
                 return { id: i.id, name: i.name, qty: i.cQty, sell: i.sell, buy: i.buy, unit: i.unit };
             });
 
-            // Update localStorage for products
             localStorage.setItem('ttk_products', JSON.stringify(products));
 
             const saleData = { date, rev, prof, cust: `${cust} (Clerk: ${staff})`, items };
-            let receiptId = 'temp_' + Date.now(); // Default for offline
+            let receiptId = 'temp_' + Date.now();
 
             try {
                 const { data: inserted, error: saleErr } = await _sb.from('sales').insert([saleData]).select();
                 if(saleErr) throw saleErr;
                 receiptId = inserted[0].id;
                 
-                // Update stock in Supabase
                 for(let i of cart) { 
                     const currentProd = products.find(p => p.id === i.id);
                     if(currentProd && typeof currentProd.id !== 'string') {
                         await _sb.from('products').update({ qty: currentProd.qty }).eq('id', i.id); 
                     } else {
-                        // Queue stock update if it's an offline-created product
                         addToQueue('SAVE_PRODUCT', currentProd);
                     }
                 }
             } catch (e) { 
                 console.log("Offline mode: Sale saved to queue.");
-                saleData.id = receiptId; // Assign temp ID
+                saleData.id = receiptId;
                 addToQueue('ADD_SALE', saleData);
                 setStatus('offline', 'Offline (Saved local)');
             }
@@ -646,7 +660,6 @@
                 salesData = data || [];
                 localStorage.setItem('ttk_sales', JSON.stringify(salesData));
             } catch(e) {
-                // Offline fallback
                 const localSales = JSON.parse(localStorage.getItem('ttk_sales')) || [];
                 const queuedSales = offlineQueue.filter(q => q.action === 'ADD_SALE').map(q => q.data);
                 const allSales = [...localSales, ...queuedSales];
@@ -701,20 +714,122 @@
         function viewSaleDetails(id) {
             const sale = salesData.find(s => s.id === id);
             if(!sale) return;
-            let itemHtml = `<b>ဘောင်ချာနံပါတ်:</b> ${formatVoucher(sale.id)}<br><b>ဘောင်ချာရှင်:</b> ${sale.cust}<br><br><table style="width:100%;"><thead><tr><th>ပစ္စည်း</th><th>Qty</th><th>ဈေး</th><th>စုစုပေါင်း</th></tr></thead><tbody>`;
+            let itemHtml = `<b>ဘောင်ချာနံပါတ်:</b> ${formatVoucher(sale.id)}<br><b>ဘောင်ချာရှင်:</b> ${sale.cust}<br><br>
+            <table style="width:100%; border-collapse:collapse;" id="detail-items-table">
+                <thead><tr style="background:#f1f5f9;"><th style="padding:5px; text-align:left;">ပစ္စည်း</th><th style="padding:5px; text-align:center;">ဝယ်ယူဦးရေ</th><th style="padding:5px; text-align:center;">ပြန်အပ်ဦးရေ</th><th style="padding:5px; text-align:right;">ဈေး</th><th style="padding:5px; text-align:right;">စုစုပေါင်း</th></tr></thead><tbody>`;
+            
             const items = Array.isArray(sale.items) ? sale.items : JSON.parse(sale.items || '[]');
-            items.forEach(item => { itemHtml += `<tr><td>${item.name}</td><td style="text-align:center;">${item.qty}</td><td style="text-align:right;">${item.sell.toLocaleString()}</td><td style="text-align:right;">${(item.sell * item.qty).toLocaleString()}</td></tr>`; });
-            itemHtml += `</tbody></table><div style="text-align:right; margin-top:10px;"><b>စုစုပေါင်း: ${sale.rev.toLocaleString()} Ks</b></div>`;
+            items.forEach((item, index) => { 
+                const passProdId = typeof item.id === 'string' ? `'${item.id}'` : item.id;
+                itemHtml += `<tr style="border-bottom:1px solid #eee;">
+                    <td style="padding:8px 5px;">${item.name}</td>
+                    <td style="text-align:center; padding:8px 5px;"><span id="orig-qty-${index}">${item.qty}</span></td>
+                    <td style="text-align:center; padding:8px 5px;">
+                        <input type="number" id="return-qty-${index}" class="return-input" min="0" max="${item.qty}" value="0" onchange="validateReturnInput(this, ${item.qty})">
+                    </td>
+                    <td style="text-align:right; padding:8px 5px;">${item.sell.toLocaleString()}</td>
+                    <td style="text-align:right; padding:8px 5px;">${(item.sell * item.qty).toLocaleString()}</td>
+                </tr>`; 
+            });
+            itemHtml += `</tbody></table><div style="text-align:right; margin-top:10px;"><b>မူလစုစုပေါင်း: ${sale.rev.toLocaleString()} Ks</b></div>`;
+            
             document.getElementById('detail-content').innerHTML = itemHtml;
+            
+            const passSaleId = typeof sale.id === 'string' ? `'${sale.id}'` : sale.id;
+            document.getElementById('detail-actions').innerHTML = `
+                <button class="btn btn-dark" style="background:var(--red); margin-right:auto;" onclick="processPartialReturn(${passSaleId})"><i class="fas fa-undo"></i> 🔄 ပစ္စည်းပြန်အပ်/ပြင်ဆင်မည်</button>
+                <button class="btn btn-dark" onclick="closeOverlay('detail-overlay')">ပိတ်မည်</button>
+            `;
             document.getElementById('detail-overlay').style.display = 'flex';
         }
 
+        window.validateReturnInput = function(input, max) {
+            let val = parseInt(input.value) || 0;
+            if (val < 0) input.value = 0;
+            if (val > max) { alert(`ဝယ်ယူထားသော အရေအတွက် ${max} ထက် ပို၍ ပြန်အပ်၍မရပါ`); input.value = 0; }
+        };
+
+        async function processPartialReturn(id) {
+            const saleIndex = salesData.findIndex(s => s.id === id);
+            if (saleIndex === -1) return;
+            const sale = salesData[saleIndex];
+            const items = Array.isArray(sale.items) ? sale.items : JSON.parse(sale.items || '[]');
+            
+            let hasReturns = false;
+            let updatedItems = [];
+            let newRev = 0;
+            let newProf = 0;
+
+            for (let i = 0; i < items.length; i++) {
+                const item = items[i];
+                const returnInput = document.getElementById(`return-qty-${i}`);
+                const returnQty = parseInt(returnInput.value) || 0;
+                
+                let finalQty = item.qty - returnQty;
+                
+                if (returnQty > 0) {
+                    hasReturns = true;
+                    const product = products.find(p => p.id === item.id);
+                    if (product) {
+                        product.qty += returnQty;
+                        if (typeof product.id !== 'string') {
+                            try {
+                                await _sb.from('products').update({ qty: product.qty }).eq('id', product.id);
+                            } catch(e) {
+                                addToQueue('SAVE_PRODUCT', product);
+                            }
+                        } else {
+                            addToQueue('SAVE_PRODUCT', product);
+                        }
+                    }
+                }
+                
+                if (finalQty > 0) {
+                    updatedItems.push({ ...item, qty: finalQty });
+                    newRev += item.sell * finalQty;
+                    newProf += (item.sell - item.buy) * finalQty;
+                }
+            }
+
+            if (!hasReturns) return alert("ပြန်အပ်မည့် အရေအတွက်များကို ထည့်သွင်းပေးပါဦး");
+            if (!confirm("ရွေးချယ်ထားသော ပစ္စည်းအရေအတွက်များအတိုင်း ဘောင်ချာကို ပြင်ဆင်ရန် သေချာပါသလား? (လျော့သွားသော ပစ္စည်းများ ဂိုထောင်ထဲသို့ အလိုအလျောက် ပြန်ဝင်သွားမည်)")) return;
+
+            localStorage.setItem('ttk_products', JSON.stringify(products));
+
+            if (updatedItems.length === 0) {
+                closeOverlay('detail-overlay');
+                await deleteSale(id);
+                return;
+            }
+
+            sale.items = updatedItems;
+            sale.rev = newRev;
+            sale.prof = newProf;
+
+            try {
+                if (typeof id !== 'string') {
+                    await _sb.from('sales').update({ items: updatedItems, rev: newRev, prof: newProf }).eq('id', id);
+                } else {
+                    addToQueue('UPDATE_SALE', sale);
+                }
+            } catch (e) {
+                addToQueue('UPDATE_SALE', sale);
+            }
+
+            salesData[saleIndex] = sale;
+            localStorage.setItem('ttk_sales', JSON.stringify(salesData));
+
+            alert("ပစ္စည်းပြန်အပ်ခြင်းနှင့် ဘောင်ချာပြင်ဆင်ခြင်း အောင်မြင်ပါသည်။");
+            closeOverlay('detail-overlay');
+            refreshUI();
+            runReport();
+        }
+
         async function deleteSale(id) {
-            if(confirm("ဖျက်ရန် သေချာပါသလား?")) {
+            if(confirm("ဤဘောင်ချာတစ်ခုလုံးကို ဖျက်ရန် သေချာပါသလား? (ဝယ်ယူထားသော ပစ္စည်းအားလုံး ဂိုထောင်ထဲသို့ ပြန်ဝင်ပါမည်)")) {
                 const sale = salesData.find(s => s.id === id);
                 const items = Array.isArray(sale.items) ? sale.items : JSON.parse(sale.items || '[]');
                 
-                // Add stock back locally
                 for(let item of items) {
                     const product = products.find(p => p.id === item.id);
                     if(product) {
@@ -740,7 +855,6 @@
                 }
 
                 salesData = salesData.filter(s => s.id !== id);
-                // Also remove from queue if it was an offline sale
                 offlineQueue = offlineQueue.filter(q => !(q.action === 'ADD_SALE' && q.data.id === id));
                 localStorage.setItem('ttk_offline_queue', JSON.stringify(offlineQueue));
 
@@ -793,7 +907,6 @@
             const obj = { name, unit: document.getElementById('p-unit').value, buy: fb, sell: parseInt(document.getElementById('p-sell').value || 0), qty: fq, category: document.getElementById('p-cat').value };
             
             if(id) {
-                // Ensure correct type for offline IDs vs Real IDs
                 obj.id = id.startsWith('temp_') ? id : parseInt(id);
                 const index = products.findIndex(p => p.id == obj.id);
                 if(index > -1) products[index] = obj;
@@ -806,11 +919,10 @@
 
             try {
                 if(id && !id.startsWith('temp_')) {
-                    // Fix: Remove ID from update payload to prevent database rejection
                     const { id: updateId, ...updateData } = obj;
                     await _sb.from('products').update(updateData).eq('id', obj.id); 
                 } else {
-                    const { id: tempId, ...insertObj } = obj; // Remove temp ID before insert
+                    const { id: tempId, ...insertObj } = obj;
                     await _sb.from('products').insert([insertObj]);
                 }
             } catch (err) { 
@@ -838,7 +950,6 @@
                     addToQueue('DEL_PRODUCT', { id });
                 }
 
-                // Remove from offline queue if it was an un-synced new product
                 if(typeof id === 'string') {
                      offlineQueue = offlineQueue.filter(q => !(q.action === 'SAVE_PRODUCT' && q.data.id === id));
                      localStorage.setItem('ttk_offline_queue', JSON.stringify(offlineQueue));
