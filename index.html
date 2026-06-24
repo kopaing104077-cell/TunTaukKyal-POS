@@ -195,8 +195,8 @@
         </div>
     </main>
 
-    <main id="tab-rep" class="container" style="overflow-y: auto;">
-        <div style="padding:15px; background: white; margin: 10px 10px 0 10px; border-radius: 12px; border: 1px solid #e2e8f0; flex-shrink: 0;">
+    <main id="tab-rep" class="container">
+        <div style="padding:15px; background: white; margin: 10px; border-radius: 12px; border: 1px solid #e2e8f0;">
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom: 10px;">
                 <select id="rep-type" class="input-style" onchange="runReport()">
                     <option value="day">နေ့ချုပ်</option>
@@ -209,32 +209,13 @@
                 <div style="background:#f1f5f9; padding:10px; border-radius:10px; text-align:center;"><small>ရောင်းရငွေ</small><br><b id="sum-rev">0</b> Ks</div>
                 <div style="background:#f0fdf4; padding:10px; border-radius:10px; text-align:center;"><small>အမြတ်</small><br><b id="sum-prof" style="color:var(--green);">0</b> Ks</div>
             </div>
-            <div style="margin-top:10px; display: flex; flex-direction: column; gap: 8px;">
-                <button class="btn btn-excel" onclick="exportGroupedExcel()" style="width:100%; padding:10px; border-radius:8px; font-weight:bold; font-size: 13px;">
-                    <i class="fas fa-user-tie"></i> အရောင်းသမားအလိုက် Excel ထုတ်မည်
-                </button>
-                <button class="btn" onclick="exportDetailedReportExcel()" style="background:#10b981; color:white; width:100%; padding:10px; border-radius:8px; font-weight:bold; font-size: 13px;">
-                    <i class="fas fa-file-excel"></i> ကာလအလိုက် ပစ္စည်း+ဘောင်ချာ အသေးစိတ် Excel ထုတ်မည်
-                </button>
+            <div style="margin-top:10px;">
+                <button class="btn btn-excel" onclick="exportGroupedExcel()" style="width:100%; padding:10px; border-radius:8px; font-weight:bold; font-size: 13px;"><i class="fas fa-file-excel"></i> နေ့ချုပ်/လချုပ်/နှစ်ချုပ် အစီရင်ခံစာထုတ်မည် (အကြမ်း/အသေးစိတ်)</button>
             </div>
         </div>
-
-        <div class="table-wrap" style="margin: 10px; flex: none; max-height: 300px;">
-            <h4 style="padding: 12px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; font-size: 14px; color: var(--primary);">
-                <i class="fas fa-box-open"></i> ပစ္စည်းအလိုက် ရောင်းရစာရင်းအသေးစိတ်
-            </h4>
+        <div class="table-wrap">
             <table>
-                <thead><tr><th>ပစ္စည်းအမည်</th><th style="text-align:center;">အရေအတွက်</th><th style="text-align:right;">ငွေပမာဏ</th></tr></thead>
-                <tbody id="rep-items-body"></tbody>
-            </table>
-        </div>
-
-        <div class="table-wrap" style="margin: 0 10px 10px 10px; flex: none; max-height: 400px;">
-            <h4 style="padding: 12px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; font-size: 14px; color: var(--primary);">
-                <i class="fas fa-receipt"></i> ဘောင်ချာမှတ်တမ်းများ
-            </h4>
-            <table>
-                <thead><tr><th>Voucher #</th><th>ဝယ်သူ/ဝန်ထမ်း</th><th>စုစုပေါင်း</th><th style="text-align:center; min-width:140px;">Action</th></tr></thead>
+                <thead><tr><th>Voucher #</th><th>ရက်စွဲ</th><th>ဝယ်သူ/ဝန်ထမ်း</th><th>စုစုပေါင်း</th><th style="text-align:center;">Action</th></tr></thead>
                 <tbody id="rep-body"></tbody>
             </table>
         </div>
@@ -629,14 +610,17 @@
             let oldItems = oldSale ? (Array.isArray(oldSale.items) ? oldSale.items : JSON.parse(oldSale.items || '[]')) : [];
             
             const now = new Date();
+            // Keep original date if editing, otherwise use today's date
             const date = (isEditing && oldSale) ? oldSale.date : now.toISOString().split('T')[0];
             
             const staff = document.getElementById('staff-name').value || "Admin";
             const cust = document.getElementById('cust-name').value || "Guest";
             let receiptId = isEditing ? editingSaleId : 'temp_' + Date.now();
 
+            // Temporary deep copy of products to adjust stock safely
             let tempProducts = JSON.parse(JSON.stringify(products));
 
+            // If editing, first revert old items' quantities
             if(isEditing) {
                 oldItems.forEach(oldI => {
                     let p = tempProducts.find(x => x.id === oldI.id);
@@ -648,13 +632,15 @@
             const items = cart.map(i => {
                 rev += i.sell * i.cQty; prof += (i.sell - i.buy) * i.cQty;
                 const prodIndex = tempProducts.findIndex(p => p.id === i.id);
-                if(prodIndex > -1) tempProducts[prodIndex].qty -= i.cQty; 
+                if(prodIndex > -1) tempProducts[prodIndex].qty -= i.cQty; // Deduct new quantities
                 return { id: i.id, name: i.name, qty: i.cQty, sell: i.sell, buy: i.buy, unit: i.unit };
             });
 
+            // Set modified product array back
             products = tempProducts;
             localStorage.setItem('ttk_products', JSON.stringify(products));
 
+            // Use "C:" instead of "Clerk:" per user request
             const saleData = { date, rev, prof, cust: `${cust} (C: ${staff})`, items };
 
             try {
@@ -669,6 +655,7 @@
                     addToQueue('UPDATE_SALE', saleData);
                 }
                 
+                // Update affected products in database
                 let productsToUpdate = new Set([...oldItems.map(i=>i.id), ...cart.map(i=>i.id)]);
                 for(let pid of productsToUpdate) { 
                     const currentProd = products.find(p => p.id === pid);
@@ -732,109 +719,24 @@
             }
 
             let r=0, p=0, rows="";
-            let itemAgg = {}; // Added logic for aggregating detailed items
-
             salesData.forEach(s => { 
                 r += s.rev; p += s.prof; 
-                
-                // Aggregate items details
-                const items = Array.isArray(s.items) ? s.items : JSON.parse(s.items || '[]');
-                items.forEach(item => {
-                    if(!itemAgg[item.name]) {
-                        itemAgg[item.name] = { qty: 0, amount: 0, unit: item.unit || 'ခု' };
-                    }
-                    itemAgg[item.name].qty += item.qty;
-                    itemAgg[item.name].amount += (item.sell * item.qty);
-                });
-
                 const passId = typeof s.id === 'string' ? `'${s.id}'` : s.id;
-                
-                // Update: Individual Excel Download Button is highlighted with bright green color var(--excel)
                 rows += `<tr onclick="viewSaleDetails(${passId})" style="cursor:pointer;">
-                    <td><b>${formatVoucher(s.id)}</b><br><small style="color:#666;">${s.date}</small></td>
-                    <td>${s.cust}</td>
-                    <td>${s.rev.toLocaleString()}</td>
-                    <td style="text-align:center; display:flex; gap:5px; justify-content:center;">
-                        <button onclick="event.stopPropagation(); shareVoucherLink(${passId})" style="border:none;background:#4a90e2;color:white;padding:6px 10px;border-radius:5px;" title="Share Link"><i class="fas fa-share-nodes"></i></button>
-                        <button onclick="event.stopPropagation(); exportSaleToExcel(${passId})" style="border:none;background:var(--excel);color:white;padding:6px 10px;border-radius:5px;" title="Excel Download"><i class="fas fa-file-excel"></i></button>
-                        <button onclick="event.stopPropagation(); rePrintSale(${passId})" style="border:none;background:var(--midnight);color:white;padding:6px 10px;border-radius:5px;" title="Print"><i class="fas fa-print"></i></button>
-                        <button onclick="event.stopPropagation(); deleteSale(${passId})" style="border:none;background:var(--red);color:white;padding:6px 10px;border-radius:5px;" title="Delete"><i class="fas fa-trash"></i></button>
+                    <td><b>${formatVoucher(s.id)}</b></td><td>${s.date}</td><td>${s.cust}</td><td>${s.rev.toLocaleString()}</td>
+                    <td style="text-align:center; display:flex; gap:5px; flex-wrap:wrap; justify-content:center;">
+                        <button onclick="event.stopPropagation(); shareVoucherLink(${passId})" style="border:none;background:#4a90e2;color:white;padding:5px 8px;border-radius:5px;" title="Share Link"><i class="fas fa-share-nodes"></i></button>
+                        <button onclick="event.stopPropagation(); rePrintSale(${passId})" style="border:none;background:var(--midnight);color:white;padding:5px 8px;border-radius:5px;" title="Print"><i class="fas fa-print"></i></button>
+                        <button onclick="event.stopPropagation(); exportSaleToExcel(${passId})" style="border:none;background:var(--excel);color:white;padding:5px 8px;border-radius:5px;font-size:11px;" title="Export Excel"><i class="fas fa-file-excel"></i> Excel</button>
+                        <button onclick="event.stopPropagation(); deleteSale(${passId})" style="border:none;background:var(--red);color:white;padding:5px 8px;border-radius:5px;" title="Delete"><i class="fas fa-trash"></i></button>
                     </td></tr>`; 
             }); 
-
-            // Render aggregated detailed items
-            let itemRows = "";
-            for(let itemName in itemAgg) {
-                itemRows += `<tr>
-                    <td><b>${itemName}</b></td>
-                    <td style="text-align:center; font-weight:bold; color:var(--primary);">${itemAgg[itemName].qty} <small style="color:#666; font-weight:normal;">${itemAgg[itemName].unit}</small></td>
-                    <td style="text-align:right; font-weight:bold; color:var(--green);">${itemAgg[itemName].amount.toLocaleString()} Ks</td>
-                </tr>`;
-            }
-
             document.getElementById('sum-rev').innerText = r.toLocaleString();
             document.getElementById('sum-prof').innerText = p.toLocaleString();
-            document.getElementById('rep-items-body').innerHTML = itemRows || '<tr><td colspan="3" style="text-align:center; color:#94a3b8;">ရောင်းရသော ပစ္စည်းမရှိပါ</td></tr>';
-            document.getElementById('rep-body').innerHTML = rows || '<tr><td colspan="4" style="text-align:center; color:#94a3b8;">စာရင်းမရှိပါ</td></tr>';
+            document.getElementById('rep-body').innerHTML = rows || '<tr><td colspan="5" style="text-align:center;">စာရင်းမရှိပါ</td></tr>';
         }
 
-        // --- NEW: EXPORT DETAILED REPORT EXCEL (Items + Vouchers) ---
-        window.exportDetailedReportExcel = function() {
-            if(!salesData || salesData.length === 0) return alert("စာရင်းမရှိပါ");
-            
-            const tyOpt = document.getElementById('rep-type').options[document.getElementById('rep-type').selectedIndex].text;
-            const dt = document.getElementById('rep-date').value;
-            const ty = document.getElementById('rep-type').value;
-            let dateLabel = ty === 'day' ? dt : (ty === 'month' ? dt.slice(0,7) : dt.slice(0,4));
-
-            let itemAgg = {};
-            let totalRev = 0;
-            let totalProf = 0;
-
-            salesData.forEach(s => {
-                totalRev += s.rev; totalProf += s.prof;
-                const items = Array.isArray(s.items) ? s.items : JSON.parse(s.items || '[]');
-                items.forEach(item => {
-                    if(!itemAgg[item.name]) itemAgg[item.name] = { qty: 0, amount: 0, unit: item.unit || 'ခု' };
-                    itemAgg[item.name].qty += item.qty;
-                    itemAgg[item.name].amount += (item.sell * item.qty);
-                });
-            });
-
-            // Sheet 1: Detailed Items
-            const itemsRows = [
-                ["ထွန်းတောက်ကြယ် - ပစ္စည်းအလိုက် အရောင်းစာရင်းအသေးစိတ်"],
-                ["ရက်စွဲ/ကာလ", dateLabel, "အမျိုးအစား", tyOpt],
-                [""],
-                ["ပစ္စည်းအမည်", "ရောင်းရအရေအတွက်", "ယူနစ်", "ရောင်းရငွေစုစုပေါင်း"]
-            ];
-            for(let itemName in itemAgg) {
-                itemsRows.push([itemName, itemAgg[itemName].qty, itemAgg[itemName].unit, itemAgg[itemName].amount]);
-            }
-            itemsRows.push(["", "", "စုစုပေါင်း", totalRev]);
-
-            // Sheet 2: Vouchers Summary
-            const voucherRows = [
-                ["ထွန်းတောက်ကြယ် - ဘောင်ချာအလိုက် အရောင်းစာရင်း"],
-                ["ရက်စွဲ/ကာလ", dateLabel, "အမျိုးအစား", tyOpt],
-                [""],
-                ["Voucher #", "ရက်စွဲ", "ဝယ်သူ/ဝန်ထမ်း", "ရောင်းရငွေ", "အမြတ်ငွေ"]
-            ];
-            salesData.forEach(s => {
-                voucherRows.push([formatVoucher(s.id), s.date, s.cust, s.rev, s.prof]);
-            });
-            voucherRows.push(["", "", "စုစုပေါင်း", totalRev, totalProf]);
-
-            const wb = XLSX.utils.book_new();
-            const wsItems = XLSX.utils.aoa_to_sheet(itemsRows);
-            const wsVouchers = XLSX.utils.aoa_to_sheet(voucherRows);
-
-            XLSX.utils.book_append_sheet(wb, wsItems, "Items_Details");
-            XLSX.utils.book_append_sheet(wb, wsVouchers, "Vouchers");
-
-            XLSX.writeFile(wb, `TTK_Detailed_${tyOpt}_${dateLabel}.xlsx`);
-        };
-
+        // --- NEW: EXPORT GROUPED EXCEL (Summary + Details in Multiple Sheets) ---
         window.exportGroupedExcel = function() {
             if(!salesData || salesData.length === 0) return alert("စာရင်းမရှိပါ");
             
@@ -844,14 +746,26 @@
             let dateLabel = ty === 'day' ? dt : (ty === 'month' ? dt.slice(0,7) : dt.slice(0,4));
             
             let staffMap = {};
+            let itemMap = {};
             let totalRev = 0;
             let totalProf = 0;
+
+            let detailedRows = [
+                ["ရက်စွဲ", "ဘောင်ချာနံပါတ်", "ဝယ်သူအမည်", "အရောင်းဝန်ထမ်း", "ပစ္စည်းအမည်", "အရေအတွက်", "ယူနစ်", "ရောင်းဈေး", "ဝယ်ဈေး", "ရောင်းအားစုစုပေါင်း", "အမြတ်"]
+            ];
             
             salesData.forEach(s => {
                 let staffName = "Unknown";
-                let match = (s.cust || "").match(/\((?:Clerk|C):\s*(.*?)\)/);
-                if(match && match[1]) staffName = match[1].trim();
+                let custName = s.cust || "";
                 
+                // Extract "(C: StaffName)"
+                let match = custName.match(/(.*?)\s*\((?:Clerk|C):\s*(.*?)\)/);
+                if(match) {
+                    custName = match[1].trim();
+                    staffName = match[2].trim();
+                }
+                
+                // Staff Summary
                 if(!staffMap[staffName]) staffMap[staffName] = { rev: 0, prof: 0, count: 0 };
                 staffMap[staffName].rev += s.rev;
                 staffMap[staffName].prof += s.prof;
@@ -859,26 +773,78 @@
                 
                 totalRev += s.rev;
                 totalProf += s.prof;
+
+                // Items & Details
+                const items = Array.isArray(s.items) ? s.items : JSON.parse(s.items || '[]');
+                items.forEach(item => {
+                    // Item Summary Aggregation
+                    if(!itemMap[item.name]) itemMap[item.name] = { qty: 0, rev: 0, prof: 0, unit: item.unit || '-' };
+                    let itemRev = item.sell * item.qty;
+                    let itemProf = (item.sell - item.buy) * item.qty;
+                    itemMap[item.name].qty += item.qty;
+                    itemMap[item.name].rev += itemRev;
+                    itemMap[item.name].prof += itemProf;
+
+                    // Append to Detailed Log
+                    detailedRows.push([
+                        s.date, 
+                        formatVoucher(s.id), 
+                        custName, 
+                        staffName, 
+                        item.name, 
+                        item.qty, 
+                        item.unit || '-', 
+                        item.sell, 
+                        item.buy, 
+                        itemRev, 
+                        itemProf
+                    ]);
+                });
             });
             
-            const reportRows = [
-                ["ထွန်းတောက်ကြယ် လက်ကားဖြန့်ချိရေး - အရောင်းသမားအလိုက် " + tyOpt],
+            // 1. Staff Report Sheet Data
+            const staffRows = [
+                ["ထွန်းတောက်ကြယ် လက်ကားဖြန့်ချိရေး - အရောင်းသမားအလိုက် အကြမ်းဖျင်းအစီရင်ခံစာ (" + tyOpt + ")"],
                 ["ရက်စွဲ/ကာလ", dateLabel],
                 [""],
                 ["အရောင်းသမားအမည်", "ဘောင်ချာအရေအတွက်", "ရောင်းအား (Total Sales)", "အမြတ်ငွေ (Total Profit)"]
             ];
-            
             for(let staff in staffMap) {
-                reportRows.push([staff, staffMap[staff].count, staffMap[staff].rev, staffMap[staff].prof]);
+                staffRows.push([staff, staffMap[staff].count, staffMap[staff].rev, staffMap[staff].prof]);
             }
-            
-            reportRows.push(["", "", "", ""]);
-            reportRows.push(["စုစုပေါင်း", salesData.length, totalRev, totalProf]);
-            
-            const ws = XLSX.utils.aoa_to_sheet(reportRows);
+            staffRows.push(["", "", "", ""]);
+            staffRows.push(["စုစုပေါင်း", salesData.length, totalRev, totalProf]);
+
+            // 2. Item Summary Sheet Data
+            const itemRows = [
+                ["ထွန်းတောက်ကြယ် လက်ကားဖြန့်ချိရေး - ပစ္စည်းအလိုက် ရောင်းအားအစီရင်ခံစာ (" + tyOpt + ")"],
+                ["ရက်စွဲ/ကာလ", dateLabel],
+                [""],
+                ["ပစ္စည်းအမည်", "ယူနစ်", "ရောင်းရအရေအတွက်", "ရောင်းအားစုစုပေါင်း", "အမြတ်ငွေစုစုပေါင်း"]
+            ];
+            for(let itemName in itemMap) {
+                itemRows.push([
+                    itemName, 
+                    itemMap[itemName].unit, 
+                    itemMap[itemName].qty, 
+                    itemMap[itemName].rev, 
+                    itemMap[itemName].prof
+                ]);
+            }
+
+            // Create Excel Book and Add Sheets
             const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "Staff_Report");
-            XLSX.writeFile(wb, `TTK_${tyOpt}_StaffReport_${dateLabel}.xlsx`);
+            
+            const wsStaff = XLSX.utils.aoa_to_sheet(staffRows);
+            XLSX.utils.book_append_sheet(wb, wsStaff, "အရောင်းသမားချုပ် (Staff)");
+
+            const wsItems = XLSX.utils.aoa_to_sheet(itemRows);
+            XLSX.utils.book_append_sheet(wb, wsItems, "ပစ္စည်းချုပ် (Items)");
+
+            const wsDetails = XLSX.utils.aoa_to_sheet(detailedRows);
+            XLSX.utils.book_append_sheet(wb, wsDetails, "အသေးစိတ် (Details)");
+            
+            XLSX.writeFile(wb, `TTK_${tyOpt}_FullReport_${dateLabel}.xlsx`);
         };
 
         function exportSaleToExcel(id) {
@@ -945,6 +911,7 @@
             editingSaleId = id;
             cart = Array.isArray(sale.items) ? sale.items : JSON.parse(sale.items || '[]');
             
+            // Extract Cust and Staff
             let custStr = sale.cust || "";
             let custName = custStr;
             let staffName = "";
@@ -963,6 +930,7 @@
             navTo('tab-sales', document.getElementById('n-sales'));
             renderCart();
             
+            // Show edit indicator
             document.getElementById('edit-indicator-text').innerText = `ဘောင်ချာနံပါတ် ${formatVoucher(id)} အား ပြန်လည်ပြင်ဆင်နေပါသည်`;
             document.getElementById('edit-indicator').style.display = 'block';
             document.getElementById('btn-print-sale').innerHTML = '<i class="fas fa-save"></i> ပြင်ဆင်ပြီး Print ထုတ်မည်';
@@ -1197,3 +1165,4 @@
     </script>
 </body>
 </html>
+
