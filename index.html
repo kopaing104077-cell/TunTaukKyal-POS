@@ -81,9 +81,6 @@
         body.share-mode { overflow-y: auto; position: static; height: auto; background: white; }
         body.share-mode .header, body.share-mode .nav, body.share-mode .container { display: none !important; }
         body.share-mode #receipt-render-area { display: block !important; width: 100%; max-width: 600px; margin: 0 auto; padding: 20px; }
-        
-        /* Edit Return Input */
-        .return-input { width: 60px; padding: 4px; border: 1px solid var(--red); border-radius: 4px; text-align: center; font-weight: bold; }
 
         /* Print Styles */
         @media print {
@@ -126,16 +123,22 @@
 
     <main id="tab-sales" class="container active">
         <div class="sales-sticky">
+            <div id="edit-badge" style="display:none; background:rgba(251, 191, 36, 0.2); border: 1px solid var(--gold); padding:8px; align-items:center; justify-content:space-between; font-size:12px; font-weight:bold; border-radius:8px; margin-bottom:8px; color:#b45309;">
+                <span><i class="fas fa-edit"></i> ဘောင်ချာ #<span id="edit-v-num"></span> ကို ပြင်ဆင်နေပါသည်</span>
+                <button onclick="cancelEdit()" style="background:var(--red); color:white; border:none; padding:4px 8px; border-radius:4px; cursor:pointer;">မပြင်တော့ပါ</button>
+            </div>
+            
             <div class="input-group">
                 <input type="text" id="cust-name" class="input-style" placeholder="ဝယ်သူအမည်">
                 <input type="text" id="staff-name" class="input-style" placeholder="အရောင်းဝန်ထမ်း">
             </div>
             <input type="text" id="search-box" class="input-style" placeholder="ပစ္စည်းရှာဖွေရန်..." onkeyup="refreshUI()" style="margin-bottom:8px;">
+            
             <div class="cart-box">
                 <div id="cart-list"><div style="text-align:center; color:#94a3b8; font-size:12px;">ခြင်းတောင်းထဲတွင် ပစ္စည်းမရှိသေးပါ</div></div>
                 <div style="display:flex; justify-content:space-between; align-items:center;">
                     <b style="font-size:17px;">Total: <span id="cart-total" style="color:var(--red)">0</span> Ks</b>
-                    <button class="btn btn-dark" style="width:auto; padding:8px 15px;" onclick="processSale()"><i class="fas fa-print"></i> ဘောင်ချာထုတ်မည်</button>
+                    <button id="btn-print" class="btn btn-dark" style="width:auto; padding:8px 15px;" onclick="processSale()"><i class="fas fa-print"></i> ဘောင်ချာထုတ်မည်</button>
                 </div>
             </div>
             <div class="cat-scroll">
@@ -201,11 +204,13 @@
                 </select>
                 <input type="date" id="rep-date" class="input-style" onchange="runReport()">
             </div>
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
-                <div style="background:#f1f5f9; padding:10px; border-radius:10px; text-align:center;"><small>ရောင်းရငွေ</small><br><b id="sum-rev">0</b> Ks</div>
-                <div style="background:#f0fdf4; padding:10px; border-radius:10px; text-align:center;"><small>အမြတ်</small><br><b id="sum-prof" style="color:var(--green);">0</b> Ks</div>
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom: 10px;">
+                <div style="background:#f1f5f9; padding:10px; border-radius:10px; text-align:center;"><small>စုစုပေါင်း ရောင်းရငွေ</small><br><b id="sum-rev">0</b> Ks</div>
+                <div style="background:#f0fdf4; padding:10px; border-radius:10px; text-align:center;"><small>စုစုပေါင်း အမြတ်</small><br><b id="sum-prof" style="color:var(--green);">0</b> Ks</div>
             </div>
-            <button class="btn btn-excel" style="margin-top:10px;" onclick="exportGroupedExcel()"><i class="fas fa-file-excel"></i> အရောင်းသမားအလိုက် စာရင်းချုပ် Excel ထုတ်မည်</button>
+            <button class="btn btn-excel" onclick="exportGroupedExcel()" style="width:100%; font-size:13px;">
+                <i class="fas fa-file-excel"></i> Excel ထုတ်မည် (အရောင်းသမားအလိုက်)
+            </button>
         </div>
         <div class="table-wrap">
             <table>
@@ -288,11 +293,10 @@
 
     <div id="detail-overlay" class="overlay">
         <div class="modal-card" style="max-width: 550px;">
-            <h3 style="text-align:center; border-bottom:1px solid #eee; padding-bottom:10px;">အရောင်းအသေးစိတ် ပြင်ဆင်ရန်</h3>
+            <h3 style="text-align:center; border-bottom:1px solid #eee; padding-bottom:10px;">အရောင်းအသေးစိတ်</h3>
             <div id="detail-content" style="margin-top:15px; font-size:13px;"></div>
             <div id="detail-actions" style="margin-top:15px; display:flex; gap:10px;">
-                <button class="btn btn-dark" onclick="closeOverlay('detail-overlay')">ပိတ်မည်</button>
-            </div>
+                </div>
         </div>
     </div>
 
@@ -304,6 +308,9 @@
 
         let products = [], cart = [], isAdmin = false, curCat = "all", curStockCat = "all", nextTab = "", salesData = [];
         let offlineQueue = JSON.parse(localStorage.getItem('ttk_offline_queue')) || [];
+        
+        // --- NEW GLOBALS FOR EDIT MODE ---
+        let editingVoucherId = null; 
 
         window.onload = async () => {
             const urlParams = new URLSearchParams(window.location.search);
@@ -389,68 +396,43 @@
         }
 
         // --- SHARED VIEW HANDLERS ---
+        // (Unchanged logic for share modes)
 
         async function handleShareView(id) {
             document.body.classList.add('share-mode');
             const area = document.getElementById('receipt-render-area');
             area.innerHTML = "<center style='margin-top:50px;'>ဘောင်ချာကို ရှာဖွေနေပါသည်...</center>";
-            
             try {
                 const { data, error } = await _sb.from('sales').select('*').eq('id', id).single();
                 if (error || !data) throw error;
-                
                 area.innerHTML = generateReceiptHTML(data) + `
                     <div class="no-print" style="margin-top:20px; display:flex; flex-direction:column; gap:10px;">
                         <button class="btn btn-dark" onclick="window.print()"><i class="fas fa-print"></i> Bluetooth Printer ဖြင့်ထုတ်မည်</button>
                         <button class="btn" onclick="window.location.href=window.location.pathname" style="background:#ddd;">ပင်မစာမျက်နှာသို့</button>
                     </div>`;
-            } catch (e) {
-                area.innerHTML = "<center style='margin-top:50px; color:red;'>ဘောင်ချာရှာမတွေ့ပါ သို့မဟုတ် ပျက်သွားပါပြီ။</center>";
-            }
+            } catch (e) { area.innerHTML = "<center style='margin-top:50px; color:red;'>ဘောင်ချာရှာမတွေ့ပါ သို့မဟုတ် ပျက်သွားပါပြီ။</center>"; }
         }
 
         async function handleStockShareView(category) {
             document.body.classList.add('share-mode');
             const area = document.getElementById('receipt-render-area');
             area.innerHTML = "<center style='margin-top:50px;'>ဈေးနှုန်းစာရင်းကို ရှာဖွေနေပါသည်...</center>";
-
             try {
                 let query = _sb.from('products').select('*');
-                if (category !== 'all') {
-                    query = query.eq('category', category);
-                }
+                if (category !== 'all') query = query.eq('category', category);
                 const { data, error } = await query.order('name');
                 if (error) throw error;
 
                 let catTitle = category === 'all' ? 'အားလုံး' : category;
                 let html = `<h2 style="text-align:center;">ထွန်းတောက်ကြယ် ဈေးနှုန်းစာရင်း (${catTitle})</h2><p style="text-align:center; font-size:12px; color:#666;">ရက်စွဲ: ${new Date().toLocaleDateString()}</p><br>`;
                 html += `<table id="share-stock-table" style="width:100%; border-collapse:collapse; border:1px solid #ccc; font-size:14px;">
-                            <thead style="background:#f1f5f9;">
-                                <tr>
-                                    <th style="border:1px solid #ccc; padding:10px; text-align:left;">အမည်</th>
-                                    <th style="border:1px solid #ccc; padding:10px; text-align:left;">အမျိုးအစား</th>
-                                    <th style="border:1px solid #ccc; padding:10px; text-align:left;">ယူနစ်</th>
-                                    <th style="border:1px solid #ccc; padding:10px; text-align:right;">ဈေးနှုန်း</th>
-                                </tr>
-                            </thead><tbody>`;
-                
+                            <thead style="background:#f1f5f9;"><tr><th style="border:1px solid #ccc; padding:10px; text-align:left;">အမည်</th><th style="border:1px solid #ccc; padding:10px; text-align:left;">အမျိုးအစား</th><th style="border:1px solid #ccc; padding:10px; text-align:left;">ယူနစ်</th><th style="border:1px solid #ccc; padding:10px; text-align:right;">ဈေးနှုန်း</th></tr></thead><tbody>`;
                 data.forEach(p => {
-                    html += `<tr>
-                                <td style="border:1px solid #ccc; padding:10px;">${p.name}</td>
-                                <td style="border:1px solid #ccc; padding:10px;">${p.category}</td>
-                                <td style="border:1px solid #ccc; padding:10px;">${p.unit || 'ခု'}</td>
-                                <td style="border:1px solid #ccc; padding:10px; text-align:right; font-weight:bold; color:var(--green);">${(p.sell || 0).toLocaleString()} Ks</td>
-                             </tr>`;
+                    html += `<tr><td style="border:1px solid #ccc; padding:10px;">${p.name}</td><td style="border:1px solid #ccc; padding:10px;">${p.category}</td><td style="border:1px solid #ccc; padding:10px;">${p.unit || 'ခု'}</td><td style="border:1px solid #ccc; padding:10px; text-align:right; font-weight:bold; color:var(--green);">${(p.sell || 0).toLocaleString()} Ks</td></tr>`;
                 });
-                html += `</tbody></table>`;
-                html += `<div class="no-print" style="margin-top:20px; display:flex; gap:10px;">
-                            <button class="btn btn-excel" onclick="exportSharedStockToExcel('${catTitle}')"><i class="fas fa-file-excel"></i> 📥 Excel ထုတ်ယူမည်</button>
-                            <button class="btn btn-dark" onclick="window.location.href=window.location.pathname">ပင်မစာမျက်နှာသို့</button>
-                         </div>`;
+                html += `</tbody></table><div class="no-print" style="margin-top:20px; display:flex; gap:10px;"><button class="btn btn-excel" onclick="exportSharedStockToExcel('${catTitle}')"><i class="fas fa-file-excel"></i> 📥 Excel ထုတ်ယူမည်</button><button class="btn btn-dark" onclick="window.location.href=window.location.pathname">ပင်မစာမျက်နှာသို့</button></div>`;
                 area.innerHTML = html;
-            } catch (e) {
-                area.innerHTML = "<center style='margin-top:50px; color:red;'>စာရင်းရှာမတွေ့ပါ။</center>";
-            }
+            } catch (e) { area.innerHTML = "<center style='margin-top:50px; color:red;'>စာရင်းရှာမတွေ့ပါ။</center>"; }
         }
 
         window.exportSharedStockToExcel = function(catTitle) {
@@ -458,8 +440,6 @@
             const wb = XLSX.utils.table_to_book(table, {sheet: "Stock_List"});
             XLSX.writeFile(wb, `TTK_Stock_${catTitle}_${new Date().toISOString().split('T')[0]}.xlsx`);
         };
-
-        // --- SHARE LINK GENERATORS ---
 
         function shareVoucherLink(id) {
             if (typeof id === 'string' && id.startsWith('temp_')) return alert('အင်တာနက်မရှိချိန်တွင် Share ၍မရပါ။');
@@ -473,13 +453,7 @@
         }
 
         function copyToClipboard(text, msg) {
-            const el = document.createElement('textarea');
-            el.value = text;
-            document.body.appendChild(el);
-            el.select();
-            document.execCommand('copy');
-            document.body.removeChild(el);
-            alert(msg);
+            const el = document.createElement('textarea'); el.value = text; document.body.appendChild(el); el.select(); document.execCommand('copy'); document.body.removeChild(el); alert(msg);
         }
 
         // --- CORE FUNCTIONS ---
@@ -503,9 +477,7 @@
             } catch (err) {
                 setStatus('offline', 'Offline');
                 const localProducts = localStorage.getItem('ttk_products');
-                if (localProducts) {
-                    products = JSON.parse(localProducts);
-                }
+                if (localProducts) products = JSON.parse(localProducts);
                 refreshUI();
             }
         }
@@ -577,6 +549,9 @@
                 }).join('');
             }
             document.getElementById('cart-total').innerText = total.toLocaleString();
+            
+            // Update Print Button Text based on edit mode
+            document.getElementById('btn-print').innerHTML = editingVoucherId ? '<i class="fas fa-save"></i> ပြင်ဆင်ပြီးထုတ်မည်' : '<i class="fas fa-print"></i> ဘောင်ချာထုတ်မည်';
         }
 
         function adjustQty(id, d) { const i = cart.find(x => x.id === id); if(i) { i.cQty += d; if(i.cQty <= 0) removeItem(id); renderCart(); } }
@@ -601,10 +576,10 @@
 
         async function processSale() {
             if(!cart.length) return;
-            if(!confirm("အရောင်းစာရင်းသွင်းပြီး ဘောင်ချာထုတ်မှာ သေချာပါသလား?")) return;
+            if(!confirm(editingVoucherId ? "ယခုဘောင်ချာကို အသစ်ပြင်ဆင်ပြီး ထုတ်မည်မှာ သေချာပါသလား?" : "အရောင်းစာရင်းသွင်းပြီး ဘောင်ချာထုတ်မှာ သေချာပါသလား?")) return;
 
             const now = new Date();
-            const date = now.toISOString().split('T')[0];
+            const date = document.getElementById('rep-date').value || now.toISOString().split('T')[0]; // Use current report date if needed, or today
             const staff = document.getElementById('staff-name').value || "Admin";
             const cust = document.getElementById('cust-name').value || "Guest";
             let rev=0, prof=0;
@@ -612,22 +587,32 @@
             const items = cart.map(i => {
                 rev += i.sell * i.cQty; prof += (i.sell - i.buy) * i.cQty;
                 const prodIndex = products.findIndex(p => p.id === i.id);
+                // Deduct stock (it was previously added back if we are editing)
                 if(prodIndex > -1) products[prodIndex].qty -= i.cQty;
                 return { id: i.id, name: i.name, qty: i.cQty, sell: i.sell, buy: i.buy, unit: i.unit };
             });
 
             localStorage.setItem('ttk_products', JSON.stringify(products));
 
-            // Shortened clerk abbreviation [S: staffName]
-            const custString = `${cust} [S: ${staff}]`;
-            const saleData = { date, rev, prof, cust: custString, items };
-            let receiptId = 'temp_' + Date.now();
+            // Changed Clerk -> C
+            const saleData = { date, rev, prof, cust: `${cust} (C: ${staff})`, items };
+            let receiptId = editingVoucherId || ('temp_' + Date.now());
 
             try {
-                const { data: inserted, error: saleErr } = await _sb.from('sales').insert([saleData]).select();
-                if(saleErr) throw saleErr;
-                receiptId = inserted[0].id;
+                if (editingVoucherId) {
+                    saleData.id = receiptId;
+                    if(typeof editingVoucherId !== 'string') {
+                        await _sb.from('sales').update({ items, rev, prof, cust: saleData.cust }).eq('id', editingVoucherId);
+                    } else {
+                        addToQueue('UPDATE_SALE', saleData);
+                    }
+                } else {
+                    const { data: inserted, error: saleErr } = await _sb.from('sales').insert([saleData]).select();
+                    if(saleErr) throw saleErr;
+                    receiptId = inserted[0].id;
+                }
                 
+                // Update product stocks in DB
                 for(let i of cart) { 
                     const currentProd = products.find(p => p.id === i.id);
                     if(currentProd && typeof currentProd.id !== 'string') {
@@ -637,13 +622,18 @@
                     }
                 }
             } catch (e) { 
-                console.log("Offline mode: Sale saved to queue.");
+                console.log("Offline mode: Sale saved/updated to queue.");
                 saleData.id = receiptId;
-                addToQueue('ADD_SALE', saleData);
+                addToQueue(editingVoucherId ? 'UPDATE_SALE' : 'ADD_SALE', saleData);
                 setStatus('offline', 'Offline (Saved local)');
             }
 
-            document.getElementById('receipt-render-area').innerHTML = generateReceiptHTML({ id: receiptId, date, cust: custString, rev, items });
+            document.getElementById('receipt-render-area').innerHTML = generateReceiptHTML({ id: receiptId, date, cust: `${cust} (C: ${staff})`, rev, items }, !!editingVoucherId);
+            
+            // Clean up edit mode
+            editingVoucherId = null;
+            document.getElementById('edit-badge').style.display = 'none';
+
             setTimeout(() => { 
                 window.print(); 
                 cart = []; 
@@ -651,6 +641,68 @@
                 renderCart(); 
                 refreshUI(); 
             }, 500);
+        }
+
+        // --- NEW EDIT SALE LOGIC ---
+
+        function editSaleInCart(id) {
+            const sale = salesData.find(s => s.id === id);
+            if(!sale) return;
+
+            if(editingVoucherId) cancelEdit();
+
+            const items = Array.isArray(sale.items) ? sale.items : JSON.parse(sale.items || '[]');
+
+            // Revert stock temporarily so the user can fully edit the cart
+            items.forEach(item => {
+                let p = products.find(x => x.id === item.id);
+                if(p) p.qty += item.qty;
+            });
+            localStorage.setItem('ttk_products', JSON.stringify(products));
+
+            // Populate cart with historic prices
+            cart = items.map(i => ({...i, cQty: i.qty}));
+
+            // Parse Cust / Staff
+            let custStr = sale.cust || "";
+            let custMatch = custStr.match(/(.*?)\s*\((?:Clerk|C):\s*(.*?)\)/);
+            if(custMatch) {
+                document.getElementById('cust-name').value = custMatch[1].trim();
+                document.getElementById('staff-name').value = custMatch[2].trim();
+            } else {
+                document.getElementById('cust-name').value = custStr;
+                document.getElementById('staff-name').value = "";
+            }
+
+            editingVoucherId = id;
+            document.getElementById('edit-v-num').innerText = formatVoucher(id);
+            document.getElementById('edit-badge').style.display = 'flex';
+
+            closeOverlay('detail-overlay');
+            navTo('tab-sales', document.getElementById('n-sales'));
+            renderCart();
+            refreshUI();
+        }
+
+        function cancelEdit() {
+            if(!editingVoucherId) return;
+            const sale = salesData.find(s => s.id === editingVoucherId);
+            if(sale) {
+                // Remove the temporarily reverted stock back out
+                const items = Array.isArray(sale.items) ? sale.items : JSON.parse(sale.items || '[]');
+                items.forEach(item => {
+                    let p = products.find(x => x.id === item.id);
+                    if(p) p.qty -= item.qty;
+                });
+                localStorage.setItem('ttk_products', JSON.stringify(products));
+            }
+            editingVoucherId = null;
+            cart = [];
+            document.getElementById('edit-badge').style.display = 'none';
+            document.getElementById('cust-name').value = "";
+            document.getElementById('staff-name').value = "";
+            renderCart(); 
+            refreshUI();
         }
 
         async function runReport() {
@@ -661,8 +713,8 @@
                 let q = _sb.from('sales').select('*');
                 if(ty==='day') q = q.eq('date', dt); 
                 else if(ty==='month') q = q.like('date', `${dt.slice(0,7)}%`);
-                else q = q.like('date', `${dt.slice(0,4)}%`); // Yearly
-                
+                else if(ty==='year') q = q.like('date', `${dt.slice(0,4)}%`);
+
                 const { data, error } = await q.order('id', {ascending: false});
                 if(error) throw error;
                 salesData = data || [];
@@ -677,7 +729,7 @@
                 } else if(ty==='month') {
                     const month = dt.slice(0,7);
                     salesData = allSales.filter(s => s.date && s.date.startsWith(month));
-                } else {
+                } else if(ty==='year') {
                     const year = dt.slice(0,4);
                     salesData = allSales.filter(s => s.date && s.date.startsWith(year));
                 }
@@ -693,7 +745,6 @@
                     <td style="text-align:center; display:flex; gap:5px; justify-content:center;">
                         <button onclick="event.stopPropagation(); shareVoucherLink(${passId})" style="border:none;background:#4a90e2;color:white;padding:5px 8px;border-radius:5px;" title="Share Link"><i class="fas fa-share-nodes"></i></button>
                         <button onclick="event.stopPropagation(); rePrintSale(${passId})" style="border:none;background:var(--midnight);color:white;padding:5px 8px;border-radius:5px;" title="Print"><i class="fas fa-print"></i></button>
-                        <button onclick="event.stopPropagation(); exportSaleToExcel(${passId})" style="border:none;background:var(--excel);color:white;padding:5px 8px;border-radius:5px;" title="Export Excel"><i class="fas fa-file-excel"></i></button>
                         <button onclick="event.stopPropagation(); deleteSale(${passId})" style="border:none;background:var(--red);color:white;padding:5px 8px;border-radius:5px;" title="Delete"><i class="fas fa-trash"></i></button>
                     </td></tr>`; 
             }); 
@@ -702,68 +753,49 @@
             document.getElementById('rep-body').innerHTML = rows || '<tr><td colspan="5" style="text-align:center;">စာရင်းမရှိပါ</td></tr>';
         }
 
-        // --- NEW EXCEL GROUPED EXPORT ---
-        window.exportGroupedExcel = function() {
-            const dt = document.getElementById('rep-date').value;
+        // --- NEW EXCEL EXPORT (GROUPED BY CLERK) ---
+        function exportGroupedExcel() {
+            if(salesData.length === 0) return alert("စာရင်းမရှိသေးပါ");
+            
             const ty = document.getElementById('rep-type').value;
-            let titleDate = ty === 'day' ? dt : (ty === 'month' ? dt.slice(0,7) : dt.slice(0,4));
-            let typeName = ty === 'day' ? "နေ့ချုပ်" : (ty === 'month' ? "လချုပ်" : "နှစ်ချုပ်");
+            const dt = document.getElementById('rep-date').value;
+            let title = ty === 'day' ? `နေ့ချုပ် (${dt})` : ty === 'month' ? `လချုပ် (${dt.slice(0,7)})` : `နှစ်ချုပ် (${dt.slice(0,4)})`;
 
-            if(salesData.length === 0) return alert("ထုတ်ရန် စာရင်းမရှိပါ");
+            let clerkMap = {}; 
+            salesData.forEach(s => {
+                let custStr = s.cust || "";
+                let clerk = "Unknown";
+                // Match "C:" or "Clerk:" format
+                let match = custStr.match(/\((?:Clerk|C):\s*(.*?)\)/);
+                if(match) clerk = match[1].trim();
 
-            const extractStaff = (custStr) => {
-                let match = custStr.match(/\[S:\s*(.+?)\]/);
-                if(match) return match[1];
-                match = custStr.match(/\(Clerk:\s*(.+?)\)/); // For older vouchers
-                if(match) return match[1];
-                return "Unknown";
-            };
-
-            const grouped = {};
-            let totalRev = 0, totalProf = 0, totalCount = 0;
-
-            salesData.forEach(sale => {
-                const staff = extractStaff(sale.cust);
-                if(!grouped[staff]) grouped[staff] = { rev: 0, prof: 0, count: 0 };
-                grouped[staff].rev += sale.rev;
-                grouped[staff].prof += sale.prof;
-                grouped[staff].count += 1;
-                totalRev += sale.rev;
-                totalProf += sale.prof;
-                totalCount += 1;
+                if(!clerkMap[clerk]) clerkMap[clerk] = { count: 0, rev: 0, prof: 0 };
+                clerkMap[clerk].count += 1;
+                clerkMap[clerk].rev += s.rev;
+                clerkMap[clerk].prof += s.prof;
             });
 
-            const reportRows = [
-                [`ထွန်းတောက်ကြယ် - အရောင်းသမားအလိုက် ${typeName} စာရင်းချုပ်`],
-                [`ရက်စွဲ/ကာလ: ${titleDate}`],
+            let reportRows = [
+                ["ထွန်းတောက်ကြယ် လက်ကားဖြန့်ချိရေး - အရောင်းအစီရင်ခံစာ"],
+                ["အမျိုးအစား:", title],
                 [""],
-                ["အရောင်းသမားအမည်", "ဘောင်ချာအရေအတွက်", "စုစုပေါင်းရောင်းရငွေ", "စုစုပေါင်းအမြတ်ငွေ"]
+                ["စဉ်", "အရောင်းသမား (Clerk)", "ဘောင်ချာစောင်ရေ", "စုစုပေါင်း ရောင်းအား", "စုစုပေါင်း အမြတ်ငွေ"]
             ];
 
-            for(const [staff, data] of Object.entries(grouped)) {
-                reportRows.push([staff, data.count, data.rev, data.prof]);
+            let totalRev = 0, totalProf = 0, totalCount = 0;
+            let index = 1;
+            for(let c in clerkMap) {
+                reportRows.push([index++, c, clerkMap[c].count, clerkMap[c].rev, clerkMap[c].prof]);
+                totalCount += clerkMap[c].count;
+                totalRev += clerkMap[c].rev;
+                totalProf += clerkMap[c].prof;
             }
-
-            reportRows.push([""]);
-            reportRows.push(["စုစုပေါင်း", totalCount, totalRev, totalProf]);
+            reportRows.push(["", "စုစုပေါင်း", totalCount, totalRev, totalProf]);
 
             const ws = XLSX.utils.aoa_to_sheet(reportRows);
             const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "Staff_Report");
-            XLSX.writeFile(wb, `TTK_${typeName}_${titleDate}_Staff.xlsx`);
-        };
-
-        function exportSaleToExcel(id) {
-            const sale = salesData.find(s => s.id === id);
-            if (!sale) return;
-            const reportRows = [["ထွန်းတောက်ကြယ် - အရောင်းဘောင်ချာ"],["ဘောင်ချာနံပါတ်", formatVoucher(sale.id)],["ရက်စွဲ", sale.date],["ဝယ်သူ/ဝန်ထမ်း", sale.cust],[""],["ပစ္စည်းအမည်", "အရေအတွက်", "ယူနစ်", "ဈေးနှုန်း", "စုစုပေါင်း"]];
-            const items = Array.isArray(sale.items) ? sale.items : JSON.parse(sale.items || '[]');
-            items.forEach(item => { reportRows.push([item.name, item.qty, item.unit || "-", item.sell, item.sell * item.qty]); });
-            reportRows.push([""], ["", "", "", "စုစုပေါင်း", sale.rev]);
-            const ws = XLSX.utils.aoa_to_sheet(reportRows);
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "Sale_Voucher");
-            XLSX.writeFile(wb, `TTK_Voucher_${formatVoucher(sale.id)}.xlsx`);
+            XLSX.utils.book_append_sheet(wb, ws, "Report");
+            XLSX.writeFile(wb, `TTK_Report_${title}.xlsx`);
         }
 
         function rePrintSale(id) {
@@ -773,149 +805,33 @@
             setTimeout(() => { window.print(); }, 500);
         }
 
-        // --- NEW EDIT VOUCHER SYSTEM ---
-        let editModalSaleId = null;
-        let editModalItems = [];
-
-        window.viewSaleDetails = function(id) {
+        function viewSaleDetails(id) {
             const sale = salesData.find(s => s.id === id);
             if(!sale) return;
-            editModalSaleId = id;
-            editModalItems = JSON.parse(JSON.stringify(Array.isArray(sale.items) ? sale.items : JSON.parse(sale.items || '[]')));
-            renderEditModal();
-            document.getElementById('detail-overlay').style.display = 'flex';
-        };
-
-        function renderEditModal() {
-            const sale = salesData.find(s => s.id === editModalSaleId);
-            let html = `<b>ဘောင်ချာနံပါတ်:</b> ${formatVoucher(sale.id)}<br><b>ဘောင်ချာရှင်:</b> ${sale.cust}<br><br>
-            <div style="max-height: 45vh; overflow-y: auto;">
-            <table style="width:100%; border-collapse:collapse; font-size:12px;">
-                <thead>
-                    <tr style="background:#f1f5f9; position:sticky; top:0;">
-                        <th style="padding:8px 5px;text-align:left;">ပစ္စည်း</th>
-                        <th style="padding:8px 5px;text-align:center;">အရေအတွက်</th>
-                        <th style="padding:8px 5px;text-align:right;">ဈေးနှုန်း</th>
-                        <th style="padding:8px 5px;text-align:right;">စုစုပေါင်း</th>
-                        <th style="padding:8px 5px;"></th>
-                    </tr>
-                </thead>
-                <tbody>`;
+            let itemHtml = `<b>ဘောင်ချာနံပါတ်:</b> ${formatVoucher(sale.id)}<br><b>ဘောင်ချာရှင်:</b> ${sale.cust}<br><br>
+            <table style="width:100%; border-collapse:collapse;" id="detail-items-table">
+                <thead><tr style="background:#f1f5f9;"><th style="padding:5px; text-align:left;">ပစ္စည်း</th><th style="padding:5px; text-align:center;">အရေအတွက်</th><th style="padding:5px; text-align:right;">ဈေး</th><th style="padding:5px; text-align:right;">စုစုပေါင်း</th></tr></thead><tbody>`;
             
-            let currentRev = 0;
-            editModalItems.forEach((item, index) => {
-                const amt = item.qty * item.sell;
-                currentRev += amt;
-                html += `<tr style="border-bottom:1px solid #eee;">
-                    <td style="padding:5px;">${item.name}</td>
-                    <td style="padding:5px; text-align:center;"><input type="number" class="input-style" style="width:60px; padding:4px;" value="${item.qty}" min="1" onchange="updateEditItem(${index}, 'qty', this.value)"></td>
-                    <td style="padding:5px; text-align:right;"><input type="number" class="input-style" style="width:75px; padding:4px; text-align:right;" value="${item.sell}" onchange="updateEditItem(${index}, 'sell', this.value)"></td>
-                    <td style="padding:5px; text-align:right; font-weight:bold;">${amt.toLocaleString()}</td>
-                    <td style="padding:5px; text-align:center;"><button style="border:none; color:white; background:var(--red); padding:5px 8px; border-radius:5px; cursor:pointer;" onclick="removeEditItem(${index})"><i class="fas fa-trash"></i></button></td>
-                </tr>`;
+            const items = Array.isArray(sale.items) ? sale.items : JSON.parse(sale.items || '[]');
+            items.forEach((item, index) => { 
+                itemHtml += `<tr style="border-bottom:1px solid #eee;">
+                    <td style="padding:8px 5px;">${item.name}</td>
+                    <td style="text-align:center; padding:8px 5px;">${item.qty} ${item.unit || ''}</td>
+                    <td style="text-align:right; padding:8px 5px;">${item.sell.toLocaleString()}</td>
+                    <td style="text-align:right; padding:8px 5px;">${(item.sell * item.qty).toLocaleString()}</td>
+                </tr>`; 
             });
-
-            html += `</tbody></table></div>
-            <div style="margin-top:15px; display:flex; gap:5px; align-items:center; background:#f8fafc; padding:10px; border-radius:8px;">
-                <select id="edit-add-product" class="input-style" style="flex:1; padding:8px;">
-                    <option value="">+ ပစ္စည်းအသစ်ထည့်မည်...</option>
-                    ${products.map(p => `<option value="${p.id}">${p.name} (${(p.sell||0).toLocaleString()} Ks)</option>`).join('')}
-                </select>
-                <button class="btn btn-dark" style="width:auto; padding:8px 15px;" onclick="addEditItem()"><i class="fas fa-plus"></i></button>
-            </div>
-            <div style="text-align:right; margin-top:15px; font-size:16px;"><b>လက်ရှိစုစုပေါင်း: <span style="color:var(--green)">${currentRev.toLocaleString()} Ks</span></b></div>
-            `;
-
-            document.getElementById('detail-content').innerHTML = html;
+            itemHtml += `</tbody></table><div style="text-align:right; margin-top:10px;"><b>စုစုပေါင်း: ${sale.rev.toLocaleString()} Ks</b></div>`;
+            
+            document.getElementById('detail-content').innerHTML = itemHtml;
+            
+            const passSaleId = typeof sale.id === 'string' ? `'${sale.id}'` : sale.id;
             document.getElementById('detail-actions').innerHTML = `
-                <button class="btn btn-dark" style="background:var(--green); margin-right:auto;" onclick="saveVoucherChanges()"><i class="fas fa-save"></i> ပြင်ဆင်ချက်များကို သိမ်းမည်</button>
-                <button class="btn" style="background:#ddd;" onclick="closeOverlay('detail-overlay')">ပိတ်မည်</button>
+                <button class="btn btn-dark" style="background:var(--gold); color:black; margin-right:auto;" onclick="editSaleInCart(${passSaleId})"><i class="fas fa-edit"></i> ဘောင်ချာ ပြန်ပြင်မည်</button>
+                <button class="btn btn-dark" onclick="closeOverlay('detail-overlay')">ပိတ်မည်</button>
             `;
+            document.getElementById('detail-overlay').style.display = 'flex';
         }
-
-        window.updateEditItem = function(index, field, val) {
-            editModalItems[index][field] = parseInt(val) || 0;
-            if(editModalItems[index].qty < 1) editModalItems[index].qty = 1;
-            renderEditModal();
-        };
-
-        window.removeEditItem = function(index) {
-            editModalItems.splice(index, 1);
-            renderEditModal();
-        };
-
-        window.addEditItem = function() {
-            const sel = document.getElementById('edit-add-product');
-            const pid = sel.value;
-            if(!pid) return;
-            const p = products.find(x => x.id == pid || x.id === pid);
-            if(p) {
-                editModalItems.push({ id: p.id, name: p.name, qty: 1, sell: p.sell, buy: p.buy, unit: p.unit });
-                renderEditModal();
-            }
-        };
-
-        window.saveVoucherChanges = async function() {
-            const saleIndex = salesData.findIndex(s => s.id === editModalSaleId);
-            if (saleIndex === -1) return;
-            const originalSale = salesData[saleIndex];
-            const originalItems = Array.isArray(originalSale.items) ? originalSale.items : JSON.parse(originalSale.items || '[]');
-            
-            if (editModalItems.length === 0) {
-                if(!confirm("ပစ္စည်းအားလုံးကို ဖျက်လိုက်ပါက ဤဘောင်ချာတစ်ခုလုံး ပျက်သွားပါမည်။ ဆက်လုပ်မလား?")) return;
-                closeOverlay('detail-overlay');
-                return deleteSale(editModalSaleId);
-            }
-
-            if (!confirm("ဘောင်ချာပါ အချက်အလက်များကို ပြင်ဆင်ရန် သေချာပါသလား? (ဂိုထောင်လက်ကျန်များကိုပါ အလိုအလျောက် ချိန်ညှိပေးပါမည်)")) return;
-
-            let tempProducts = JSON.parse(JSON.stringify(products)); 
-            
-            originalItems.forEach(item => {
-                const p = tempProducts.find(x => x.id === item.id);
-                if(p) p.qty += item.qty;
-            });
-
-            let newRev = 0, newProf = 0;
-            editModalItems.forEach(item => {
-                const p = tempProducts.find(x => x.id === item.id);
-                if(p) p.qty -= item.qty;
-                newRev += item.sell * item.qty;
-                newProf += (item.sell - item.buy) * item.qty;
-            });
-
-            products = tempProducts;
-            localStorage.setItem('ttk_products', JSON.stringify(products));
-
-            for(let p of products) {
-                if (typeof p.id !== 'string') {
-                    try { await _sb.from('products').update({ qty: p.qty }).eq('id', p.id); } 
-                    catch(e) { addToQueue('SAVE_PRODUCT', p); }
-                } else { addToQueue('SAVE_PRODUCT', p); }
-            }
-
-            originalSale.items = editModalItems;
-            originalSale.rev = newRev;
-            originalSale.prof = newProf;
-
-            try {
-                if (typeof editModalSaleId !== 'string') {
-                    await _sb.from('sales').update({ items: editModalItems, rev: newRev, prof: newProf }).eq('id', editModalSaleId);
-                } else {
-                    addToQueue('UPDATE_SALE', originalSale);
-                }
-            } catch (e) {
-                addToQueue('UPDATE_SALE', originalSale);
-            }
-
-            salesData[saleIndex] = originalSale;
-            localStorage.setItem('ttk_sales', JSON.stringify(salesData));
-
-            alert("ဘောင်ချာပြင်ဆင်ခြင်း အောင်မြင်ပါသည်။");
-            closeOverlay('detail-overlay');
-            refreshUI();
-            runReport();
-        };
 
         async function deleteSale(id) {
             if(confirm("ဤဘောင်ချာတစ်ခုလုံးကို ဖျက်ရန် သေချာပါသလား? (ဝယ်ယူထားသော ပစ္စည်းအားလုံး ဂိုထောင်ထဲသို့ ပြန်ဝင်ပါမည်)")) {
