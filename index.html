@@ -131,7 +131,7 @@
                 <button onclick="cancelEdit()" style="margin-left:10px; padding:4px 10px; cursor:pointer; background:var(--red); color:white; border:none; border-radius:5px;">Cancel</button>
             </div>
             <div class="input-group">
-                <input type="text" id="cust-name" class="input-style" placeholder="ဝယ်သူအမည်">
+                <input type="text" id="cust-name" class="input-style" placeholder="ဝယ်သူအမည်/ဆိုင်အမည်">
                 <input type="text" id="staff-name" class="input-style" placeholder="အရောင်းဝန်ထမ်း">
             </div>
             <input type="text" id="search-box" class="input-style" placeholder="ပစ္စည်းရှာဖွေရန်..." onkeyup="refreshUI()" style="margin-bottom:8px;">
@@ -460,6 +460,9 @@
         window.exportSharedStockToExcel = function(catTitle) {
             const table = document.getElementById('share-stock-table');
             const wb = XLSX.utils.table_to_book(table, {sheet: "Stock_List"});
+            const ws = wb.Sheets["Stock_List"];
+            // Adjust column widths for better readability
+            ws['!cols'] = [{wch: 30}, {wch: 15}, {wch: 15}, {wch: 15}];
             XLSX.writeFile(wb, `TTK_Stock_${catTitle}_${new Date().toISOString().split('T')[0]}.xlsx`);
         };
 
@@ -614,7 +617,7 @@
             const date = (isEditing && oldSale) ? oldSale.date : now.toISOString().split('T')[0];
             
             const staff = document.getElementById('staff-name').value || "Admin";
-            const cust = document.getElementById('cust-name').value || "Guest";
+            const cust = document.getElementById('cust-name').value || "Unknown Shop";
             let receiptId = isEditing ? editingSaleId : 'temp_' + Date.now();
 
             // Temporary deep copy of products to adjust stock safely
@@ -736,7 +739,7 @@
             document.getElementById('rep-body').innerHTML = rows || '<tr><td colspan="5" style="text-align:center;">စာရင်းမရှိပါ</td></tr>';
         }
 
-        // --- NEW: EXPORT GROUPED EXCEL (Summary + Details in Multiple Sheets) ---
+        // --- NEW IMPROVED: EXPORT GROUPED EXCEL (Professional Details formatting + Column Widths) ---
         window.exportGroupedExcel = function() {
             if(!salesData || salesData.length === 0) return alert("စာရင်းမရှိပါ");
             
@@ -747,16 +750,13 @@
             
             let staffMap = {};
             let itemMap = {};
+            let custMap = {}; // Dictionary to group by Customer/Shop
             let totalRev = 0;
             let totalProf = 0;
 
-            let detailedRows = [
-                ["ရက်စွဲ", "ဘောင်ချာနံပါတ်", "ဝယ်သူအမည်", "အရောင်းဝန်ထမ်း", "ပစ္စည်းအမည်", "အရေအတွက်", "ယူနစ်", "ရောင်းဈေး", "ဝယ်ဈေး", "ရောင်းအားစုစုပေါင်း", "အမြတ်"]
-            ];
-            
             salesData.forEach(s => {
                 let staffName = "Unknown";
-                let custName = s.cust || "";
+                let custName = s.cust || "Unknown Shop";
                 
                 // Extract "(C: StaffName)"
                 let match = custName.match(/(.*?)\s*\((?:Clerk|C):\s*(.*?)\)/);
@@ -764,6 +764,7 @@
                     custName = match[1].trim();
                     staffName = match[2].trim();
                 }
+                if(!custName || custName === "") custName = "Unknown Shop";
                 
                 // Staff Summary
                 if(!staffMap[staffName]) staffMap[staffName] = { rev: 0, prof: 0, count: 0 };
@@ -773,6 +774,9 @@
                 
                 totalRev += s.rev;
                 totalProf += s.prof;
+
+                // Create Customer group if not exists
+                if(!custMap[custName]) custMap[custName] = { items: [], totalRev: 0, totalProf: 0 };
 
                 // Items & Details
                 const items = Array.isArray(s.items) ? s.items : JSON.parse(s.items || '[]');
@@ -785,26 +789,27 @@
                     itemMap[item.name].rev += itemRev;
                     itemMap[item.name].prof += itemProf;
 
-                    // Append to Detailed Log
-                    detailedRows.push([
-                        s.date, 
-                        formatVoucher(s.id), 
-                        custName, 
-                        staffName, 
-                        item.name, 
-                        item.qty, 
-                        item.unit || '-', 
-                        item.sell, 
-                        item.buy, 
-                        itemRev, 
-                        itemProf
-                    ]);
+                    // Append to Customer Group
+                    custMap[custName].items.push({
+                        date: s.date,
+                        voucher: formatVoucher(s.id),
+                        staff: staffName,
+                        itemName: item.name,
+                        qty: item.qty,
+                        unit: item.unit || '-',
+                        sellPrice: item.sell,
+                        buyPrice: item.buy,
+                        revenue: itemRev,
+                        profit: itemProf
+                    });
+                    custMap[custName].totalRev += itemRev;
+                    custMap[custName].totalProf += itemProf;
                 });
             });
             
             // 1. Staff Report Sheet Data
             const staffRows = [
-                ["ထွန်းတောက်ကြယ် လက်ကားဖြန့်ချိရေး - အရောင်းသမားအလိုက် အကြမ်းဖျင်းအစီရင်ခံစာ (" + tyOpt + ")"],
+                ["ထွန်းတောက်ကြယ် လက်ကားဖြန့်ချိရေး - အရောင်းသမားအလိုက် အစီရင်ခံစာ (" + tyOpt + ")"],
                 ["ရက်စွဲ/ကာလ", dateLabel],
                 [""],
                 ["အရောင်းသမားအမည်", "ဘောင်ချာအရေအတွက်", "ရောင်းအား (Total Sales)", "အမြတ်ငွေ (Total Profit)"]
@@ -812,8 +817,8 @@
             for(let staff in staffMap) {
                 staffRows.push([staff, staffMap[staff].count, staffMap[staff].rev, staffMap[staff].prof]);
             }
-            staffRows.push(["", "", "", ""]);
-            staffRows.push(["စုစုပေါင်း", salesData.length, totalRev, totalProf]);
+            staffRows.push([""]);
+            staffRows.push(["အထွေထွေစုစုပေါင်း", salesData.length, totalRev, totalProf]);
 
             // 2. Item Summary Sheet Data
             const itemRows = [
@@ -822,26 +827,69 @@
                 [""],
                 ["ပစ္စည်းအမည်", "ယူနစ်", "ရောင်းရအရေအတွက်", "ရောင်းအားစုစုပေါင်း", "အမြတ်ငွေစုစုပေါင်း"]
             ];
-            for(let itemName in itemMap) {
-                itemRows.push([
-                    itemName, 
-                    itemMap[itemName].unit, 
-                    itemMap[itemName].qty, 
-                    itemMap[itemName].rev, 
-                    itemMap[itemName].prof
-                ]);
-            }
+            // Sort items by revenue for better logic
+            let sortedItems = Object.keys(itemMap).map(k => ({name: k, ...itemMap[k]})).sort((a,b) => b.rev - a.rev);
+            sortedItems.forEach(i => {
+                itemRows.push([i.name, i.unit, i.qty, i.rev, i.prof]);
+            });
+            itemRows.push([""]);
+            itemRows.push(["အထွေထွေစုစုပေါင်း", "", "", totalRev, totalProf]);
+
+            // 3. Sequential Grouped Details Sheet Data (Like Accountant Ledger)
+            const detailedRows = [
+                ["ထွန်းတောက်ကြယ် လက်ကားဖြန့်ချိရေး - ဆိုင်အလိုက် အသေးစိတ်စာရင်း (" + tyOpt + ")"],
+                ["ရက်စွဲ/ကာလ", dateLabel],
+                [""]
+            ];
+
+            // Sort customers alphabetically
+            let sortedCustomers = Object.keys(custMap).sort();
+
+            sortedCustomers.forEach(cust => {
+                // Header for each shop
+                detailedRows.push(["ဝယ်သူ / ဆိုင်အမည် :", cust]); 
+                // Table header for this shop's transactions
+                detailedRows.push(["ရက်စွဲ", "ဘောင်ချာနံပါတ်", "အရောင်းဝန်ထမ်း", "ပစ္စည်းအမည်", "အရေအတွက်", "ယူနစ်", "ရောင်းဈေး", "ဝယ်ဈေး", "ရောင်းအားစုစုပေါင်း", "အမြတ်"]);
+                
+                custMap[cust].items.forEach(row => {
+                    detailedRows.push([
+                        row.date, row.voucher, row.staff, row.itemName, row.qty, row.unit, row.sellPrice, row.buyPrice, row.revenue, row.profit
+                    ]);
+                });
+                
+                // Subtotal for the shop
+                detailedRows.push(["", "", "", "", "", "", "", "ဆိုင်စုစုပေါင်း :", custMap[cust].totalRev, custMap[cust].totalProf]);
+                detailedRows.push([""]); // Empty row for spacing
+            });
+
+            // Grand total at the very end
+            detailedRows.push(["", "", "", "", "", "", "", "အထွေထွေစုစုပေါင်း (Grand Total) :", totalRev, totalProf]);
 
             // Create Excel Book and Add Sheets
             const wb = XLSX.utils.book_new();
             
             const wsStaff = XLSX.utils.aoa_to_sheet(staffRows);
+            wsStaff['!cols'] = [{wch: 25}, {wch: 20}, {wch: 25}, {wch: 25}]; // Setting column widths so it's not cramped
             XLSX.utils.book_append_sheet(wb, wsStaff, "အရောင်းသမားချုပ် (Staff)");
 
             const wsItems = XLSX.utils.aoa_to_sheet(itemRows);
+            wsItems['!cols'] = [{wch: 35}, {wch: 15}, {wch: 20}, {wch: 25}, {wch: 25}]; // Setting column widths
             XLSX.utils.book_append_sheet(wb, wsItems, "ပစ္စည်းချုပ် (Items)");
 
             const wsDetails = XLSX.utils.aoa_to_sheet(detailedRows);
+            // Setting column widths for details so everything is readable and neat
+            wsDetails['!cols'] = [
+                {wch: 15}, // ရက်စွဲ
+                {wch: 18}, // ဘောင်ချာနံပါတ်
+                {wch: 20}, // အရောင်းဝန်ထမ်း
+                {wch: 30}, // ပစ္စည်းအမည်
+                {wch: 12}, // အရေအတွက်
+                {wch: 12}, // ယူနစ်
+                {wch: 15}, // ရောင်းဈေး
+                {wch: 15}, // ဝယ်ဈေး
+                {wch: 25}, // ရောင်းအားစုစုပေါင်း
+                {wch: 20}  // အမြတ်
+            ];
             XLSX.utils.book_append_sheet(wb, wsDetails, "အသေးစိတ် (Details)");
             
             XLSX.writeFile(wb, `TTK_${tyOpt}_FullReport_${dateLabel}.xlsx`);
@@ -854,8 +902,12 @@
             const items = Array.isArray(sale.items) ? sale.items : JSON.parse(sale.items || '[]');
             items.forEach(item => { reportRows.push([item.name, item.qty, item.unit || "-", item.sell, item.sell * item.qty]); });
             reportRows.push([""], ["", "", "", "စုစုပေါင်း", sale.rev]);
+            
             const ws = XLSX.utils.aoa_to_sheet(reportRows);
+            // Add column width for single voucher export as well
+            ws['!cols'] = [{wch: 30}, {wch: 15}, {wch: 15}, {wch: 15}, {wch: 20}];
             const wb = XLSX.utils.book_new();
+            
             XLSX.utils.book_append_sheet(wb, ws, "Sale_Voucher");
             XLSX.writeFile(wb, `TTK_Voucher_${formatVoucher(sale.id)}.xlsx`);
         }
