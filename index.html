@@ -639,10 +639,14 @@
 
             let rev=0, prof=0;
             const items = cart.map(i => {
-                rev += i.sell * i.cQty; prof += (i.sell - i.buy) * i.cQty;
                 const prodIndex = tempProducts.findIndex(p => p.id === i.id);
+                const actualBuy = prodIndex > -1 ? tempProducts[prodIndex].buy : (i.buy || 0); // Always try to use latest buy price
+                
+                rev += i.sell * i.cQty; 
+                prof += (i.sell - actualBuy) * i.cQty;
+                
                 if(prodIndex > -1) tempProducts[prodIndex].qty -= i.cQty;
-                return { id: i.id, name: i.name, qty: i.cQty, sell: i.sell, buy: i.buy, unit: i.unit };
+                return { id: i.id, name: i.name, qty: i.cQty, sell: i.sell, buy: actualBuy, unit: i.unit };
             });
 
             products = tempProducts;
@@ -736,7 +740,20 @@
 
             let r=0, p=0, rows="";
             salesData.forEach(s => { 
+                // FIX: Dynamic recalculation based on LATEST buy prices from 'products' database
+                let dynamicProf = 0;
+                const items = Array.isArray(s.items) ? s.items : JSON.parse(s.items || '[]');
+                items.forEach(i => {
+                    const curProd = products.find(prod => prod.id === i.id);
+                    const actualBuy = curProd ? curProd.buy : (i.buy || 0); // Always fetch updated buy price
+                    i.buy = actualBuy; // Set latest buy price in memory
+                    dynamicProf += (i.sell - actualBuy) * i.qty;
+                });
+                s.items = items;
+                s.prof = dynamicProf; // Override old static profit
+
                 r += s.rev; p += s.prof; 
+                
                 const passId = typeof s.id === 'string' ? `'${s.id}'` : s.id;
                 rows += `<tr onclick="viewSaleDetails(${passId})" style="cursor:pointer;">
                     <td><b>${formatVoucher(s.id)}</b></td><td>${s.date}</td><td>${s.cust}</td><td>${s.rev.toLocaleString()}</td>
@@ -781,20 +798,28 @@
                 
                 if(!staffMap[staffName]) staffMap[staffName] = { rev: 0, prof: 0, count: 0 };
                 staffMap[staffName].rev += s.rev;
-                staffMap[staffName].prof += s.prof;
                 staffMap[staffName].count += 1;
                 
                 totalRev += s.rev;
-                totalProf += s.prof;
+
+                let saleProfForStaff = 0;
 
                 const items = Array.isArray(s.items) ? s.items : JSON.parse(s.items || '[]');
                 items.forEach(item => {
                     if(!itemMap[item.name]) itemMap[item.name] = { qty: 0, rev: 0, prof: 0, unit: item.unit || '-' };
+                    
+                    // Fetch latest buy price dynamically for Excel Export
+                    const curProd = products.find(prod => prod.id === item.id);
+                    const actualBuy = curProd ? curProd.buy : (item.buy || 0);
+
                     let itemRev = item.sell * item.qty;
-                    let itemProf = (item.sell - item.buy) * item.qty;
+                    let itemProf = (item.sell - actualBuy) * item.qty;
+                    
                     itemMap[item.name].qty += item.qty;
                     itemMap[item.name].rev += itemRev;
                     itemMap[item.name].prof += itemProf;
+
+                    saleProfForStaff += itemProf;
 
                     detailedRows.push([
                         s.date, 
@@ -805,11 +830,14 @@
                         item.qty, 
                         item.unit || '-', 
                         item.sell, 
-                        item.buy, 
+                        actualBuy, // Updated dynamically
                         itemRev, 
-                        itemProf
+                        itemProf   // Updated dynamically
                     ]);
                 });
+
+                staffMap[staffName].prof += saleProfForStaff;
+                totalProf += saleProfForStaff;
             });
             
             const staffRows = [
@@ -993,9 +1021,11 @@
                 }
                 
                 if (finalQty > 0) {
-                    updatedItems.push({ ...item, qty: finalQty });
+                    const curProd = products.find(p => p.id === item.id);
+                    const actualBuy = curProd ? curProd.buy : (item.buy || 0); // Re-sync actual buy on partial return
+                    updatedItems.push({ ...item, buy: actualBuy, qty: finalQty });
                     newRev += item.sell * finalQty;
-                    newProf += (item.sell - item.buy) * finalQty;
+                    newProf += (item.sell - actualBuy) * finalQty;
                 }
             }
 
@@ -1183,4 +1213,3 @@
     </script>
 </body>
 </html>
-
