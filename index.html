@@ -902,6 +902,36 @@
             setTimeout(() => { window.print(); }, 500);
         }
 
+        window.updateDetailRowTotal = function(index) {
+            const price = parseInt(document.getElementById(`edit-price-${index}`).value) || 0;
+            const returnQty = parseInt(document.getElementById(`return-qty-${index}`).value) || 0;
+            const origQty = parseInt(document.getElementById(`orig-qty-${index}`).innerText) || 0;
+            
+            let rQty = returnQty;
+            if (rQty < 0) rQty = 0;
+            if (rQty > origQty) rQty = origQty; 
+
+            const finalQty = origQty - rQty;
+            document.getElementById(`detail-row-total-${index}`).innerText = (price * finalQty).toLocaleString();
+            
+            // Update Grand Total dynamically
+            let grandTotal = 0;
+            let i = 0;
+            while(document.getElementById(`detail-row-total-${i}`)) {
+                const p = parseInt(document.getElementById(`edit-price-${i}`).value) || 0;
+                const rq = parseInt(document.getElementById(`return-qty-${i}`).value) || 0;
+                const oq = parseInt(document.getElementById(`orig-qty-${i}`).innerText) || 0;
+                
+                let validRq = rq;
+                if(validRq < 0) validRq = 0;
+                if(validRq > oq) validRq = oq;
+
+                grandTotal += (oq - validRq) * p;
+                i++;
+            }
+            document.getElementById('detail-grand-total').innerText = grandTotal.toLocaleString();
+        };
+
         function viewSaleDetails(id) {
             const sale = salesData.find(s => s.id === id);
             if(!sale) return;
@@ -912,17 +942,20 @@
             const items = Array.isArray(sale.items) ? sale.items : JSON.parse(sale.items || '[]');
             items.forEach((item, index) => { 
                 const passProdId = typeof item.id === 'string' ? `'${item.id}'` : item.id;
+                // Changed Price cell to an input field
                 itemHtml += `<tr style="border-bottom:1px solid #eee;">
                     <td style="padding:8px 5px;">${item.name}</td>
                     <td style="text-align:center; padding:8px 5px;"><span id="orig-qty-${index}">${item.qty}</span></td>
                     <td style="text-align:center; padding:8px 5px;">
-                        <input type="number" id="return-qty-${index}" class="return-input" min="0" max="${item.qty}" value="0" onchange="validateReturnInput(this, ${item.qty})">
+                        <input type="number" id="return-qty-${index}" class="return-input" min="0" max="${item.qty}" value="0" oninput="validateReturnInput(this, ${item.qty}); updateDetailRowTotal(${index})">
                     </td>
-                    <td style="text-align:right; padding:8px 5px;">${item.sell.toLocaleString()}</td>
-                    <td style="text-align:right; padding:8px 5px;">${(item.sell * item.qty).toLocaleString()}</td>
+                    <td style="text-align:right; padding:8px 5px;">
+                        <input type="number" id="edit-price-${index}" class="return-input" style="width:70px; border-color:#ccc;" value="${item.sell}" oninput="updateDetailRowTotal(${index})">
+                    </td>
+                    <td style="text-align:right; padding:8px 5px;"><span id="detail-row-total-${index}">${(item.sell * item.qty).toLocaleString()}</span></td>
                 </tr>`; 
             });
-            itemHtml += `</tbody></table><div style="text-align:right; margin-top:10px;"><b>မူလစုစုပေါင်း: ${sale.rev.toLocaleString()} Ks</b></div>`;
+            itemHtml += `</tbody></table><div style="text-align:right; margin-top:10px;"><b>စုစုပေါင်း: <span id="detail-grand-total">${sale.rev.toLocaleString()}</span> Ks</b></div>`;
             
             document.getElementById('detail-content').innerHTML = itemHtml;
             
@@ -931,7 +964,7 @@
                 <div style="display:flex; flex-direction:column; gap:10px; width:100%;">
                     <div style="display:flex; gap:10px; width:100%;">
                         <button class="btn btn-dark" style="background:#f59e0b; flex:1;" onclick="editEntireSale(${passSaleId})"><i class="fas fa-edit"></i> ဘောင်ချာ ပြန်ပြင်မည်</button>
-                        <button class="btn btn-dark" style="background:var(--red); flex:1;" onclick="processPartialReturn(${passSaleId})"><i class="fas fa-undo"></i> တစ်စိတ်တစ်ပိုင်းအပ်မည်</button>
+                        <button class="btn btn-dark" style="background:var(--red); flex:1;" onclick="processPartialReturn(${passSaleId})"><i class="fas fa-undo"></i> ပြင်ဆင်မည် / အပ်မည်</button>
                     </div>
                     <button class="btn btn-dark" style="width:100%;" onclick="closeOverlay('detail-overlay')">ပိတ်မည်</button>
                 </div>
@@ -944,7 +977,10 @@
             if(!sale) return;
             
             editingSaleId = id;
-            cart = Array.isArray(sale.items) ? sale.items : JSON.parse(sale.items || '[]');
+            
+            // FIX: Map 'qty' from DB to 'cQty' for Cart rendering
+            let parsedItems = Array.isArray(sale.items) ? sale.items : JSON.parse(sale.items || '[]');
+            cart = parsedItems.map(i => ({...i, cQty: i.qty}));
             
             let custStr = sale.cust || "";
             let custName = custStr;
@@ -982,7 +1018,7 @@
         window.validateReturnInput = function(input, max) {
             let val = parseInt(input.value) || 0;
             if (val < 0) input.value = 0;
-            if (val > max) { alert(`ဝယ်ယူထားသော အရေအတွက် ${max} ထက် ပို၍ ပြန်အပ်၍မရပါ`); input.value = 0; }
+            if (val > max) { alert(`ဝယ်ယူထားသော အရေအတွက် ${max} ထက် ပို၍ ပြန်အပ်၍မရပါ`); input.value = max; }
         };
 
         async function processPartialReturn(id) {
@@ -991,7 +1027,7 @@
             const sale = salesData[saleIndex];
             const items = Array.isArray(sale.items) ? sale.items : JSON.parse(sale.items || '[]');
             
-            let hasReturns = false;
+            let hasChanges = false;
             let updatedItems = [];
             let newRev = 0;
             let newProf = 0;
@@ -999,12 +1035,15 @@
             for (let i = 0; i < items.length; i++) {
                 const item = items[i];
                 const returnInput = document.getElementById(`return-qty-${i}`);
+                const priceInput = document.getElementById(`edit-price-${i}`); // Read updated price
+                
                 const returnQty = parseInt(returnInput.value) || 0;
+                const newPrice = parseInt(priceInput.value) || 0;
                 
                 let finalQty = item.qty - returnQty;
                 
                 if (returnQty > 0) {
-                    hasReturns = true;
+                    hasChanges = true;
                     const product = products.find(p => p.id === item.id);
                     if (product) {
                         product.qty += returnQty;
@@ -1020,17 +1059,22 @@
                     }
                 }
                 
+                // Track if price has been edited
+                if (item.sell !== newPrice) {
+                    hasChanges = true;
+                }
+                
                 if (finalQty > 0) {
                     const curProd = products.find(p => p.id === item.id);
-                    const actualBuy = curProd ? curProd.buy : (item.buy || 0); // Re-sync actual buy on partial return
-                    updatedItems.push({ ...item, buy: actualBuy, qty: finalQty });
-                    newRev += item.sell * finalQty;
-                    newProf += (item.sell - actualBuy) * finalQty;
+                    const actualBuy = curProd ? curProd.buy : (item.buy || 0); 
+                    updatedItems.push({ ...item, buy: actualBuy, qty: finalQty, sell: newPrice }); // Store new price
+                    newRev += newPrice * finalQty;
+                    newProf += (newPrice - actualBuy) * finalQty;
                 }
             }
 
-            if (!hasReturns) return alert("ပြန်အပ်မည့် အရေအတွက်များကို ထည့်သွင်းပေးပါဦး");
-            if (!confirm("ရွေးချယ်ထားသော ပစ္စည်းအရေအတွက်များအတိုင်း ဘောင်ချာကို ပြင်ဆင်ရန် သေချာပါသလား? (လျော့သွားသော ပစ္စည်းများ ဂိုထောင်ထဲသို့ အလိုအလျောက် ပြန်ဝင်သွားမည်)")) return;
+            if (!hasChanges) return alert("ပြောင်းလဲမှုမရှိပါ (ပြန်အပ်မည့်အရေအတွက် သို့မဟုတ် ဈေးနှုန်း ပြင်ဆင်ပါ)");
+            if (!confirm("ရွေးချယ်ထားသော အချက်အလက်များအတိုင်း ဘောင်ချာကို ပြင်ဆင်ရန် သေချာပါသလား?")) return;
 
             localStorage.setItem('ttk_products', JSON.stringify(products));
 
@@ -1064,7 +1108,7 @@
                 localStorage.setItem('ttk_sales', JSON.stringify(allLocalSales));
             }
 
-            alert("ပစ္စည်းပြန်အပ်ခြင်းနှင့် ဘောင်ချာပြင်ဆင်ခြင်း အောင်မြင်ပါသည်။");
+            alert("ပြင်ဆင်ခြင်း အောင်မြင်ပါသည်။");
             closeOverlay('detail-overlay');
             refreshUI();
             runReport();
