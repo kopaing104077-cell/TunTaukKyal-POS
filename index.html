@@ -160,7 +160,6 @@
             <div style="display:flex; justify-content:space-between; align-items:center;">
                 <h3><i class="fas fa-list-ul"></i> လက်ရှိလက်ကျန်</h3>
                 <div style="display:flex; gap: 5px;">
-                    <!-- Excel ထုတ်ရန် ခလုတ်အသစ်ထည့်သွင်းခြင်း -->
                     <button class="btn btn-excel" onclick="exportMainStockToExcel()" style="width:auto; padding:5px 10px; font-size:12px;">
                         <i class="fas fa-file-excel"></i> Excel
                     </button>
@@ -217,8 +216,7 @@
                 <div style="background:#f0fdf4; padding:10px; border-radius:10px; text-align:center;"><small>အမြတ်</small><br><b id="sum-prof" style="color:var(--green);">0</b> Ks</div>
             </div>
             <div style="margin-top:10px;">
-                <!-- Excel Button Title Updated -->
-                <button class="btn btn-excel" onclick="exportGroupedExcel()" style="width:100%; padding:10px; border-radius:8px; font-weight:bold; font-size: 13px;"><i class="fas fa-file-excel"></i> နေ့/လ/နှစ် (အရောင်းသမား၊ ဆိုင်) အစီရင်ခံစာ Excel ထုတ်မည်</button>
+                <button class="btn btn-excel" onclick="exportGroupedExcel()" style="width:100%; padding:10px; border-radius:8px; font-weight:bold; font-size: 13px;"><i class="fas fa-file-excel"></i> နေ့/လ/နှစ် အစီရင်ခံစာ Excel ထုတ်မည် (Auto Calc)</button>
             </div>
         </div>
         <div class="table-wrap">
@@ -471,7 +469,6 @@
             XLSX.writeFile(wb, `TTK_Stock_${catTitle}_${new Date().toISOString().split('T')[0]}.xlsx`);
         };
 
-        // Excel ထုတ်ရန် Function အသစ် (လက်ကျန် Tab အတွက်)
         window.exportMainStockToExcel = function() {
             const stockFiltered = products.filter(p => (curStockCat === 'all' || p.category === curStockCat));
             if(stockFiltered.length === 0) return alert("ထုတ်ရန် ဒေတာမရှိပါ");
@@ -664,13 +661,12 @@
             let rev=0, prof=0;
             const items = cart.map(i => {
                 const prodIndex = tempProducts.findIndex(p => p.id === i.id);
-                const actualBuy = prodIndex > -1 ? tempProducts[prodIndex].buy : (i.buy || 0); // Always try to use latest buy price
+                const actualBuy = prodIndex > -1 ? tempProducts[prodIndex].buy : (i.buy || 0);
                 
                 rev += i.sell * i.cQty; 
                 prof += (i.sell - actualBuy) * i.cQty;
                 
                 if(prodIndex > -1) tempProducts[prodIndex].qty -= i.cQty;
-                // ပစ္စည်းရောင်းချိန်မှာ ဝယ်စျေး (actualBuy) ကိုပါ သေချာတွဲမှတ်ထားပါတယ်
                 return { id: i.id, name: i.name, qty: i.cQty, sell: i.sell, buy: actualBuy, unit: i.unit };
             });
 
@@ -764,17 +760,19 @@
 
             let r=0, p=0, rows="";
             salesData.forEach(s => { 
-                // မှားယွင်းနေသော "Dynamic Recalculation" ကို ဖြုတ်လိုက်ပါပြီ။
-                // Database ထဲမှာ မှတ်ထားတဲ့ i.buy ကိုပဲ ပြန်သုံးပြီး တွက်မှာမို့ အရင်ရောင်းခဲ့တဲ့ အမြတ်တွေ လုံးဝမမှားနိုင်တော့ပါ။
                 let calcProf = 0;
                 const items = Array.isArray(s.items) ? s.items : JSON.parse(s.items || '[]');
                 items.forEach(i => {
-                    let actualBuy = i.buy !== undefined ? i.buy : 0; 
+                    // အရင်က ဝယ်ဈေး (buy price) မသိမ်းထားခဲ့ရင် လက်ရှိဂိုထောင်ထဲက ဝယ်ဈေးကို ယူသုံးမည် (Retroactive Fix)
+                    let actualBuy = i.buy;
+                    if(actualBuy === undefined) {
+                        const currentProd = products.find(prod => prod.id === i.id || prod.name === i.name);
+                        actualBuy = currentProd ? (currentProd.buy || 0) : 0;
+                    }
                     calcProf += (i.sell - actualBuy) * i.qty;
                 });
                 
-                // Database က s.prof မရှိဘူးဆိုရင်သာ (Old data error) ပြန်တွက်ပေးပါမယ်။
-                s.prof = (s.prof !== undefined && s.prof !== 0) ? s.prof : calcProf;
+                s.prof = (s.prof !== undefined && s.prof !== 0 && s.prof !== s.rev) ? s.prof : calcProf;
 
                 r += s.rev; p += s.prof; 
                 
@@ -784,7 +782,6 @@
                     <td style="text-align:center; display:flex; gap:5px; flex-wrap:wrap; justify-content:center;">
                         <button onclick="event.stopPropagation(); shareVoucherLink(${passId})" style="border:none;background:#4a90e2;color:white;padding:5px 8px;border-radius:5px;" title="Share Link"><i class="fas fa-share-nodes"></i></button>
                         <button onclick="event.stopPropagation(); rePrintSale(${passId})" style="border:none;background:var(--midnight);color:white;padding:5px 8px;border-radius:5px;" title="Print"><i class="fas fa-print"></i></button>
-                        <button onclick="event.stopPropagation(); exportSaleToExcel(${passId})" style="border:none;background:var(--excel);color:white;padding:5px 8px;border-radius:5px;font-size:11px;" title="Export Excel"><i class="fas fa-file-excel"></i> Excel</button>
                         <button onclick="event.stopPropagation(); deleteSale(${passId})" style="border:none;background:var(--red);color:white;padding:5px 8px;border-radius:5px;" title="Delete"><i class="fas fa-trash"></i></button>
                     </td></tr>`; 
             }); 
@@ -793,7 +790,7 @@
             document.getElementById('rep-body').innerHTML = rows || '<tr><td colspan="5" style="text-align:center;">စာရင်းမရှိပါ</td></tr>';
         }
 
-        // --- ပြုပြင်မွမ်းမံထားသော Excel Report (အရောင်းသမား၊ ဆိုင်အမည် စသဖြင့် Sheet ခွဲထုတ်ခြင်း) ---
+        // --- ပြုပြင်မွမ်းမံထားသော Excel Report (Auto Calculate ဖြစ်စေမည့် Formula များပါဝင်သည်) ---
         window.exportGroupedExcel = function() {
             if(!salesData || salesData.length === 0) return alert("စာရင်းမရှိပါ");
             
@@ -803,14 +800,15 @@
             let dateLabel = ty === 'day' ? dt : (ty === 'month' ? dt.slice(0,7) : dt.slice(0,4));
             
             let staffMap = {};
-            let custMap = {}; // ဆိုင်/ဝယ်သူများအတွက် Data Map အသစ်
+            let custMap = {}; 
             let itemMap = {};
-            let totalRev = 0;
-            let totalProf = 0;
 
+            // 1. Details Sheet (အသေးစိတ်) အတွက် Rows
             let detailedRows = [
                 ["ရက်စွဲ", "ဘောင်ချာနံပါတ်", "ဝယ်သူ/ဆိုင်အမည်", "အရောင်းဝန်ထမ်း", "ပစ္စည်းအမည်", "အရေအတွက်", "ယူနစ်", "ရောင်းဈေး", "ဝယ်ဈေး", "ရောင်းအားစုစုပေါင်း", "အမြတ်"]
             ];
+            
+            let startRowDetail = 2; // Excel မှာ Row က 1 ကစတာမို့ Header က 1 ဖြစ်ပြီး Data က 2 ကစပါတယ်
             
             salesData.forEach(s => {
                 let staffName = "Admin";
@@ -822,36 +820,26 @@
                     staffName = match[2].trim() || "Admin";
                 }
                 
-                // Staff အတွက် ပေါင်းထည့်ခြင်း
-                if(!staffMap[staffName]) staffMap[staffName] = { rev: 0, prof: 0, count: 0 };
-                staffMap[staffName].rev += s.rev;
+                if(!staffMap[staffName]) staffMap[staffName] = { count: 0 };
                 staffMap[staffName].count += 1;
 
-                // Customer / Shop အတွက် ပေါင်းထည့်ခြင်း
-                if(!custMap[custName]) custMap[custName] = { rev: 0, prof: 0, count: 0 };
-                custMap[custName].rev += s.rev;
+                if(!custMap[custName]) custMap[custName] = { count: 0 };
                 custMap[custName].count += 1;
-                
-                totalRev += s.rev;
-
-                let saleProfForStaffAndCust = 0;
 
                 const items = Array.isArray(s.items) ? s.items : JSON.parse(s.items || '[]');
                 items.forEach(item => {
-                    if(!itemMap[item.name]) itemMap[item.name] = { qty: 0, rev: 0, prof: 0, unit: item.unit || '-' };
+                    if(!itemMap[item.name]) itemMap[item.name] = { unit: item.unit || '-' };
                     
-                    // ဝယ်စျေး (Actual Buy) အဟောင်းပြဿနာမဖြစ်စေရန် ဘောင်ချာဖြတ်စဥ်က မှတ်ထားသည့် item.buy ကိုသာ အသုံးပြုပါသည်
-                    let actualBuy = item.buy !== undefined ? item.buy : 0;
+                    // Retroactive Fix: အရင်က ဝယ်ဈေး (buy) မရှိခဲ့လျှင် လက်ရှိဂိုထောင်မှ ဆွဲထုတ်သည်
+                    let actualBuy = item.buy;
+                    if(actualBuy === undefined) {
+                        const currentProd = products.find(prod => prod.id === item.id || prod.name === item.name);
+                        actualBuy = currentProd ? (currentProd.buy || 0) : 0;
+                    }
 
-                    let itemRev = item.sell * item.qty;
-                    let itemProf = (item.sell - actualBuy) * item.qty;
-                    
-                    itemMap[item.name].qty += item.qty;
-                    itemMap[item.name].rev += itemRev;
-                    itemMap[item.name].prof += itemProf;
-
-                    saleProfForStaffAndCust += itemProf;
-
+                    // Formula ထည့်သွင်းခြင်း
+                    // F=Qty, H=Sell, I=Buy 
+                    // J=Total(F*H), K=Profit((H-I)*F)
                     detailedRows.push([
                         s.date, 
                         formatVoucher(s.id), 
@@ -862,48 +850,74 @@
                         item.unit || '-', 
                         item.sell, 
                         actualBuy, 
-                        itemRev, 
-                        itemProf   
+                        { f: `F${startRowDetail}*H${startRowDetail}` }, 
+                        { f: `(H${startRowDetail}-I${startRowDetail})*F${startRowDetail}` }   
                     ]);
+                    
+                    startRowDetail++;
                 });
-
-                staffMap[staffName].prof += saleProfForStaffAndCust;
-                custMap[custName].prof += saleProfForStaffAndCust;
-                totalProf += saleProfForStaffAndCust;
             });
             
-            // Sheet 1: Staff Summary
+            // 2. Staff Summary (အရောင်းသမားချုပ်) 
             const staffRows = [
                 ["ထွန်းတောက်ကြယ် လက်ကားဖြန့်ချိရေး - အရောင်းသမားအလိုက် အစီရင်ခံစာ (" + tyOpt + ")"],
                 ["ရက်စွဲ/ကာလ", dateLabel],
                 [""],
                 ["အရောင်းသမားအမည်", "ဘောင်ချာအရေအတွက်", "ရောင်းအား (Total Sales)", "အမြတ်ငွေ (Total Profit)"]
             ];
-            for(let staff in staffMap) { staffRows.push([staff, staffMap[staff].count, staffMap[staff].rev, staffMap[staff].prof]); }
+            let staffRowIdx = 5;
+            for(let staff in staffMap) { 
+                staffRows.push([
+                    staff, 
+                    staffMap[staff].count, 
+                    { f: `SUMIF('အသေးစိတ် (Details)'!D:D, A${staffRowIdx}, 'အသေးစိတ် (Details)'!J:J)` }, 
+                    { f: `SUMIF('အသေးစိတ် (Details)'!D:D, A${staffRowIdx}, 'အသေးစိတ် (Details)'!K:K)` }
+                ]); 
+                staffRowIdx++;
+            }
             staffRows.push(["", "", "", ""]);
-            staffRows.push(["စုစုပေါင်း", salesData.length, totalRev, totalProf]);
+            staffRows.push(["စုစုပေါင်း", salesData.length, { f: `SUM(C5:C${staffRowIdx-1})` }, { f: `SUM(D5:D${staffRowIdx-1})` }]);
 
-            // Sheet 2: Customer/Shop Summary
+            // 3. Customer/Shop Summary (ဆိုင်အလိုက်ချုပ်)
             const custRows = [
                 ["ထွန်းတောက်ကြယ် လက်ကားဖြန့်ချိရေး - ဝယ်သူ/ဆိုင်အမည်အလိုက် အစီရင်ခံစာ (" + tyOpt + ")"],
                 ["ရက်စွဲ/ကာလ", dateLabel],
                 [""],
                 ["ဝယ်သူ / ဆိုင်အမည်", "ဘောင်ချာအရေအတွက်", "ဝယ်ယူမှုစုစုပေါင်း (Total Sales)", "ရရှိသောအမြတ် (Total Profit)"]
             ];
-            for(let cust in custMap) { custRows.push([cust, custMap[cust].count, custMap[cust].rev, custMap[cust].prof]); }
+            let custRowIdx = 5;
+            for(let cust in custMap) { 
+                custRows.push([
+                    cust, 
+                    custMap[cust].count, 
+                    { f: `SUMIF('အသေးစိတ် (Details)'!C:C, A${custRowIdx}, 'အသေးစိတ် (Details)'!J:J)` }, 
+                    { f: `SUMIF('အသေးစိတ် (Details)'!C:C, A${custRowIdx}, 'အသေးစိတ် (Details)'!K:K)` }
+                ]); 
+                custRowIdx++;
+            }
             custRows.push(["", "", "", ""]);
-            custRows.push(["စုစုပေါင်း", salesData.length, totalRev, totalProf]);
+            custRows.push(["စုစုပေါင်း", salesData.length, { f: `SUM(C5:C${custRowIdx-1})` }, { f: `SUM(D5:D${custRowIdx-1})` }]);
 
-            // Sheet 3: Items Summary
+            // 4. Items Summary (ပစ္စည်းချုပ်)
             const itemRows = [
                 ["ထွန်းတောက်ကြယ် လက်ကားဖြန့်ချိရေး - ပစ္စည်းအလိုက် ရောင်းအားအစီရင်ခံစာ (" + tyOpt + ")"],
                 ["ရက်စွဲ/ကာလ", dateLabel],
                 [""],
                 ["ပစ္စည်းအမည်", "ယူနစ်", "ရောင်းရအရေအတွက်", "ရောင်းအားစုစုပေါင်း", "အမြတ်ငွေစုစုပေါင်း"]
             ];
-            for(let itemName in itemMap) { itemRows.push([itemName, itemMap[itemName].unit, itemMap[itemName].qty, itemMap[itemName].rev, itemMap[itemName].prof]); }
+            let itemRowIdx = 5;
+            for(let itemName in itemMap) { 
+                itemRows.push([
+                    itemName, 
+                    itemMap[itemName].unit, 
+                    { f: `SUMIF('အသေးစိတ် (Details)'!E:E, A${itemRowIdx}, 'အသေးစိတ် (Details)'!F:F)` }, 
+                    { f: `SUMIF('အသေးစိတ် (Details)'!E:E, A${itemRowIdx}, 'အသေးစိတ် (Details)'!J:J)` }, 
+                    { f: `SUMIF('အသေးစိတ် (Details)'!E:E, A${itemRowIdx}, 'အသေးစိတ် (Details)'!K:K)` }
+                ]); 
+                itemRowIdx++;
+            }
 
-            // Building Excel Workbook
+            // Workbook တည်ဆောက်ခြင်း
             const wb = XLSX.utils.book_new();
             
             const wsStaff = XLSX.utils.aoa_to_sheet(staffRows);
@@ -918,21 +932,8 @@
             const wsDetails = XLSX.utils.aoa_to_sheet(detailedRows);
             XLSX.utils.book_append_sheet(wb, wsDetails, "အသေးစိတ် (Details)");
             
-            XLSX.writeFile(wb, `TTK_${tyOpt}_FullReport_${dateLabel}.xlsx`);
+            XLSX.writeFile(wb, `TTK_${tyOpt}_AutoReport_${dateLabel}.xlsx`);
         };
-
-        function exportSaleToExcel(id) {
-            const sale = salesData.find(s => s.id === id);
-            if (!sale) return;
-            const reportRows = [["ထွန်းတောက်ကြယ် - အရောင်းဘောင်ချာ"],["ဘောင်ချာနံပါတ်", formatVoucher(sale.id)],["ရက်စွဲ", sale.date],["ဝယ်သူ/ဝန်ထမ်း", sale.cust],[""],["ပစ္စည်းအမည်", "အရေအတွက်", "ယူနစ်", "ဈေးနှုန်း", "စုစုပေါင်း"]];
-            const items = Array.isArray(sale.items) ? sale.items : JSON.parse(sale.items || '[]');
-            items.forEach(item => { reportRows.push([item.name, item.qty, item.unit || "-", item.sell, item.sell * item.qty]); });
-            reportRows.push([""], ["", "", "", "စုစုပေါင်း", sale.rev]);
-            const ws = XLSX.utils.aoa_to_sheet(reportRows);
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "Sale_Voucher");
-            XLSX.writeFile(wb, `TTK_Voucher_${formatVoucher(sale.id)}.xlsx`);
-        }
 
         function rePrintSale(id) {
             const sale = salesData.find(s => s.id === id);
@@ -953,7 +954,6 @@
             const finalQty = origQty - rQty;
             document.getElementById(`detail-row-total-${index}`).innerText = (price * finalQty).toLocaleString();
             
-            // Update Grand Total dynamically
             let grandTotal = 0;
             let i = 0;
             while(document.getElementById(`detail-row-total-${i}`)) {
@@ -1101,7 +1101,12 @@
                 }
                 
                 if (finalQty > 0) {
-                    let actualBuy = item.buy !== undefined ? item.buy : 0; 
+                    // Retroactive Buy Price Check here as well
+                    let actualBuy = item.buy;
+                    if(actualBuy === undefined) {
+                        const currentProd = products.find(prod => prod.id === item.id || prod.name === item.name);
+                        actualBuy = currentProd ? (currentProd.buy || 0) : 0;
+                    }
                     updatedItems.push({ ...item, buy: actualBuy, qty: finalQty, sell: newPrice }); 
                     newRev += newPrice * finalQty;
                     newProf += (newPrice - actualBuy) * finalQty;
@@ -1290,3 +1295,4 @@
     </script>
 </body>
 </html>
+
