@@ -783,20 +783,18 @@
             let r=0, p=0, rows="";
             salesData.forEach(s => { 
                 
-                // Historical Profit Fix: Using Current Buy Price if missing/0
+                // Historical Profit Fix: ပြင်ဆင်ထားသော စျေးနှုန်းများအတိုင်း အမြတ်ကို တိကျမှန်ကန်စွာ ပြန်လည်တွက်ချက်ခြင်း
                 let calcProf = 0;
                 const items = Array.isArray(s.items) ? s.items : JSON.parse(s.items || '[]');
                 items.forEach(i => {
-                    let actualBuy = parseFloat(i.buy);
-                    if (isNaN(actualBuy) || actualBuy === 0) { 
-                        const currentProd = products.find(prod => prod.id === i.id || prod.name === i.name);
-                        actualBuy = currentProd ? (parseFloat(currentProd.buy) || 0) : 0;
-                    }
-                    i.buy = actualBuy; // Temporarily update for accurate detailed view/export
+                    const currentProd = products.find(prod => prod.id === i.id || prod.name === i.name);
+                    // လက်ရှိ inventory ထဲမှာ ဝယ်ဈေးပြင်ထားတာရှိရင် ပြင်ထားတဲ့ ဝယ်ဈေးကိုယူမယ်၊ မရှိရင် မူလဘောင်ချာထဲက ဝယ်ဈေးအတိုင်းတွက်မယ်
+                    let actualBuy = currentProd ? (parseFloat(currentProd.buy) || 0) : (parseFloat(i.buy) || 0);
+                    i.buy = actualBuy; // Detailed view နဲ့ export တွေမှာပါ စျေးနှုန်းမှန်သွားအောင် ယာယီထည့်သွင်းပေးထားမယ်
                     calcProf += Math.round((parseFloat(i.sell) - actualBuy) * parseFloat(i.qty));
                 });
                 
-                // Override the old massive profit with the recalculated accurate profit
+                // ဒေတာဘေ့စ်ထဲက အမြတ်ဟောင်းနေရာမှာ လက်ရှိပြင်ဆင်ထားသောစျေးနှုန်းများအရ တွက်ချက်ထားတဲ့ အမြတ်အသစ်ဖြင့် အစားထိုးပြသပေးခြင်း
                 s.prof = calcProf;
 
                 r += s.rev; p += s.prof; 
@@ -860,12 +858,9 @@
                 items.forEach(item => {
                     if(!itemMap[item.name]) itemMap[item.name] = { qty: 0, rev: 0, prof: 0, unit: item.unit || '-' };
                     
-                    // Historical fix for Excel as well
-                    let actualBuy = parseFloat(item.buy);
-                    if (isNaN(actualBuy) || actualBuy === 0) {
-                        const currentProd = products.find(p => p.id === item.id || p.name === item.name);
-                        actualBuy = currentProd ? (parseFloat(currentProd.buy) || 0) : 0;
-                    }
+                    // Excel Export အတွက်လည်း ပြင်ဆင်ထားသော နောက်ဆုံးဝယ်ယူဈေးဖြင့် တွက်ချက်ခြင်း
+                    const currentProd = products.find(p => p.id === item.id || p.name === item.name);
+                    let actualBuy = currentProd ? (parseFloat(currentProd.buy) || 0) : (parseFloat(item.buy) || 0);
 
                     let itemQty = parseFloat(item.qty) || 0;
                     let itemSell = parseFloat(item.sell) || 0;
@@ -1119,11 +1114,10 @@
                 }
                 
                 if (finalQty > 0) {
-                    let actualBuy = parseFloat(item.buy);
-                    if (isNaN(actualBuy) || actualBuy === 0) {
-                        const currentProd = products.find(p => p.id === item.id || p.name === item.name);
-                        actualBuy = currentProd ? (parseFloat(currentProd.buy) || 0) : 0;
-                    }
+                    // ပြန်အပ်/ပြင်ဆင်မှုပြုလုပ်ချိန်တွင် လက်ရှိဂိုထောင်ထဲရှိ ပြင်ထားသော ဝယ်ဈေးနှုန်းဖြင့် ပြန်လည်တွက်ချက်ခြင်း
+                    const currentProd = products.find(p => p.id === item.id || p.name === item.name);
+                    let actualBuy = currentProd ? (parseFloat(currentProd.buy) || 0) : (parseFloat(item.buy) || 0);
+                    
                     updatedItems.push({ ...item, buy: actualBuy, qty: Number(finalQty.toFixed(3)), sell: newPrice }); 
                     newRev += Math.round(newPrice * finalQty);
                     newProf += Math.round((newPrice - actualBuy) * finalQty);
