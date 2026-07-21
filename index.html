@@ -37,8 +37,9 @@
         #cart-list { max-height: 140px; overflow-y: auto; margin-bottom: 8px; }
         .cart-item { display: flex; justify-content: space-between; align-items: center; background: #f8fafc; padding: 8px 10px; border-radius: 8px; margin-bottom: 4px; font-size: 12px; border: 1px solid #eee; }
         
-        .price-edit-input { width: 70px; padding: 4px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px; text-align: right; font-weight: bold; color: var(--red); }
-        .qty-edit-input { width: 45px; padding: 4px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; text-align: center; font-weight: bold; margin: 0 5px; }
+        .price-edit-input { width: 75px; padding: 5px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px; text-align: right; font-weight: bold; color: var(--red); }
+        /* Qty input ၏ Size ကို ကြီးပေးထားပါသည် */
+        .qty-edit-input { width: 65px; padding: 6px 4px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; text-align: center; font-weight: bold; margin: 0 4px; background: #ffffff; }
 
         .cat-scroll { display: flex; overflow-x: auto; gap: 6px; padding: 4px 0 8px 0; flex-shrink: 0; scrollbar-width: none; }
         .cat-btn { white-space: nowrap; padding: 8px 15px; border-radius: 20px; border: 1px solid #cbd5e1; background: white; font-size: 12px; cursor: pointer; }
@@ -788,13 +789,11 @@
                 const items = Array.isArray(s.items) ? s.items : JSON.parse(s.items || '[]');
                 items.forEach(i => {
                     const currentProd = products.find(prod => prod.id === i.id || prod.name === i.name);
-                    // လက်ရှိ inventory ထဲမှာ ဝယ်ဈေးပြင်ထားတာရှိရင် ပြင်ထားတဲ့ ဝယ်ဈေးကိုယူမယ်၊ မရှိရင် မူလဘောင်ချာထဲက ဝယ်ဈေးအတိုင်းတွက်မယ်
                     let actualBuy = currentProd ? (parseFloat(currentProd.buy) || 0) : (parseFloat(i.buy) || 0);
-                    i.buy = actualBuy; // Detailed view နဲ့ export တွေမှာပါ စျေးနှုန်းမှန်သွားအောင် ယာယီထည့်သွင်းပေးထားမယ်
+                    i.buy = actualBuy;
                     calcProf += Math.round((parseFloat(i.sell) - actualBuy) * parseFloat(i.qty));
                 });
                 
-                // ဒေတာဘေ့စ်ထဲက အမြတ်ဟောင်းနေရာမှာ လက်ရှိပြင်ဆင်ထားသောစျေးနှုန်းများအရ တွက်ချက်ထားတဲ့ အမြတ်အသစ်ဖြင့် အစားထိုးပြသပေးခြင်း
                 s.prof = calcProf;
 
                 r += s.rev; p += s.prof; 
@@ -829,7 +828,7 @@
             let totalProf = 0;
 
             let detailedRows = [
-                ["ရက်စွဲ", "ဘောင်ချာနံပါတ်", "ဝယ်သူ/ဆိုင်အမည်", "အရောင်းဝန်ထမ်း", "ပစ္စည်းအမည်", "အရေအတွက်", "ယူနစ်", "ရောင်းဈေး", "ဝယ်ဈေး", "ရောင်းအားစုစုပေါင်း", "အမြတ်"]
+                ["ရက်စွဲ", "ဘောင်ချာနံပါတ်", "ဝယ်သူ/ဆိုင်အမည်", "အရောင်းသမား", "ပစ္စည်းအမည်", "အရေအတွက်", "ယူနစ်", "ရောင်းဈေး", "ဝယ်ဈေး", "ရောင်းအားစုစုပေါင်း", "အမြတ်"]
             ];
             
             salesData.forEach(s => {
@@ -846,9 +845,11 @@
                 staffMap[staffName].rev += s.rev;
                 staffMap[staffName].count += 1;
 
-                if(!custMap[custName]) custMap[custName] = { rev: 0, prof: 0, count: 0 };
+                // ဆိုင်အလိုက်အချုပ်တွင် အရောင်းသမားအမည်ပါ ပေါင်းစပ်မှတ်သားပေးခြင်း
+                if(!custMap[custName]) custMap[custName] = { rev: 0, prof: 0, count: 0, staffSet: new Set() };
                 custMap[custName].rev += s.rev;
                 custMap[custName].count += 1;
+                custMap[custName].staffSet.add(staffName);
                 
                 totalRev += s.rev;
 
@@ -858,7 +859,6 @@
                 items.forEach(item => {
                     if(!itemMap[item.name]) itemMap[item.name] = { qty: 0, rev: 0, prof: 0, unit: item.unit || '-' };
                     
-                    // Excel Export အတွက်လည်း ပြင်ဆင်ထားသော နောက်ဆုံးဝယ်ယူဈေးဖြင့် တွက်ချက်ခြင်း
                     const currentProd = products.find(p => p.id === item.id || p.name === item.name);
                     let actualBuy = currentProd ? (parseFloat(currentProd.buy) || 0) : (parseFloat(item.buy) || 0);
 
@@ -904,15 +904,19 @@
             staffRows.push(["", "", "", ""]);
             staffRows.push(["စုစုပေါင်း", salesData.length, totalRev, totalProf]);
 
+            // ဆိုင်အလိုက်အချုပ်တွင် အရောင်းသမားအမည် ကော်လံ ထည့်သွင်းထားပါသည်
             const custRows = [
                 ["ထွန်းတောက်ကြယ် လက်ကားဖြန့်ချိရေး - ဝယ်သူ/ဆိုင်အမည်အလိုက် အစီရင်ခံစာ (" + tyOpt + ")"],
                 ["ရက်စွဲ/ကာလ", dateLabel],
                 [""],
-                ["ဝယ်သူ / ဆိုင်အမည်", "ဘောင်ချာအရေအတွက်", "ဝယ်ယူမှုစုစုပေါင်း (Total Sales)", "ရရှိသောအမြတ် (Total Profit)"]
+                ["ဝယ်သူ / ဆိုင်အမည်", "အရောင်းသမားအမည်", "ဘောင်ချာအရေအတွက်", "ဝယ်ယူမှုစုစုပေါင်း (Total Sales)", "ရရှိသောအမြတ် (Total Profit)"]
             ];
-            for(let cust in custMap) { custRows.push([cust, custMap[cust].count, custMap[cust].rev, custMap[cust].prof]); }
-            custRows.push(["", "", "", ""]);
-            custRows.push(["စုစုပေါင်း", salesData.length, totalRev, totalProf]);
+            for(let cust in custMap) { 
+                let staffList = Array.from(custMap[cust].staffSet).join(", ");
+                custRows.push([cust, staffList, custMap[cust].count, custMap[cust].rev, custMap[cust].prof]); 
+            }
+            custRows.push(["", "", "", "", ""]);
+            custRows.push(["စုစုပေါင်း", "", salesData.length, totalRev, totalProf]);
 
             const itemRows = [
                 ["ထွန်းတောက်ကြယ် လက်ကားဖြန့်ချိရေး - ပစ္စည်းအလိုက် ရောင်းအားအစီရင်ခံစာ (" + tyOpt + ")"],
@@ -1114,7 +1118,6 @@
                 }
                 
                 if (finalQty > 0) {
-                    // ပြန်အပ်/ပြင်ဆင်မှုပြုလုပ်ချိန်တွင် လက်ရှိဂိုထောင်ထဲရှိ ပြင်ထားသော ဝယ်ဈေးနှုန်းဖြင့် ပြန်လည်တွက်ချက်ခြင်း
                     const currentProd = products.find(p => p.id === item.id || p.name === item.name);
                     let actualBuy = currentProd ? (parseFloat(currentProd.buy) || 0) : (parseFloat(item.buy) || 0);
                     
@@ -1318,3 +1321,4 @@
     </script>
 </body>
 </html>
+
