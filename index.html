@@ -38,7 +38,6 @@
         .cart-item { display: flex; justify-content: space-between; align-items: center; background: #f8fafc; padding: 8px 10px; border-radius: 8px; margin-bottom: 4px; font-size: 12px; border: 1px solid #eee; }
         
         .price-edit-input { width: 75px; padding: 5px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px; text-align: right; font-weight: bold; color: var(--red); }
-        /* Qty input ၏ Size ကို ကြီးပေးထားပါသည် */
         .qty-edit-input { width: 65px; padding: 6px 4px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; text-align: center; font-weight: bold; margin: 0 4px; background: #ffffff; }
 
         .cat-scroll { display: flex; overflow-x: auto; gap: 6px; padding: 4px 0 8px 0; flex-shrink: 0; scrollbar-width: none; }
@@ -85,7 +84,6 @@
         body.share-mode .header, body.share-mode .nav, body.share-mode .container { display: none !important; }
         body.share-mode #receipt-render-area { display: block !important; width: 100%; max-width: 600px; margin: 0 auto; padding: 20px; }
         
-        /* Edit Return Input */
         .return-input { width: 60px; padding: 4px; border: 1px solid var(--red); border-radius: 4px; text-align: center; font-weight: bold; }
 
         /* Print Styles */
@@ -456,7 +454,7 @@
                 });
                 html += `</tbody></table>`;
                 html += `<div class="no-print" style="margin-top:20px; display:flex; gap:10px;">
-                            <button class="btn btn-excel" onclick="exportSharedStockToExcel('${catTitle}')"><i class="fas fa-file-excel"></i> 📥 Excel ထုတ်ယူမည်</button>
+                            <button class="btn btn-excel" onclick="exportSharedStockToExcel('${catTitle}')"><i class="fas fa-file-excel"></i>  Excel ထုတ်ယူမည်</button>
                             <button class="btn btn-dark" onclick="window.location.href=window.location.pathname">ပင်မစာမျက်နှာသို့</button>
                          </div>`;
                 area.innerHTML = html;
@@ -527,7 +525,6 @@
                     const localProducts = localStorage.getItem('ttk_products');
                     if (localProducts && JSON.parse(localProducts).length > 0) {
                         products = JSON.parse(localProducts);
-                        console.warn("Retained local data: Supabase returned 0 rows.");
                     } else {
                         products = [];
                         localStorage.setItem('ttk_products', JSON.stringify(products));
@@ -679,7 +676,11 @@
             let rev=0, prof=0;
             const items = cart.map(i => {
                 const prodIndex = tempProducts.findIndex(p => p.id === i.id);
-                const actualBuy = prodIndex > -1 ? parseFloat(tempProducts[prodIndex].buy) : (parseFloat(i.buy) || 0); 
+                // ပြင်ဆင်ချက် - Edit လုပ်သည့်အခါ မူလဝယ်ဈေး (i.buy) ရှိနေပါက ယင်းကိုသာ အသုံးပြုရန်
+                let actualBuy = (i.buy !== undefined && i.buy !== null) ? parseFloat(i.buy) : 0;
+                if (actualBuy === 0 && prodIndex > -1) {
+                    actualBuy = parseFloat(tempProducts[prodIndex].buy) || 0;
+                }
                 
                 let iQty = parseFloat(i.cQty) || 0;
                 let iSell = parseFloat(i.sell) || 0;
@@ -784,13 +785,17 @@
             let r=0, p=0, rows="";
             salesData.forEach(s => { 
                 
-                // Historical Profit Fix: ပြင်ဆင်ထားသော စျေးနှုန်းများအတိုင်း အမြတ်ကို တိကျမှန်ကန်စွာ ပြန်လည်တွက်ချက်ခြင်း
+                // ပြင်ဆင်ချက် - မှတ်တမ်းဟောင်းမှ ဝယ်ဈေးကိုသာ အသုံးပြုပြီး အမြတ်တွက်ရန်
                 let calcProf = 0;
                 const items = Array.isArray(s.items) ? s.items : JSON.parse(s.items || '[]');
                 items.forEach(i => {
-                    const currentProd = products.find(prod => prod.id === i.id || prod.name === i.name);
-                    let actualBuy = currentProd ? (parseFloat(currentProd.buy) || 0) : (parseFloat(i.buy) || 0);
-                    i.buy = actualBuy;
+                    // ဘောင်ချာတွင် မှတ်သားထားသော ဝယ်ဈေးရှိမရှိ စစ်ဆေးသည်
+                    let actualBuy = (i.buy !== undefined && i.buy !== null) ? parseFloat(i.buy) : 0;
+                    if (actualBuy === 0) {
+                        // Legacy Data ဖြစ်ခဲ့လျှင် (အရင်တုန်းက ဝယ်ဈေး မမှတ်ထားခဲ့ရင်) သာ လက်ရှိဈေးကို ယူသည်
+                        const currentProd = products.find(prod => prod.id === i.id || prod.name === i.name);
+                        actualBuy = currentProd ? (parseFloat(currentProd.buy) || 0) : 0;
+                    }
                     calcProf += Math.round((parseFloat(i.sell) - actualBuy) * parseFloat(i.qty));
                 });
                 
@@ -845,7 +850,6 @@
                 staffMap[staffName].rev += s.rev;
                 staffMap[staffName].count += 1;
 
-                // ဆိုင်အလိုက်အချုပ်တွင် အရောင်းသမားအမည်ပါ ပေါင်းစပ်မှတ်သားပေးခြင်း
                 if(!custMap[custName]) custMap[custName] = { rev: 0, prof: 0, count: 0, staffSet: new Set() };
                 custMap[custName].rev += s.rev;
                 custMap[custName].count += 1;
@@ -859,8 +863,12 @@
                 items.forEach(item => {
                     if(!itemMap[item.name]) itemMap[item.name] = { qty: 0, rev: 0, prof: 0, unit: item.unit || '-' };
                     
-                    const currentProd = products.find(p => p.id === item.id || p.name === item.name);
-                    let actualBuy = currentProd ? (parseFloat(currentProd.buy) || 0) : (parseFloat(item.buy) || 0);
+                    // ပြင်ဆင်ချက် - Excel ထုတ်ရာတွင်လည်း ဝယ်ဈေးဟောင်းကိုသာ အသုံးပြုရန်
+                    let actualBuy = (item.buy !== undefined && item.buy !== null) ? parseFloat(item.buy) : 0;
+                    if (actualBuy === 0) {
+                        const currentProd = products.find(p => p.id === item.id || p.name === item.name);
+                        actualBuy = currentProd ? (parseFloat(currentProd.buy) || 0) : 0;
+                    }
 
                     let itemQty = parseFloat(item.qty) || 0;
                     let itemSell = parseFloat(item.sell) || 0;
@@ -904,7 +912,6 @@
             staffRows.push(["", "", "", ""]);
             staffRows.push(["စုစုပေါင်း", salesData.length, totalRev, totalProf]);
 
-            // ဆိုင်အလိုက်အချုပ်တွင် အရောင်းသမားအမည် ကော်လံ ထည့်သွင်းထားပါသည်
             const custRows = [
                 ["ထွန်းတောက်ကြယ် လက်ကားဖြန့်ချိရေး - ဝယ်သူ/ဆိုင်အမည်အလိုက် အစီရင်ခံစာ (" + tyOpt + ")"],
                 ["ရက်စွဲ/ကာလ", dateLabel],
@@ -1034,7 +1041,8 @@
             editingSaleId = id;
             
             let parsedItems = Array.isArray(sale.items) ? sale.items : JSON.parse(sale.items || '[]');
-            cart = parsedItems.map(i => ({...i, cQty: parseFloat(i.qty)}));
+            // ပြင်ဆင်ချက် - ဝယ်ဈေးဟောင်းကို ခြင်းတောင်းထဲသို့ ထည့်သိမ်းပေးလိုက်ပါသည်
+            cart = parsedItems.map(i => ({...i, cQty: parseFloat(i.qty), buy: i.buy }));
             
             let custStr = sale.cust || "";
             let custName = custStr;
@@ -1118,8 +1126,8 @@
                 }
                 
                 if (finalQty > 0) {
-                    const currentProd = products.find(p => p.id === item.id || p.name === item.name);
-                    let actualBuy = currentProd ? (parseFloat(currentProd.buy) || 0) : (parseFloat(item.buy) || 0);
+                    // ပြင်ဆင်ချက် - Return ပြန်အပ်သည့်အခါတွင်လည်း ဝယ်ဈေးဟောင်းကို မဖျက်ဘဲ ဆက်လက်ထိန်းသိမ်းပါသည်
+                    let actualBuy = (item.buy !== undefined && item.buy !== null) ? parseFloat(item.buy) : 0;
                     
                     updatedItems.push({ ...item, buy: actualBuy, qty: Number(finalQty.toFixed(3)), sell: newPrice }); 
                     newRev += Math.round(newPrice * finalQty);
@@ -1321,4 +1329,3 @@
     </script>
 </body>
 </html>
-
