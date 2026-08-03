@@ -747,6 +747,7 @@
         async function runReport() {
             const dt = document.getElementById('rep-date').value;
             const ty = document.getElementById('rep-type').value;
+            const todayStr = new Date().toISOString().split('T')[0];
             
             try {
                 let q = _sb.from('sales').select('*');
@@ -784,18 +785,27 @@
 
             let r=0, p=0, rows="";
             salesData.forEach(s => { 
-                
-                // ပြင်ဆင်ချက် - မှတ်တမ်းဟောင်းမှ ဝယ်ဈေးကိုသာ အသုံးပြုပြီး အမြတ်တွက်ရန်
                 let calcProf = 0;
                 const items = Array.isArray(s.items) ? s.items : JSON.parse(s.items || '[]');
+                
+                const isTodaySale = (s.date === todayStr);
+
                 items.forEach(i => {
-                    // ဘောင်ချာတွင် မှတ်သားထားသော ဝယ်ဈေးရှိမရှိ စစ်ဆေးသည်
-                    let actualBuy = (i.buy !== undefined && i.buy !== null) ? parseFloat(i.buy) : 0;
-                    if (actualBuy === 0) {
-                        // Legacy Data ဖြစ်ခဲ့လျှင် (အရင်တုန်းက ဝယ်ဈေး မမှတ်ထားခဲ့ရင်) သာ လက်ရှိဈေးကို ယူသည်
+                    let actualBuy = 0;
+                    
+                    if (isTodaySale) {
+                        // ဒီနေ့အရောင်းဖြစ်ပါက လက်ရှိ Master Data မှ ဝယ်စျေးကို အမြဲယူမည် (ဒီနေ့ စျေးပြင်ထားလျှင် လိုက်ပြောင်းရန်)
                         const currentProd = products.find(prod => prod.id === i.id || prod.name === i.name);
-                        actualBuy = currentProd ? (parseFloat(currentProd.buy) || 0) : 0;
+                        actualBuy = currentProd ? (parseFloat(currentProd.buy) || 0) : ((i.buy !== undefined && i.buy !== null) ? parseFloat(i.buy) : 0);
+                    } else {
+                        // ယခင်နေ့များဖြစ်ပါက မှတ်တမ်းဟောင်းမှ ဝယ်စျေးကိုသာ ယူမည်
+                        actualBuy = (i.buy !== undefined && i.buy !== null) ? parseFloat(i.buy) : 0;
+                        if (actualBuy === 0) {
+                            const currentProd = products.find(prod => prod.id === i.id || prod.name === i.name);
+                            actualBuy = currentProd ? (parseFloat(currentProd.buy) || 0) : 0;
+                        }
                     }
+
                     calcProf += Math.round((parseFloat(i.sell) - actualBuy) * parseFloat(i.qty));
                 });
                 
@@ -824,6 +834,7 @@
             const tyOpt = document.getElementById('rep-type').options[document.getElementById('rep-type').selectedIndex].text;
             const dt = document.getElementById('rep-date').value;
             const ty = document.getElementById('rep-type').value;
+            const todayStr = new Date().toISOString().split('T')[0];
             let dateLabel = ty === 'day' ? dt : (ty === 'month' ? dt.slice(0,7) : dt.slice(0,4));
             
             let staffMap = {};
@@ -858,16 +869,25 @@
                 totalRev += s.rev;
 
                 let saleProfForStaffAndCust = 0;
+                const isTodaySale = (s.date === todayStr);
 
                 const items = Array.isArray(s.items) ? s.items : JSON.parse(s.items || '[]');
                 items.forEach(item => {
                     if(!itemMap[item.name]) itemMap[item.name] = { qty: 0, rev: 0, prof: 0, unit: item.unit || '-' };
                     
-                    // ပြင်ဆင်ချက် - Excel ထုတ်ရာတွင်လည်း ဝယ်ဈေးဟောင်းကိုသာ အသုံးပြုရန်
-                    let actualBuy = (item.buy !== undefined && item.buy !== null) ? parseFloat(item.buy) : 0;
-                    if (actualBuy === 0) {
+                    let actualBuy = 0;
+                    
+                    if (isTodaySale) {
+                        // ဒီနေ့အရောင်းဖြစ်ပါက လက်ရှိ Master Data မှ ဝယ်စျေးကို အမြဲယူမည် (Excel တွင်လည်း)
                         const currentProd = products.find(p => p.id === item.id || p.name === item.name);
-                        actualBuy = currentProd ? (parseFloat(currentProd.buy) || 0) : 0;
+                        actualBuy = currentProd ? (parseFloat(currentProd.buy) || 0) : ((item.buy !== undefined && item.buy !== null) ? parseFloat(item.buy) : 0);
+                    } else {
+                        // ယခင်နေ့များဖြစ်ပါက မှတ်တမ်းဟောင်းမှ ဝယ်စျေးကိုသာ ယူမည်
+                        actualBuy = (item.buy !== undefined && item.buy !== null) ? parseFloat(item.buy) : 0;
+                        if (actualBuy === 0) {
+                            const currentProd = products.find(p => p.id === item.id || p.name === item.name);
+                            actualBuy = currentProd ? (parseFloat(currentProd.buy) || 0) : 0;
+                        }
                     }
 
                     let itemQty = parseFloat(item.qty) || 0;
@@ -1329,3 +1349,4 @@
     </script>
 </body>
 </html>
+
