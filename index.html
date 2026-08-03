@@ -3,24 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ထွန်းတောက်ကြယ် POS (Pro Management Edition)</title>
+    <title>ထွန်းတောက်ကြယ် POS (Offline Supported & Net Profit System)</title>
     <link rel="manifest" href="manifest.json">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     
     <style>
-        :root { 
-            --midnight: #020617; 
-            --primary: #1e293b; 
-            --green: #10b981; 
-            --red: #ef4444; 
-            --gold: #fbbf24; 
-            --blue: #2563eb;
-            --purple: #8b5cf6;
-            --bg: #f8fafc; 
-            --excel: #1d6f42; 
-        }
+        :root { --midnight: #020617; --primary: #1e293b; --green: #10b981; --red: #ef4444; --gold: #fbbf24; --blue: #3b82f6; --bg: #f8fafc; --excel: #1d6f42; }
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Pyidaungsu', sans-serif; }
         
         body { background: var(--bg); height: 100dvh; display: flex; flex-direction: column; overflow: hidden; position: fixed; width: 100%; }
@@ -42,47 +32,51 @@
         .sales-sticky { flex-shrink: 0; background: var(--bg); padding: 8px 10px 4px 10px; z-index: 10; border-bottom: 1px solid #e2e8f0; }
         .input-group { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 6px; }
         .input-group-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-bottom: 6px; }
-        .input-style { width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 13px; outline: none; background: white; }
+        .input-style { width: 100%; padding: 8px 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 12px; outline: none; background: white; }
 
         .cart-box { background: white; border: 1px solid #e2e8f0; border-radius: 12px; margin-bottom: 6px; padding: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-        #cart-list { max-height: 130px; overflow-y: auto; margin-bottom: 8px; }
-        .cart-item { display: flex; justify-content: space-between; align-items: center; background: #f8fafc; padding: 8px 10px; border-radius: 8px; margin-bottom: 4px; font-size: 12px; border: 1px solid #eee; }
+        #cart-list { max-height: 120px; overflow-y: auto; margin-bottom: 8px; }
+        .cart-item { display: flex; justify-content: space-between; align-items: center; background: #f8fafc; padding: 6px 8px; border-radius: 8px; margin-bottom: 4px; font-size: 12px; border: 1px solid #eee; }
         
-        .price-edit-input { width: 75px; padding: 5px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px; text-align: right; font-weight: bold; color: var(--red); }
-        .qty-edit-input { width: 65px; padding: 6px 4px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; text-align: center; font-weight: bold; margin: 0 4px; background: #ffffff; }
+        .price-edit-input { width: 75px; padding: 4px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px; text-align: right; font-weight: bold; color: var(--red); }
+        .qty-edit-input { width: 55px; padding: 4px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px; text-align: center; font-weight: bold; margin: 0 3px; background: #ffffff; }
 
-        .cat-scroll { display: flex; overflow-x: auto; gap: 6px; padding: 4px 0 8px 0; flex-shrink: 0; scrollbar-width: none; }
-        .cat-btn { white-space: nowrap; padding: 8px 15px; border-radius: 20px; border: 1px solid #cbd5e1; background: white; font-size: 12px; cursor: pointer; }
+        .cat-scroll { display: flex; overflow-x: auto; gap: 6px; padding: 4px 0; flex-shrink: 0; scrollbar-width: none; }
+        .cat-btn { white-space: nowrap; padding: 6px 12px; border-radius: 20px; border: 1px solid #cbd5e1; background: white; font-size: 11px; cursor: pointer; }
         .cat-btn.active { background: var(--midnight); color: white; border-color: var(--midnight); }
 
         /* Grid Items */
-        .grid-area { flex: 1; overflow-y: auto; padding: 10px 10px 80px 10px; display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; align-content: start; }
+        .grid-area { flex: 1; overflow-y: auto; padding: 8px 10px 80px 10px; display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; align-content: start; }
         @media (max-width: 768px) { .grid-area { grid-template-columns: repeat(4, 1fr); } }
         @media (max-width: 480px) { .grid-area { grid-template-columns: repeat(3, 1fr); } }
 
-        .p-card { background: white; border-radius: 8px; border: 1px solid #e2e8f0; display: flex; flex-direction: column; justify-content: center; align-items: center; position: relative; min-height: 85px; padding: 15px 5px; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.05); text-align: center; }
+        .p-card { background: white; border-radius: 8px; border: 1px solid #e2e8f0; display: flex; flex-direction: column; justify-content: center; align-items: center; position: relative; min-height: 75px; padding: 10px 5px; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.05); text-align: center; }
         .p-card:active { transform: scale(0.98); }
-        .stock-tag { position: absolute; top: 4px; right: 4px; background: #f1f5f9; color: var(--primary); font-size: 10px; padding: 2px 5px; border-radius: 4px; font-weight: bold; border: 1px solid #cbd5e1; }
-        .p-info { display: flex; flex-direction: column; gap: 5px; width: 100%; margin-top: 5px; }
-        .p-name { font-size: 13px; font-weight: bold; color: #1e293b; line-height: 1.2; word-wrap: break-word; }
-        .p-price { font-size: 13px; color: var(--green); font-weight: bold; }
+        .stock-tag { position: absolute; top: 4px; right: 4px; background: #f1f5f9; color: var(--primary); font-size: 9px; padding: 2px 4px; border-radius: 4px; font-weight: bold; border: 1px solid #cbd5e1; }
+        .p-info { display: flex; flex-direction: column; gap: 3px; width: 100%; margin-top: 4px; }
+        .p-name { font-size: 12px; font-weight: bold; color: #1e293b; line-height: 1.2; word-wrap: break-word; }
+        .p-price { font-size: 12px; color: var(--green); font-weight: bold; }
 
-        /* Navigation Bar */
-        .nav { background: white; height: 65px; display: flex; border-top: 1px solid #eee; flex-shrink: 0; width: 100%; z-index: 1000; padding-bottom: env(safe-area-inset-bottom); overflow-x: auto; scrollbar-width: none; }
-        .nav-item { flex: 1; min-width: 60px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: none; border: none; color: #94a3b8; font-size: 10px; cursor: pointer; padding: 0 2px; }
+        /* Navigation */
+        .nav { background: white; height: 60px; display: flex; border-top: 1px solid #eee; flex-shrink: 0; width: 100%; z-index: 1000; padding-bottom: env(safe-area-inset-bottom); }
+        .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; background: none; border: none; color: #94a3b8; font-size: 10px; cursor: pointer; padding: 2px 0; }
         .nav-item.active { color: var(--midnight); font-weight: bold; border-top: 3px solid var(--midnight); }
-        .nav-item i { font-size: 16px; margin-bottom: 3px; }
+        .nav-item i { font-size: 16px; margin-bottom: 2px; }
 
-        /* Tables */
-        .table-wrap { flex: 1; overflow-y: auto; background: white; margin: 10px; border-radius: 12px; border: 1px solid #e2e8f0; }
+        /* Tables & Cards */
+        .table-wrap { flex: 1; overflow-y: auto; background: white; margin: 8px; border-radius: 12px; border: 1px solid #e2e8f0; }
         table { width: 100%; border-collapse: collapse; }
-        th { background: #f8fafc; padding: 10px; font-size: 12px; text-align: left; position: sticky; top: 0; border-bottom: 2px solid #e2e8f0; z-index: 2; }
+        th { background: #f8fafc; padding: 10px; font-size: 12px; text-align: left; position: sticky; top: 0; border-bottom: 2px solid #e2e8f0; z-index: 5; }
         td { padding: 10px; border-bottom: 1px solid #f1f5f9; font-size: 12px; }
+
+        .stat-card { background: white; padding: 10px; border-radius: 10px; text-align: center; border: 1px solid #e2e8f0; }
+        .stat-card small { font-size: 10px; color: #64748b; font-weight: bold; }
+        .stat-card b { font-size: 13px; display: block; margin-top: 2px; }
 
         /* Modals */
         .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 2000; align-items: center; justify-content: center; padding: 15px; }
-        .modal-card { background: white; padding: 20px; border-radius: 15px; width: 100%; max-width: 480px; max-height: 88dvh; overflow-y: auto; }
-        .btn { padding: 10px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 5px; width: 100%; font-size: 13px; }
+        .modal-card { background: white; padding: 20px; border-radius: 15px; width: 100%; max-width: 480px; max-height: 85dvh; overflow-y: auto; }
+        .btn { padding: 10px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 5px; width: 100%; font-size: 12px; }
         .btn-dark { background: var(--midnight); color: white; }
         .btn-excel { background: var(--excel); color: white; }
         .btn-blue { background: var(--blue); color: white; }
@@ -91,16 +85,12 @@
 
         #receipt-render-area { display: none; }
 
-        /* Share Link View Layout */
+        /* Share Mode Layout */
         body.share-mode { overflow-y: auto; position: static; height: auto; background: white; }
         body.share-mode .header, body.share-mode .nav, body.share-mode .container { display: none !important; }
         body.share-mode #receipt-render-area { display: block !important; width: 100%; max-width: 600px; margin: 0 auto; padding: 20px; }
         
-        .return-input { width: 60px; padding: 4px; border: 1px solid var(--red); border-radius: 4px; text-align: center; font-weight: bold; }
-        .badge { padding: 3px 8px; border-radius: 12px; font-size: 10px; font-weight: bold; display: inline-block; }
-        .badge-cash { background: #dcfce7; color: #15803d; }
-        .badge-emoney { background: #e0e7ff; color: #4338ca; }
-        .badge-credit { background: #fee2e2; color: #b91c1c; }
+        .return-input { width: 55px; padding: 4px; border: 1px solid var(--red); border-radius: 4px; text-align: center; font-weight: bold; font-size: 11px; }
 
         /* Print Styles */
         @media print {
@@ -108,21 +98,21 @@
             body { background: white !important; margin: 0; padding: 0; }
             #receipt-render-area { display: block !important; width: 100% !important; max-width: 80mm; margin: 0 auto; padding: 0; color: #000; font-family: 'Pyidaungsu', sans-serif; }
             .r-center { width: 100%; text-align: center; }
-            .r-header-title { font-size: 20px; font-weight: bold; }
-            .r-header-sub { font-size: 11px; margin-top: 2px; }
-            .r-info { text-align: left; font-size: 11px; margin: 10px 0; border-top: 1px dashed #000; padding-top: 5px; line-height: 1.5; }
-            .r-table { width: 100%; border-collapse: collapse; font-size: 11px; table-layout: fixed; margin: 5px 0; }
-            .r-table th { border-top: 1px dashed #000; border-bottom: 1px dashed #000; padding: 5px 0; text-align: center; }
+            .r-header-title { font-size: 18px; font-weight: bold; }
+            .r-header-sub { font-size: 10px; margin-top: 1px; }
+            .r-info { text-align: left; font-size: 10px; margin: 8px 0; border-top: 1px dashed #000; padding-top: 4px; line-height: 1.4; }
+            .r-table { width: 100%; border-collapse: collapse; font-size: 10px; table-layout: fixed; margin: 5px 0; }
+            .r-table th { border-top: 1px dashed #000; border-bottom: 1px dashed #000; padding: 4px 0; text-align: center; }
             .c-name { width: 40%; text-align: left; }
             .c-qty { width: 15%; text-align: center; }
             .c-price { width: 20%; text-align: right; }
             .c-amt { width: 25%; text-align: right; }
-            .r-table td { padding: 4px 0; vertical-align: top; word-break: break-word; }
+            .r-table td { padding: 3px 0; vertical-align: top; word-break: break-word; }
             .r-summary { border-top: 1px dashed #000; margin-top: 5px; padding-top: 5px; font-size: 12px; }
             .r-row { display: flex; justify-content: flex-end; margin-bottom: 2px; }
-            .r-label { width: 60%; text-align: right; padding-right: 15px; }
+            .r-label { width: 60%; text-align: right; padding-right: 10px; }
             .r-val { width: 40%; text-align: right; font-weight: bold; }
-            .r-footer { margin-top: 15px; font-size: 11px; border-top: 1px dashed #000; padding-top: 5px; text-align: center; }
+            .r-footer { margin-top: 12px; font-size: 10px; border-top: 1px dashed #000; padding-top: 4px; text-align: center; }
             @page { margin: 0; size: auto; }
         }
     </style>
@@ -130,10 +120,10 @@
 <body>
 
     <header class="header">
-        <div style="font-weight:bold; font-size: 1.1rem; display: flex; align-items: center; gap: 8px;">
-            <i class="fas fa-star" style="color:var(--gold)"></i> ထွန်းတောက်ကြယ် (POS)
+        <div style="font-weight:bold; font-size: 1rem; display: flex; align-items: center; gap: 6px;">
+            <i class="fas fa-star" style="color:var(--gold)"></i> ထွန်းတောက်ကြယ်
         </div>
-        <div style="display:flex; align-items:center; gap:10px;">
+        <div style="display:flex; align-items:center; gap:8px;">
             <button id="logout-btn" onclick="logout()" style="display:none; background:var(--red); color:white; border:none; padding:4px 8px; border-radius:5px; font-size:10px;">ထွက်ရန်</button>
             <div class="db-status"><div id="status-dot" class="dot"></div><span id="status-text">Connecting</span></div>
         </div>
@@ -144,32 +134,35 @@
     <!-- 1. SALES TAB -->
     <main id="tab-sales" class="container active">
         <div class="sales-sticky">
-            <div id="edit-indicator" style="display:none; background: var(--gold); color: black; padding: 8px; text-align: center; font-size: 13px; font-weight: bold; border-radius: 8px; margin-bottom: 8px; border: 1px solid #d97706;">
+            <div id="edit-indicator" style="display:none; background: var(--gold); color: black; padding: 6px; text-align: center; font-size: 12px; font-weight: bold; border-radius: 8px; margin-bottom: 6px; border: 1px solid #d97706;">
                 <span id="edit-indicator-text"></span>
-                <button onclick="cancelEdit()" style="margin-left:10px; padding:4px 10px; cursor:pointer; background:var(--red); color:white; border:none; border-radius:5px;">Cancel</button>
+                <button onclick="cancelEdit()" style="margin-left:10px; padding:3px 8px; cursor:pointer; background:var(--red); color:white; border:none; border-radius:4px; font-size:10px;">Cancel</button>
             </div>
+            
             <div class="input-group">
                 <input type="text" id="cust-name" class="input-style" placeholder="ဝယ်သူ / ဆိုင်အမည်">
                 <input type="text" id="staff-name" class="input-style" placeholder="အရောင်းဝန်ထမ်း">
             </div>
-            
-            <div class="input-group-3" style="margin-bottom: 6px;">
-                <select id="pay-method" class="input-style" onchange="calculatePaymentFields()">
+
+            <!-- Payment Method & Credit Section -->
+            <div class="input-group-3">
+                <select id="pay-type" class="input-style" onchange="autoCalcPayment()">
                     <option value="cash">ငွေသား (Cash)</option>
-                    <option value="emoney">E-Money (KPay/Wave)</option>
+                    <option value="emoney">E-Money / Banking</option>
                     <option value="credit">ကြွေးကျန် (Credit)</option>
+                    <option value="partial">ငွေဆပ် + ကြွေးကျန်</option>
                 </select>
-                <input type="number" id="paid-amt" class="input-style" placeholder="ပေးငွေ" oninput="calculatePaymentFields()">
+                <input type="number" id="paid-amt" class="input-style" placeholder="ပေးငွေ" onkeyup="calcCreditAmt()">
                 <input type="number" id="credit-amt" class="input-style" placeholder="ကျန်ငွေ" readonly style="background:#f1f5f9; font-weight:bold; color:var(--red);">
             </div>
 
-            <input type="text" id="search-box" class="input-style" placeholder="ပစ္စည်းရှာဖွေရန်..." onkeyup="refreshUI()" style="margin-bottom:8px;">
+            <input type="text" id="search-box" class="input-style" placeholder="ပစ္စည်းရှာဖွေရန်..." onkeyup="refreshUI()" style="margin-bottom:6px;">
             
             <div class="cart-box">
-                <div id="cart-list"><div style="text-align:center; color:#94a3b8; font-size:12px;">ခြင်းတောင်းထဲတွင် ပစ္စည်းမရှိသေးပါ</div></div>
+                <div id="cart-list"><div style="text-align:center; color:#94a3b8; font-size:11px;">ခြင်းတောင်းထဲတွင် ပစ္စည်းမရှိသေးပါ</div></div>
                 <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <b style="font-size:16px;">Total: <span id="cart-total" style="color:var(--red)">0</span> Ks</b>
-                    <button class="btn btn-dark" id="btn-print-sale" style="width:auto; padding:8px 15px;" onclick="processSale()"><i class="fas fa-print"></i> ဘောင်ချာထုတ်မည်</button>
+                    <b style="font-size:15px;">Total: <span id="cart-total" style="color:var(--red)">0</span> Ks</b>
+                    <button class="btn btn-dark" id="btn-print-sale" style="width:auto; padding:6px 12px;" onclick="processSale()"><i class="fas fa-print"></i> ဘောင်ချာထုတ်မည်</button>
                 </div>
             </div>
             
@@ -187,19 +180,19 @@
 
     <!-- 2. STOCK TAB -->
     <main id="tab-stock" class="container">
-        <div style="padding:15px; flex-shrink:0;">
+        <div style="padding:10px 15px 5px 15px; flex-shrink:0;">
             <div style="display:flex; justify-content:space-between; align-items:center;">
-                <h3><i class="fas fa-list-ul"></i> လက်ရှိလက်ကျန်</h3>
+                <h3 style="font-size:14px;"><i class="fas fa-list-ul"></i> လက်ရှိလက်ကျန်</h3>
                 <div style="display:flex; gap: 5px;">
-                    <button class="btn btn-excel" onclick="exportMainStockToExcel()" style="width:auto; padding:5px 10px; font-size:12px;">
+                    <button class="btn btn-excel" onclick="exportMainStockToExcel()" style="width:auto; padding:4px 8px; font-size:11px;">
                         <i class="fas fa-file-excel"></i> Excel
                     </button>
-                    <button class="btn btn-dark" onclick="shareStockLink()" style="width:auto; padding:5px 10px; font-size:12px; background:#4a90e2;">
+                    <button class="btn btn-blue" onclick="shareStockLink()" style="width:auto; padding:4px 8px; font-size:11px;">
                         <i class="fas fa-share-nodes"></i> Share
                     </button>
                 </div>
             </div>
-            <div class="cat-scroll" style="margin-top:10px;">
+            <div class="cat-scroll" style="margin-top:6px;">
                 <button class="cat-btn active" onclick="setStockCategory('all', this)">အားလုံး</button>
                 <button class="cat-btn" onclick="setStockCategory('အအေး', this)">အအေး</button>
                 <button class="cat-btn" onclick="setStockCategory('ကော်ဖီ', this)">ကော်ဖီ</button>
@@ -216,14 +209,14 @@
         </div>
     </main>
 
-    <!-- 3. INVENTORY TAB -->
+    <!-- 3. INVENTORY WAREHOUSE TAB -->
     <main id="tab-inv" class="container">
-        <div style="padding:15px; background: white; margin: 10px; border-radius: 12px; border: 1px solid #e2e8f0;">
+        <div style="padding:10px; background: white; margin: 8px; border-radius: 12px; border: 1px solid #e2e8f0;">
             <div style="display:flex; justify-content:space-between; align-items:center;">
-                <h3><i class="fas fa-warehouse"></i> ဂိုထောင်</h3>
-                <button class="btn btn-dark" onclick="openAddModal()" style="width:auto;">+ အသစ်ထည့်</button>
+                <h3 style="font-size:14px;"><i class="fas fa-warehouse"></i> ဂိုထောင်</h3>
+                <button class="btn btn-dark" onclick="openAddModal()" style="width:auto; padding:6px 12px;">+ အသစ်ထည့်</button>
             </div>
-            <input type="text" id="inv-search" class="input-style" placeholder="ဂိုထောင်ထဲတွင် ရှာရန်..." onkeyup="refreshUI()" style="margin-top:10px;">
+            <input type="text" id="inv-search" class="input-style" placeholder="ဂိုထောင်ထဲတွင် ရှာရန်..." onkeyup="refreshUI()" style="margin-top:8px;">
         </div>
         <div class="table-wrap">
             <table>
@@ -233,73 +226,68 @@
         </div>
     </main>
 
-    <!-- 4. EXPENSES TAB (အသုံးစရိတ်) -->
+    <!-- 4. EXPENSES TAB (NEW) -->
     <main id="tab-exp" class="container">
-        <div style="padding:15px; background: white; margin: 10px; border-radius: 12px; border: 1px solid #e2e8f0;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-                <h3><i class="fas fa-wallet"></i> အသုံးစရိတ်များ (Expenses)</h3>
-                <button class="btn btn-dark" onclick="openExpenseModal()" style="width:auto; background:var(--purple);">+ စရိတ်ထည့်မည်</button>
+        <div style="padding:10px; background: white; margin: 8px; border-radius: 12px; border: 1px solid #e2e8f0;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                <h3 style="font-size:14px;"><i class="fas fa-receipt"></i> အသုံးစရိတ် စာရင်း</h3>
+                <button class="btn btn-dark" onclick="openExpModal()" style="width:auto; padding:6px 12px; background:var(--red);">+ အသုံးစရိတ်ထည့်</button>
             </div>
             <div class="input-group">
-                <input type="date" id="exp-date-filter" class="input-style" onchange="runExpenseReport()">
-                <select id="exp-cat-filter" class="input-style" onchange="runExpenseReport()">
+                <input type="date" id="exp-filter-date" class="input-style" onchange="runExpenseReport()">
+                <select id="exp-filter-cat" class="input-style" onchange="runExpenseReport()">
                     <option value="all">အမျိုးအစား အားလုံး</option>
-                    <option value="daily">နေ့စဉ်အထွေထွေ</option>
-                    <option value="salary">ဝန်ထမ်းလစာ</option>
-                    <option value="utility">မီးဖိုး / ရေဖိုး</option>
-                    <option value="tax">အခွန် / အကောက်</option>
-                    <option value="other">အခြား</option>
+                    <option value="လစာ">လစာ (Salaries)</option>
+                    <option value="မီးဖိုး">မီးဖိုး (Electricity)</option>
+                    <option value="ရေဖိုး">ရေဖိုး (Water)</option>
+                    <option value="အခွန်ဖိုး">အခွန်ဖိုး (Tax)</option>
+                    <option value="အထွေထွေ">နေ့စဉ်အထွေထွေ</option>
                 </select>
             </div>
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:10px;">
-                <div style="background:#fef2f2; padding:10px; border-radius:10px; text-align:center;">
-                    <small>စုစုပေါင်း အသုံးစရိတ်</small><br><b id="sum-expense" style="color:var(--red); font-size:16px;">0</b> Ks
-                </div>
-                <div style="background:#eff6ff; padding:10px; border-radius:10px; text-align:center;">
-                    <small>မှတ်တမ်း အရေအတွက်</small><br><b id="sum-exp-count" style="color:var(--blue); font-size:16px;">0</b> ခု
-                </div>
+            <div style="background:#fff5f5; padding:8px; border-radius:8px; text-align:center; border:1px solid #fed7d7; margin-top:6px;">
+                <small style="color:#c53030; font-weight:bold;">စုစုပေါင်း အသုံးစရိတ်</small><br>
+                <b id="exp-total-sum" style="font-size:16px; color:var(--red);">0</b> Ks
             </div>
         </div>
         <div class="table-wrap">
             <table>
-                <thead>
-                    <tr><th>ရက်စွဲ</th><th>အကြောင်းအရာ</th><th>အမျိုးအစား</th><th>ပမာဏ</th><th>Action</th></tr>
-                </thead>
+                <thead><tr><th>ရက်စွဲ</th><th>အမျိုးအစား</th><th>အကြောင်းအရာ</th><th>ပမာဏ</th><th style="text-align:center;">Action</th></tr></thead>
                 <tbody id="exp-body"></tbody>
             </table>
         </div>
     </main>
 
-    <!-- 5. SHOP & SALESPERSON LEDGER TAB -->
+    <!-- 5. SHOP LEDGER TAB (NEW) -->
     <main id="tab-ledger" class="container">
-        <div style="padding:15px; background: white; margin: 10px; border-radius: 12px; border: 1px solid #e2e8f0;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-                <h3><i class="fas fa-book-journal-whills"></i> ဆိုင် / အရောင်းသမား Ledger</h3>
-                <button class="btn btn-excel" onclick="exportLedgerExcel()" style="width:auto; font-size:12px;"><i class="fas fa-file-excel"></i> Excel</button>
+        <div style="padding:10px; background: white; margin: 8px; border-radius: 12px; border: 1px solid #e2e8f0;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                <h3 style="font-size:14px;"><i class="fas fa-book-open"></i> ဆိုင် Ledger & ကြွေးကျန် စာရင်း</h3>
+                <button class="btn btn-excel" onclick="exportShopLedgerExcel()" style="width:auto; padding:5px 10px; font-size:11px;"><i class="fas fa-file-excel"></i> Excel ထုတ်မည်</button>
             </div>
-            <input type="text" id="ledger-search" class="input-style" placeholder="ဆိုင် သို့မဟုတ် အရောင်းသမား ရှာရန်..." onkeyup="renderLedgerTab()">
+            <div class="input-group">
+                <input type="text" id="ledger-search" class="input-style" placeholder="ဆိုင် / ဝယ်သူ အမည် ရှာရန်..." onkeyup="renderShopLedger()">
+                <select id="ledger-shop-select" class="input-style" onchange="renderShopLedgerDetails()">
+                    <option value="all">ဆိုင်များ အားလုံး</option>
+                </select>
+            </div>
+            <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:6px; margin-top:8px;">
+                <div class="stat-card"><small>စုစုပေါင်း ဝယ်ယူမှု</small><b id="ledger-tot-rev" style="color:var(--midnight);">0 Ks</b></div>
+                <div class="stat-card"><small>ပေးပြီးငွေ</small><b id="ledger-tot-paid" style="color:var(--green);">0 Ks</b></div>
+                <div class="stat-card"><small>ကျန်ရှိ ကြွေးကျန်</small><b id="ledger-tot-credit" style="color:var(--red);">0 Ks</b></div>
+            </div>
         </div>
         <div class="table-wrap">
             <table>
-                <thead>
-                    <tr>
-                        <th>ဆိုင် / ဝယ်သူ</th>
-                        <th>တာဝန်ခံ အရောင်းသမား</th>
-                        <th>ရောင်းအား</th>
-                        <th>ရငွေ</th>
-                        <th>ကြွေးကျန်</th>
-                        <th>အမြတ်</th>
-                    </tr>
-                </thead>
+                <thead><tr><th>ဆိုင်/ဝယ်သူ</th><th>အရောင်းသမား</th><th>ဝယ်ယူမှု</th><th>ပေးပြီးငွေ</th><th>ကြွေးကျန်</th><th style="text-align:center;">Action</th></tr></thead>
                 <tbody id="ledger-body"></tbody>
             </table>
         </div>
     </main>
 
-    <!-- 6. REPORT TAB (စာရင်းချုပ်) -->
+    <!-- 6. FINANCIAL REPORTS TAB (UPGRADED WITH NET PROFIT & EXPENSES) -->
     <main id="tab-rep" class="container">
-        <div style="padding:15px; background: white; margin: 10px; border-radius: 12px; border: 1px solid #e2e8f0;">
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom: 10px;">
+        <div style="padding:10px; background: white; margin: 8px; border-radius: 12px; border: 1px solid #e2e8f0;">
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-bottom: 8px;">
                 <select id="rep-type" class="input-style" onchange="runReport()">
                     <option value="day">နေ့ချုပ်</option>
                     <option value="month">လချုပ်</option>
@@ -307,57 +295,66 @@
                 </select>
                 <input type="date" id="rep-date" class="input-style" onchange="runReport()">
             </div>
-            <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:6px; text-align:center;">
-                <div style="background:#f1f5f9; padding:8px; border-radius:8px;"><small style="font-size:10px;">ရောင်းရငွေ</small><br><b id="sum-rev" style="font-size:12px;">0</b> Ks</div>
-                <div style="background:#f0fdf4; padding:8px; border-radius:8px;"><small style="font-size:10px;">အကြမ်းအမြတ်</small><br><b id="sum-prof" style="color:var(--green); font-size:12px;">0</b> Ks</div>
-                <div style="background:#fef2f2; padding:8px; border-radius:8px;"><small style="font-size:10px;">အသုံးစရိတ်</small><br><b id="sum-rep-exp" style="color:var(--red); font-size:12px;">0</b> Ks</div>
+            
+            <!-- Overall Financial Summary -->
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:6px; margin-bottom:6px;">
+                <div class="stat-card" style="background:#f8fafc;"><small>ရောင်းရငွေ (Revenue)</small><br><b id="sum-rev" style="color:var(--midnight); font-size:14px;">0 Ks</b></div>
+                <div class="stat-card" style="background:#f0fdf4;"><small>အကြမ်းအမြတ် (Gross Profit)</small><br><b id="sum-prof" style="color:var(--green); font-size:14px;">0 Ks</b></div>
+                <div class="stat-card" style="background:#fff5f5;"><small>စုစုပေါင်း အသုံးစရိတ် (Expense)</small><br><b id="sum-exp" style="color:var(--red); font-size:14px;">0 Ks</b></div>
+                <div class="stat-card" style="background:#eff6ff; border: 1px solid var(--blue);"><small>အသားတင်အမြတ် (Net Profit)</small><br><b id="sum-net-prof" style="color:var(--blue); font-size:15px;">0 Ks</b></div>
             </div>
-            <div style="margin-top:8px; background:#e0f2fe; padding:10px; border-radius:8px; text-align:center;">
-                <span style="font-size:12px;">အသားတင် အမြတ် (Net Profit): </span><b id="sum-net-prof" style="color:var(--blue); font-size:16px;">0</b> Ks
+
+            <!-- Payment Breakdown Summary -->
+            <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:4px; font-size:10px; text-align:center; background:#f1f5f9; padding:6px; border-radius:8px;">
+                <div><small>Cash ရငွေ</small><br><b id="sum-cash" style="color:var(--green);">0</b></div>
+                <div><small>E-Money ရငွေ</small><br><b id="sum-emoney" style="color:var(--blue);">0</b></div>
+                <div><small>ကြွေးကျန်</small><br><b id="sum-credit" style="color:var(--red);">0</b></div>
             </div>
-            <div style="margin-top:10px;">
-                <button class="btn btn-excel" onclick="exportGroupedExcel()" style="width:100%; padding:10px; border-radius:8px; font-weight:bold; font-size: 13px;"><i class="fas fa-file-excel"></i> အပြည့်အစုံ Excel အစီရင်ခံစာ ထုတ်မည်</button>
+
+            <div style="margin-top:8px;">
+                <button class="btn btn-excel" onclick="exportGroupedExcel()" style="width:100%; padding:8px; font-size: 11px;"><i class="fas fa-file-excel"></i> စာရင်းချုပ် + အသုံးစရိတ် + အသားတင်အမြတ် Excel ထုတ်ယူမည်</button>
             </div>
         </div>
         <div class="table-wrap">
             <table>
-                <thead><tr><th>Voucher #</th><th>ရက်စွဲ</th><th>ဝယ်သူ/ဝန်ထမ်း</th><th>အမျိုးအစား</th><th>စုစုပေါင်း</th><th style="text-align:center;">Action</th></tr></thead>
+                <thead><tr><th>Voucher #</th><th>ရက်စွဲ</th><th>ဝယ်သူ/ဝန်ထမ်း</th><th>စုစုပေါင်း</th><th style="text-align:center;">Action</th></tr></thead>
                 <tbody id="rep-body"></tbody>
             </table>
         </div>
     </main>
 
-    <!-- Navigation Bar -->
+    <!-- NAVIGATION BAR -->
     <nav class="nav">
         <button class="nav-item active" id="n-sales" onclick="navTo('tab-sales', this)"><i class="fas fa-cash-register"></i>အရောင်း</button>
         <button class="nav-item" id="n-stock" onclick="navTo('tab-stock', this)"><i class="fas fa-clipboard-list"></i>လက်ကျန်</button>
         <button class="nav-item" id="n-inv" onclick="askPass('tab-inv', this)"><i class="fas fa-boxes"></i>ဂိုထောင်</button>
-        <button class="nav-item" id="n-exp" onclick="askPass('tab-exp', this)"><i class="fas fa-wallet"></i>စရိတ်</button>
-        <button class="nav-item" id="n-ledger" onclick="askPass('tab-ledger', this)"><i class="fas fa-book-journal-whills"></i>Ledger</button>
+        <button class="nav-item" id="n-exp" onclick="askPass('tab-exp', this)"><i class="fas fa-receipt"></i>အသုံးစရိတ်</button>
+        <button class="nav-item" id="n-ledger" onclick="navTo('tab-ledger', this)"><i class="fas fa-book-open"></i>Ledger</button>
         <button class="nav-item" id="n-rep" onclick="askPass('tab-rep', this)"><i class="fas fa-chart-line"></i>စာရင်းချုပ်</button>
     </nav>
 
-    <!-- Modals -->
+    <!-- MODALS -->
+    <!-- Admin Password Login Modal -->
     <div id="login-overlay" class="overlay">
         <div class="modal-card">
             <h3 style="text-align:center;">Security Login</h3><br>
             <input type="password" id="pass-input" class="input-style" placeholder="Password ရိုက်ထည့်ပါ" style="text-align:center;">
-            <button class="btn btn-dark" style="margin-top:15px;" onclick="checkPass()">ဝင်မည်</button>
-            <button class="btn" style="margin-top:10px;" onclick="closeOverlay('login-overlay')">ပိတ်မည်</button>
+            <button class="btn btn-dark" style="margin-top:12px;" onclick="checkPass()">ဝင်မည်</button>
+            <button class="btn" style="margin-top:8px;" onclick="closeOverlay('login-overlay')">ပိတ်မည်</button>
         </div>
     </div>
 
-    <!-- Product Modal -->
+    <!-- Add/Edit Product Modal -->
     <div id="add-overlay" class="overlay">
         <div class="modal-card">
             <h3 id="modal-title">ပစ္စည်းအချက်အလက်</h3><br>
             <input type="hidden" id="edit-id">
             
             <label style="font-size: 11px; color: #666;">ပစ္စည်းအမည်</label>
-            <input type="text" id="p-name" class="input-style" placeholder="ပစ္စည်းအမည်" style="margin-bottom:10px;">
+            <input type="text" id="p-name" class="input-style" placeholder="ပစ္စည်းအမည်" style="margin-bottom:8px;">
             
             <label style="font-size: 11px; color: #666;">ယူနစ် (ဥပမာ- ခု၊ ပိဿာ၊ ထုပ်)</label>
-            <input type="text" id="p-unit" class="input-style" placeholder="ယူနစ် (ဥပမာ- ခု)" style="margin-bottom:10px;">
+            <input type="text" id="p-unit" class="input-style" placeholder="ယူနစ် (ဥပမာ- ခု)" style="margin-bottom:8px;">
             
             <div class="input-group">
                 <div>
@@ -371,10 +368,10 @@
             </div>
 
             <label style="font-size: 11px; color: #666;">လက်ရှိလက်ကျန်</label>
-            <input type="number" step="any" id="p-qty" class="input-style" placeholder="Stock အရေအတွက်" style="margin-bottom:10px;">
+            <input type="number" step="any" id="p-qty" class="input-style" placeholder="Stock အရေအတွက်" style="margin-bottom:8px;">
 
             <div id="stock-in-area" class="stock-in-section">
-                <p style="font-size: 12px; font-weight: bold; margin-bottom: 5px;"><i class="fas fa-plus-circle"></i> အသစ်ဝယ်ယူမှု ထည့်သွင်းရန်</p>
+                <p style="font-size: 11px; font-weight: bold; margin-bottom: 4px;"><i class="fas fa-plus-circle"></i> အသစ်ဝယ်ယူမှု ထည့်သွင်းရန်</p>
                 <div class="input-group">
                     <div>
                         <small style="font-size: 10px;">အသစ်ဝယ်သည့်အရေအတွက်</small>
@@ -385,10 +382,9 @@
                         <input type="number" step="any" id="p-new-buy" class="input-style" placeholder="0" value="0">
                     </div>
                 </div>
-                <p style="font-size: 9px; color: #666; margin-top: 5px;">* စနစ်မှ ပျမ်းမျှဝယ်ဈေးကို အလိုအလျောက် တွက်ချက်ပေးမည် ဖြစ်သည်။</p>
             </div>
 
-            <select id="p-cat" class="input-style" style="margin-top:10px;">
+            <select id="p-cat" class="input-style" style="margin-top:8px;">
                 <option value="အအေး">အအေး</option>
                 <option value="ကော်ဖီ">ကော်ဖီ</option>
                 <option value="ခေါက်ဆွဲ">ခေါက်ဆွဲ</option>
@@ -397,46 +393,66 @@
                 <option value="အခြား">အခြား</option>
             </select>
 
-            <button class="btn btn-dark" style="background:var(--green); margin-top:20px;" onclick="saveProduct()">သိမ်းမည်</button>
-            <button id="del-btn" class="btn" style="background:var(--red); color:white; margin-top:10px; display:none;" onclick="deleteProduct()">ဖျက်မည်</button>
-            <button class="btn" style="margin-top:10px;" onclick="closeOverlay('add-overlay')">မလုပ်တော့ပါ</button>
+            <button class="btn btn-dark" style="background:var(--green); margin-top:15px;" onclick="saveProduct()">သိမ်းမည်</button>
+            <button id="del-btn" class="btn" style="background:var(--red); color:white; margin-top:8px; display:none;" onclick="deleteProduct()">ဖျက်မည်</button>
+            <button class="btn" style="margin-top:8px;" onclick="closeOverlay('add-overlay')">မလုပ်တော့ပါ</button>
         </div>
     </div>
 
-    <!-- Expense Modal -->
+    <!-- Expense Entry Modal -->
     <div id="exp-overlay" class="overlay">
         <div class="modal-card">
-            <h3><i class="fas fa-coins"></i> အသုံးစရိတ် ထည့်သွင်းရန်</h3><br>
-            
+            <h3 style="text-align:center;">အသုံးစရိတ် စာရင်းသွင်းရန်</h3><br>
             <label style="font-size: 11px; color: #666;">ရက်စွဲ</label>
-            <input type="date" id="exp-date" class="input-style" style="margin-bottom:10px;">
-            
+            <input type="date" id="exp-date" class="input-style" style="margin-bottom:8px;">
+
             <label style="font-size: 11px; color: #666;">အသုံးစရိတ် အမျိုးအစား</label>
-            <select id="exp-cat" class="input-style" style="margin-bottom:10px;">
-                <option value="daily">နေ့စဉ်အထွေထွေ အသုံးစရိတ်</option>
-                <option value="salary">ဝန်ထမ်းလစာ (Payroll)</option>
-                <option value="utility">မီးဖိုး / ရေဖိုး (Utilities)</option>
-                <option value="tax">အခွန် / အကောက် (Taxes/Fees)</option>
-                <option value="other">အခြား စရိတ်များ</option>
+            <select id="exp-cat" class="input-style" style="margin-bottom:8px;">
+                <option value="လစာ">လစာ (Salaries)</option>
+                <option value="မီးဖိုး">မီးဖိုး (Electricity)</option>
+                <option value="ရေဖိုး">ရေဖိုး (Water)</option>
+                <option value="အခွန်ဖိုး">အခွန်ဖိုး (Tax)</option>
+                <option value="အထွေထွေ">နေ့စဉ်အထွေထွေ (General)</option>
             </select>
 
             <label style="font-size: 11px; color: #666;">အကြောင်းအရာ / မှတ်ချက်</label>
-            <input type="text" id="exp-title" class="input-style" placeholder="ဥပမာ- မီးဖိုး ပေးေငွ / ဝန်ထမ်းလစာ" style="margin-bottom:10px;">
+            <input type="text" id="exp-title" class="input-style" placeholder="ဥပမာ- ဝန်ထမ်း မောင်မောင် လစာ၊ လျှပ်စစ်မီတာခ" style="margin-bottom:8px;">
 
             <label style="font-size: 11px; color: #666;">ကျသင့်ငွေ (Ks)</label>
-            <input type="number" id="exp-amt" class="input-style" placeholder="0" style="margin-bottom:15px;">
+            <input type="number" id="exp-amt" class="input-style" placeholder="0" style="margin-bottom:12px;">
 
-            <button class="btn btn-dark" style="background:var(--purple);" onclick="saveExpense()">စရိတ် စာရင်းသွင်းမည်</button>
-            <button class="btn" style="margin-top:10px;" onclick="closeOverlay('exp-overlay')">မလုပ်တော့ပါ</button>
+            <button class="btn btn-dark" style="background:var(--red);" onclick="saveExpense()">သိမ်းမည်</button>
+            <button class="btn" style="margin-top:8px;" onclick="closeOverlay('exp-overlay')">မလုပ်တော့ပါ</button>
         </div>
     </div>
 
-    <!-- Detail View Modal -->
+    <!-- Credit Payment Modal -->
+    <div id="credit-pay-overlay" class="overlay">
+        <div class="modal-card">
+            <h3 style="text-align:center;">ကြွေးကျန် ငွေဆပ်ရန်</h3><br>
+            <input type="hidden" id="pay-shop-name">
+            <div id="pay-shop-info" style="font-size:12px; margin-bottom:10px; background:#f1f5f9; padding:8px; border-radius:6px;"></div>
+            
+            <label style="font-size: 11px; color: #666;">ပေးချေသည့် ပမာဏ (Ks)</label>
+            <input type="number" id="pay-credit-amt" class="input-style" placeholder="0" style="margin-bottom:8px;">
+
+            <label style="font-size: 11px; color: #666;">ပေးချေသည့် ပုံစံ</label>
+            <select id="pay-credit-type" class="input-style" style="margin-bottom:12px;">
+                <option value="cash">ငွေသား (Cash)</option>
+                <option value="emoney">E-Money / Banking</option>
+            </select>
+
+            <button class="btn btn-dark" style="background:var(--green);" onclick="submitCreditRepayment()">ငွေဆပ်မှုကို အတည်ပြုမည်</button>
+            <button class="btn" style="margin-top:8px;" onclick="closeOverlay('credit-pay-overlay')">မလုပ်တော့ပါ</button>
+        </div>
+    </div>
+
+    <!-- Sale Detail Modal -->
     <div id="detail-overlay" class="overlay">
         <div class="modal-card" style="max-width: 550px;">
-            <h3 style="text-align:center; border-bottom:1px solid #eee; padding-bottom:10px;">အရောင်းအသေးစိတ်</h3>
-            <div id="detail-content" style="margin-top:15px; font-size:13px;"></div>
-            <div id="detail-actions" style="margin-top:15px;"></div>
+            <h3 style="text-align:center; border-bottom:1px solid #eee; padding-bottom:8px;">အရောင်းအသေးစိတ်</h3>
+            <div id="detail-content" style="margin-top:12px; font-size:12px;"></div>
+            <div id="detail-actions" style="margin-top:12px;"></div>
         </div>
     </div>
 
@@ -446,7 +462,8 @@
         const SUPA_KEY = "sb_publishable_pJ6ewySbcvru7PNQdY0RAQ_8DLnS3j8";
         const _sb = supabase.createClient(SUPA_URL, SUPA_KEY);
 
-        let products = [], cart = [], isAdmin = false, curCat = "all", curStockCat = "all", nextTab = "", salesData = [], expensesData = [];
+        let products = [], cart = [], isAdmin = false, curCat = "all", curStockCat = "all", nextTab = "";
+        let salesData = [], expensesData = [];
         let editingSaleId = null; 
         let offlineQueue = JSON.parse(localStorage.getItem('ttk_offline_queue')) || [];
 
@@ -460,11 +477,10 @@
             } else if (showStock) {
                 handleStockShareView(showStock);
             } else {
-                const today = new Date().toISOString().split('T')[0];
-                document.getElementById('rep-date').value = today;
-                document.getElementById('exp-date-filter').value = today;
-                document.getElementById('exp-date').value = today;
-                
+                document.getElementById('rep-date').value = new Date().toISOString().split('T')[0];
+                document.getElementById('exp-date').value = new Date().toISOString().split('T')[0];
+                document.getElementById('exp-filter-date').value = new Date().toISOString().split('T')[0];
+
                 const localProducts = localStorage.getItem('ttk_products');
                 if (localProducts) {
                     products = JSON.parse(localProducts);
@@ -516,7 +532,7 @@
                         await _sb.from('sales').update(saleData).eq('id', item.data.id);
                     }
                     else if (item.action === 'ADD_EXPENSE') {
-                        const { id, ...expData } = item.data;
+                        const { id, tempId, ...expData } = item.data;
                         await _sb.from('expenses').insert([expData]);
                     }
                     else if (item.action === 'DEL_EXPENSE') {
@@ -543,6 +559,35 @@
             document.getElementById('status-text').innerText = text;
         }
 
+        // --- PAYMENT & CREDIT CALCULATION LOGIC ---
+        function autoCalcPayment() {
+            let total = 0;
+            cart.forEach(i => total += Math.round(i.sell * i.cQty));
+            
+            const pType = document.getElementById('pay-type').value;
+            const paidInput = document.getElementById('paid-amt');
+            const creditInput = document.getElementById('credit-amt');
+
+            if (pType === 'cash' || pType === 'emoney') {
+                paidInput.value = total;
+                creditInput.value = 0;
+            } else if (pType === 'credit') {
+                paidInput.value = 0;
+                creditInput.value = total;
+            } else if (pType === 'partial') {
+                if (parseFloat(paidInput.value) >= total) paidInput.value = 0;
+                calcCreditAmt();
+            }
+        }
+
+        function calcCreditAmt() {
+            let total = 0;
+            cart.forEach(i => total += Math.round(i.sell * i.cQty));
+            let paid = parseFloat(document.getElementById('paid-amt').value) || 0;
+            let credit = total - paid;
+            document.getElementById('credit-amt').value = credit > 0 ? credit : 0;
+        }
+
         // --- SHARED VIEW HANDLERS ---
         async function handleShareView(id) {
             document.body.classList.add('share-mode');
@@ -555,7 +600,7 @@
                 
                 area.innerHTML = generateReceiptHTML(data) + `
                     <div class="no-print" style="margin-top:20px; display:flex; flex-direction:column; gap:10px;">
-                        <button class="btn btn-dark" onclick="window.print()"><i class="fas fa-print"></i> Bluetooth Printer ဖြင့်ထုတ်မည်</button>
+                        <button class="btn btn-dark" onclick="window.print()"><i class="fas fa-print"></i> Print ထုတ်မည်</button>
                         <button class="btn" onclick="window.location.href=window.location.pathname" style="background:#ddd;">ပင်မစာမျက်နှာသို့</button>
                     </div>`;
             } catch (e) {
@@ -578,22 +623,22 @@
 
                 let catTitle = category === 'all' ? 'အားလုံး' : category;
                 let html = `<h2 style="text-align:center;">ထွန်းတောက်ကြယ် ဈေးနှုန်းစာရင်း (${catTitle})</h2><p style="text-align:center; font-size:12px; color:#666;">ရက်စွဲ: ${new Date().toLocaleDateString()}</p><br>`;
-                html += `<table id="share-stock-table" style="width:100%; border-collapse:collapse; border:1px solid #ccc; font-size:14px;">
+                html += `<table id="share-stock-table" style="width:100%; border-collapse:collapse; border:1px solid #ccc; font-size:13px;">
                             <thead style="background:#f1f5f9;">
                                 <tr>
-                                    <th style="border:1px solid #ccc; padding:10px; text-align:left;">အမည်</th>
-                                    <th style="border:1px solid #ccc; padding:10px; text-align:left;">အမျိုးအစား</th>
-                                    <th style="border:1px solid #ccc; padding:10px; text-align:left;">ယူနစ်</th>
-                                    <th style="border:1px solid #ccc; padding:10px; text-align:right;">ဈေးနှုန်း</th>
+                                    <th style="border:1px solid #ccc; padding:8px; text-align:left;">အမည်</th>
+                                    <th style="border:1px solid #ccc; padding:8px; text-align:left;">အမျိုးအစား</th>
+                                    <th style="border:1px solid #ccc; padding:8px; text-align:left;">ယူနစ်</th>
+                                    <th style="border:1px solid #ccc; padding:8px; text-align:right;">ဈေးနှုန်း</th>
                                 </tr>
                             </thead><tbody>`;
                 
                 data.forEach(p => {
                     html += `<tr>
-                                <td style="border:1px solid #ccc; padding:10px;">${p.name}</td>
-                                <td style="border:1px solid #ccc; padding:10px;">${p.category}</td>
-                                <td style="border:1px solid #ccc; padding:10px;">${p.unit || 'ခု'}</td>
-                                <td style="border:1px solid #ccc; padding:10px; text-align:right; font-weight:bold; color:var(--green);">${(p.sell || 0).toLocaleString()} Ks</td>
+                                <td style="border:1px solid #ccc; padding:8px;">${p.name}</td>
+                                <td style="border:1px solid #ccc; padding:8px;">${p.category}</td>
+                                <td style="border:1px solid #ccc; padding:8px;">${p.unit || 'ခု'}</td>
+                                <td style="border:1px solid #ccc; padding:8px; text-align:right; font-weight:bold; color:var(--green);">${(p.sell || 0).toLocaleString()} Ks</td>
                              </tr>`;
                 });
                 html += `</tbody></table>`;
@@ -651,7 +696,7 @@
             alert(msg);
         }
 
-        // --- CORE FUNCTIONS ---
+        // --- CORE DATA FUNCTIONS ---
         function formatVoucher(id) { 
             if(typeof id === 'string' && id.startsWith('temp_')) return "OFFLINE";
             return id.toString().padStart(7, '0'); 
@@ -666,7 +711,6 @@
                     products = data;
                     localStorage.setItem('ttk_products', JSON.stringify(products));
                 }
-                
                 setStatus('online', 'Online');
                 await processOfflineQueue();
                 refreshUI();
@@ -680,13 +724,14 @@
 
         async function loadExpensesAndSync() {
             try {
-                const { data, error } = await _sb.from('expenses').select('*').order('id', {ascending: false});
-                if(!error && data) {
+                const { data, error } = await _sb.from('expenses').select('*').order('date', {ascending: false});
+                if (!error && data) {
                     expensesData = data;
                     localStorage.setItem('ttk_expenses', JSON.stringify(expensesData));
                 }
-            } catch(e) {
-                expensesData = JSON.parse(localStorage.getItem('ttk_expenses')) || [];
+            } catch (e) {
+                const localExp = localStorage.getItem('ttk_expenses');
+                if (localExp) expensesData = JSON.parse(localExp);
             }
         }
 
@@ -695,7 +740,7 @@
             const posFiltered = products.filter(p => (curCat === 'all' || p.category === curCat) && p.name.toLowerCase().includes(qS));
             const grid = document.getElementById('pos-grid');
             
-            grid.innerHTML = posFiltered.length === 0 ? '<div style="grid-column: 1/-1; text-align:center; padding:50px; color:#94a3b8;">ပစ္စည်းရှာမတွေ့ပါ</div>' : 
+            grid.innerHTML = posFiltered.length === 0 ? '<div style="grid-column: 1/-1; text-align:center; padding:40px; color:#94a3b8;">ပစ္စည်းရှာမတွေ့ပါ</div>' : 
                 posFiltered.map(p => `
                 <div class="p-card" onclick="addToCart(${typeof p.id === 'string' ? `'${p.id}'` : p.id})">
                     <div class="stock-tag">S: ${parseFloat(p.qty)}</div>
@@ -714,25 +759,8 @@
             document.getElementById('inv-body').innerHTML = invFiltered.map(p => `
                 <tr>
                     <td><b>${p.name}</b></td><td><small>${p.unit || '-'}</small></td><td>${(parseFloat(p.buy)||0).toLocaleString()}/${(parseFloat(p.sell)||0).toLocaleString()}</td><td>${parseFloat(p.qty)}</td>
-                    <td><button onclick="editProduct(${typeof p.id === 'string' ? `'${p.id}'` : p.id})" style="border:none;background:#eee;padding:5px;border-radius:5px;"><i class="fas fa-edit"></i></button></td>
+                    <td><button onclick="editProduct(${typeof p.id === 'string' ? `'${p.id}'` : p.id})" style="border:none;background:#eee;padding:4px 8px;border-radius:4px;"><i class="fas fa-edit"></i></button></td>
                 </tr>`).join('');
-        }
-
-        function calculatePaymentFields() {
-            let total = 0; cart.forEach(i => total += Math.round(i.sell * i.cQty));
-            const method = document.getElementById('pay-method').value;
-            const paidInput = document.getElementById('paid-amt');
-            const creditInput = document.getElementById('credit-amt');
-
-            if (method === 'credit') {
-                if(!paidInput.value) paidInput.value = 0;
-                let paid = parseFloat(paidInput.value) || 0;
-                let credit = total - paid;
-                creditInput.value = credit > 0 ? credit : 0;
-            } else {
-                paidInput.value = total;
-                creditInput.value = 0;
-            }
         }
 
         function addToCart(id) {
@@ -741,11 +769,12 @@
             const ex = cart.find(x => x.id === id);
             if(ex) { ex.cQty = Number((parseFloat(ex.cQty) + 1).toFixed(3)); } else { cart.push({...p, cQty: 1}); }
             renderCart();
+            autoCalcPayment();
         }
 
         function updateCartPrice(id, newPrice) {
             const item = cart.find(x => x.id === id);
-            if (item) { item.sell = parseFloat(newPrice) || 0; renderTotalOnly(); }
+            if (item) { item.sell = parseFloat(newPrice) || 0; renderTotalOnly(); autoCalcPayment(); }
         }
 
         window.updateCartQty = function(id, newQty) {
@@ -755,18 +784,18 @@
                 if (isNaN(qty) || qty <= 0) { removeItem(id); return; }
                 item.cQty = Number(qty.toFixed(3));
                 renderTotalOnly();
+                autoCalcPayment();
             }
         };
 
         function renderTotalOnly() {
             let total = 0; cart.forEach(i => total += Math.round(i.sell * i.cQty));
             document.getElementById('cart-total').innerText = total.toLocaleString();
-            calculatePaymentFields();
         }
 
         function renderCart() {
             let total = 0; const list = document.getElementById('cart-list');
-            if(cart.length === 0) { list.innerHTML = '<div style="text-align:center; color:#94a3b8; font-size:12px;">ခြင်းတောင်းထဲတွင် ပစ္စည်းမရှိသေးပါ</div>'; }
+            if(cart.length === 0) { list.innerHTML = '<div style="text-align:center; color:#94a3b8; font-size:11px;">ခြင်းတောင်းထဲတွင် ပစ္စည်းမရှိသေးပါ</div>'; }
             else {
                 list.innerHTML = cart.map(i => {
                     total += Math.round(i.sell * i.cQty);
@@ -775,17 +804,17 @@
                         <div style="flex:1;"><b>${i.name}</b><br>
                             <input type="number" step="any" class="price-edit-input" value="${i.sell}" onchange="updateCartPrice(${passId}, this.value)"> <small>Ks</small>
                         </div>
-                        <div style="display:flex;align-items:center;gap:3px;">
-                            <button onclick="adjustQty(${passId},-1)" style="border:none;width:25px;height:25px;border-radius:50%;background:#e2e8f0;cursor:pointer;">-</button>
+                        <div style="display:flex;align-items:center;gap:2px;">
+                            <button onclick="adjustQty(${passId},-1)" style="border:none;width:22px;height:22px;border-radius:50%;background:#e2e8f0;cursor:pointer;">-</button>
                             <input type="number" step="any" class="qty-edit-input" value="${i.cQty}" onchange="updateCartQty(${passId}, this.value)">
-                            <button onclick="adjustQty(${passId},1)" style="border:none;width:25px;height:25px;border-radius:50%;background:#e2e8f0;cursor:pointer;">+</button>
-                            <i class="fas fa-trash" style="color:red;margin-left:5px;cursor:pointer;" onclick="removeItem(${passId})"></i>
+                            <button onclick="adjustQty(${passId},1)" style="border:none;width:22px;height:22px;border-radius:50%;background:#e2e8f0;cursor:pointer;">+</button>
+                            <i class="fas fa-trash" style="color:red;margin-left:4px;cursor:pointer;" onclick="removeItem(${passId})"></i>
                         </div>
                     </div>`;
                 }).join('');
             }
             document.getElementById('cart-total').innerText = total.toLocaleString();
-            calculatePaymentFields();
+            autoCalcPayment();
         }
 
         function adjustQty(id, d) { 
@@ -804,21 +833,24 @@
                 rows += `<tr><td class="c-name">${i.name}</td><td class="c-qty">${parseFloat(i.qty).toString()} ${i.unit||''}</td><td class="c-price">${parseFloat(i.sell).toLocaleString()}</td><td class="c-amt">${Math.round(i.sell * i.qty).toLocaleString()}</td></tr>`;
             });
 
-            let payTypeLabel = data.payMethod === 'emoney' ? 'E-Money (KPay/Wave)' : (data.payMethod === 'credit' ? 'ကြွေးကျန်' : 'ငွေသား');
-            let paidAmountStr = (data.paidAmt !== undefined ? data.paidAmt : data.rev).toLocaleString();
-            let creditAmountStr = (data.creditAmt || 0).toLocaleString();
+            let payTypeLabel = "ငွေသား";
+            if (data.payType === 'emoney') payTypeLabel = "E-Money / Banking";
+            else if (data.payType === 'credit') payTypeLabel = "ကြွေးကျန်";
+            else if (data.payType === 'partial') payTypeLabel = "ငွေဆပ် + ကြွေးကျန်";
+
+            let paidAmt = data.paidAmt !== undefined ? data.paidAmt : data.rev;
+            let creditAmt = data.creditAmt || 0;
 
             return `<div class="r-center">
                 <div class="r-header-title">ထွန်းတောက်ကြယ်</div>
                 <div class="r-header-sub">အမှတ်(၁၅)၊ ထင်းရှူးရိပ်သာ(၁)ပတ်လမ်း၊ ဇေကမ္ဘာဝင်း</div>
-                <div class="r-header-sub">မင်္ဂလာဒုံမြို့နယ်</div>
-                <div class="r-header-sub">09-777715161, 09-940005161</div>
-                <div class="r-info">${isReprint ? '[RE-PRINT/EDITED]<br>' : ''}VOUCHER# ${formatVoucher(data.id)}<br>Date: ${data.date}<br>Cust: ${data.cust}<br>Payment: ${payTypeLabel}</div>
+                <div class="r-header-sub">မင်္ဂလာဒုံမြို့နယ် ၊ 09-777715161, 09-940005161</div>
+                <div class="r-info">${isReprint ? '[RE-PRINT/EDITED]<br>' : ''}VOUCHER# ${formatVoucher(data.id)}<br>Date: ${data.date}<br>Cust: ${data.cust}</div>
                 <table class="r-table"><thead><tr><th class="c-name">Item</th><th class="c-qty">Qty</th><th class="c-price">Price</th><th class="c-amt">Amount</th></tr></thead><tbody>${rows}</tbody></table>
                 <div class="r-summary">
                     <div class="r-row"><span class="r-label">Total Amount</span><span class="r-val">${data.rev.toLocaleString()} Ks</span></div>
-                    <div class="r-row"><span class="r-label">Paid Amount</span><span class="r-val">${paidAmountStr} Ks</span></div>
-                    ${data.creditAmt > 0 ? `<div class="r-row" style="color:red;"><span class="r-label">Credit Balance</span><span class="r-val">${creditAmountStr} Ks</span></div>` : ''}
+                    <div class="r-row"><span class="r-label">Payment (${payTypeLabel})</span><span class="r-val">${paidAmt.toLocaleString()} Ks</span></div>
+                    ${creditAmt > 0 ? `<div class="r-row" style="color:red;"><span class="r-label">Credit Balance</span><span class="r-val">${creditAmt.toLocaleString()} Ks</span></div>` : ''}
                 </div>
                 <div class="r-footer">*** ဝယ်ယူအားပေးမှုကို ကျေးဇူးတင်ပါသည်။ ***</div></div>`;
         }
@@ -836,14 +868,15 @@
             
             const staff = document.getElementById('staff-name').value || "Admin";
             const cust = document.getElementById('cust-name').value || "Guest";
-            const payMethod = document.getElementById('pay-method').value || "cash";
+            const payType = document.getElementById('pay-type').value;
+            
+            let totalCartVal = 0; cart.forEach(i => totalCartVal += Math.round(i.sell * i.cQty));
+            let paidAmt = parseFloat(document.getElementById('paid-amt').value) || 0;
+            if (payType === 'cash' || payType === 'emoney') paidAmt = totalCartVal;
+            let creditAmt = totalCartVal - paidAmt;
+            if (creditAmt < 0) creditAmt = 0;
+
             let receiptId = isEditing ? editingSaleId : 'temp_' + Date.now();
-
-            let rev = 0; cart.forEach(i => rev += Math.round(i.sell * i.cQty));
-            let paidAmt = parseFloat(document.getElementById('paid-amt').value);
-            if (isNaN(paidAmt)) paidAmt = (payMethod === 'credit' ? 0 : rev);
-            let creditAmt = payMethod === 'credit' ? Math.max(0, rev - paidAmt) : 0;
-
             let tempProducts = JSON.parse(JSON.stringify(products));
 
             if(isEditing) {
@@ -853,39 +886,34 @@
                 });
             }
 
-            let prof = 0;
+            let rev=0, prof=0;
             const items = cart.map(i => {
                 const prodIndex = tempProducts.findIndex(p => p.id === i.id);
                 let actualBuy = (i.buy !== undefined && i.buy !== null) ? parseFloat(i.buy) : 0;
-                if (actualBuy === 0 && prodIndex > -1) {
-                    actualBuy = parseFloat(tempProducts[prodIndex].buy) || 0;
-                }
+                if (actualBuy === 0 && prodIndex > -1) actualBuy = parseFloat(tempProducts[prodIndex].buy) || 0;
                 
                 let iQty = parseFloat(i.cQty) || 0;
                 let iSell = parseFloat(i.sell) || 0;
                 
+                rev += Math.round(iSell * iQty); 
                 prof += Math.round((iSell - actualBuy) * iQty);
                 
-                if(prodIndex > -1) {
-                    tempProducts[prodIndex].qty = Number((parseFloat(tempProducts[prodIndex].qty) - iQty).toFixed(3));
-                }
+                if(prodIndex > -1) tempProducts[prodIndex].qty = Number((parseFloat(tempProducts[prodIndex].qty) - iQty).toFixed(3));
                 return { id: i.id, name: i.name, qty: iQty, sell: iSell, buy: actualBuy, unit: i.unit };
             });
 
             products = tempProducts;
             localStorage.setItem('ttk_products', JSON.stringify(products));
 
-            const saleData = { date, rev, prof, cust: `${cust} (C: ${staff})`, items, payMethod, paidAmt, creditAmt };
+            const saleData = { date, rev, prof, cust: `${cust} (C: ${staff})`, items, payType, paidAmt, creditAmt };
 
             try {
                 if (isEditing && typeof receiptId !== 'string') {
-                    await _sb.from('sales').update({ rev, prof, cust: saleData.cust, items, payMethod, paidAmt, creditAmt }).eq('id', receiptId);
+                    await _sb.from('sales').update(saleData).eq('id', receiptId);
                 } else if (!isEditing) {
                     const { data: inserted, error: saleErr } = await _sb.from('sales').insert([saleData]).select();
                     if(saleErr) throw saleErr;
-                    if (inserted && inserted.length > 0) {
-                        receiptId = inserted[0].id;
-                    }
+                    if (inserted && inserted.length > 0) receiptId = inserted[0].id;
                 } else {
                     saleData.id = receiptId;
                     addToQueue('UPDATE_SALE', saleData);
@@ -895,22 +923,17 @@
                 for(let pid of productsToUpdate) { 
                     const currentProd = products.find(p => p.id === pid);
                     if(currentProd) {
-                        if(typeof currentProd.id !== 'string') {
-                            await _sb.from('products').update({ qty: currentProd.qty }).eq('id', pid); 
-                        } else {
-                            addToQueue('SAVE_PRODUCT', currentProd);
-                        }
+                        if(typeof currentProd.id !== 'string') await _sb.from('products').update({ qty: currentProd.qty }).eq('id', pid); 
+                        else addToQueue('SAVE_PRODUCT', currentProd);
                     }
                 }
             } catch (e) { 
-                if(!isEditing) {
-                    saleData.id = receiptId;
-                    addToQueue('ADD_SALE', saleData);
-                }
+                saleData.id = receiptId;
+                addToQueue(isEditing ? 'UPDATE_SALE' : 'ADD_SALE', saleData);
                 setStatus('offline', 'Offline (Saved local)');
             }
 
-            document.getElementById('receipt-render-area').innerHTML = generateReceiptHTML({ id: receiptId, date, cust: `${cust} (C: ${staff})`, rev, items, payMethod, paidAmt, creditAmt }, isEditing);
+            document.getElementById('receipt-render-area').innerHTML = generateReceiptHTML({ id: receiptId, date, cust: `${cust} (C: ${staff})`, rev, items, payType, paidAmt, creditAmt }, isEditing);
             setTimeout(() => { 
                 window.print(); 
                 cart = []; 
@@ -922,7 +945,7 @@
         }
 
         // --- EXPENSES LOGIC ---
-        function openExpenseModal() {
+        function openExpModal() {
             document.getElementById('exp-title').value = "";
             document.getElementById('exp-amt').value = "";
             document.getElementById('exp-overlay').style.display = 'flex';
@@ -931,127 +954,214 @@
         async function saveExpense() {
             const date = document.getElementById('exp-date').value;
             const category = document.getElementById('exp-cat').value;
-            const title = document.getElementById('exp-title').value || "အထွေထွေ စရိတ်";
+            const title = document.getElementById('exp-title').value;
             const amount = parseFloat(document.getElementById('exp-amt').value) || 0;
 
-            if (amount <= 0) return alert("ကျသင့်ငွေ မှန်ကန်စွာ ထည့်သွင်းပါ");
+            if (!title || amount <= 0) return alert("အကြောင်းအရာ နှင့် ပမာဏ မှန်ကန်စွာ ထည့်သွင်းပါ");
 
             const expObj = { id: 'temp_' + Date.now(), date, category, title, amount };
             expensesData.unshift(expObj);
             localStorage.setItem('ttk_expenses', JSON.stringify(expensesData));
 
             try {
-                const { id, ...expData } = expObj;
-                const { data, error } = await _sb.from('expenses').insert([expData]).select();
-                if(!error && data && data.length > 0) {
-                    expObj.id = data[0].id;
-                }
+                const { id, ...insertObj } = expObj;
+                const { data, error } = await _sb.from('expenses').insert([insertObj]).select();
+                if(!error && data && data.length > 0) expObj.id = data[0].id;
             } catch(e) {
                 addToQueue('ADD_EXPENSE', expObj);
             }
 
             closeOverlay('exp-overlay');
             runExpenseReport();
+            if (document.getElementById('tab-rep').classList.contains('active')) runReport();
         }
 
         async function deleteExpense(id) {
-            if(!confirm("ဤအသုံးစရိတ် စာရင်းကို ဖျက်မှာ သေချာပါသလား?")) return;
+            if (!confirm("ဤအသုံးစရိတ် စာရင်းကို ဖျက်ပစ်ရန် သေချာပါသလား?")) return;
             expensesData = expensesData.filter(e => e.id !== id);
             localStorage.setItem('ttk_expenses', JSON.stringify(expensesData));
 
             try {
-                if(typeof id !== 'string') {
-                    await _sb.from('expenses').delete().eq('id', id);
-                }
+                if (typeof id !== 'string') await _sb.from('expenses').delete().eq('id', id);
             } catch(e) {
                 addToQueue('DEL_EXPENSE', { id });
             }
             runExpenseReport();
+            if (document.getElementById('tab-rep').classList.contains('active')) runReport();
         }
 
         function runExpenseReport() {
-            const dt = document.getElementById('exp-date-filter').value;
-            const cat = document.getElementById('exp-cat-filter').value;
+            const dt = document.getElementById('exp-filter-date').value;
+            const cat = document.getElementById('exp-filter-cat').value;
 
-            let filtered = expensesData.filter(e => {
-                const matchDate = !dt || e.date === dt;
-                const matchCat = cat === 'all' || e.category === cat;
-                return matchDate && matchCat;
-            });
-
-            let totalExp = 0;
+            let filtered = expensesData.filter(e => e.date === dt && (cat === 'all' || e.category === cat));
+            let total = 0;
             let rows = "";
 
             filtered.forEach(e => {
-                totalExp += parseFloat(e.amount) || 0;
-                let catLabel = e.category === 'salary' ? 'ဝန်ထမ်းလစာ' : (e.category === 'utility' ? 'မီး/ရေဖိုး' : (e.category === 'tax' ? 'အခွန်' : (e.category === 'daily' ? 'နေ့စဉ်အထွေထွေ' : 'အခြား')));
+                total += e.amount;
                 const passId = typeof e.id === 'string' ? `'${e.id}'` : e.id;
-                
                 rows += `<tr>
                     <td>${e.date}</td>
-                    <td><b>${e.title}</b></td>
-                    <td><span class="badge badge-emoney">${catLabel}</span></td>
-                    <td style="color:var(--red); font-weight:bold;">${(parseFloat(e.amount)||0).toLocaleString()} Ks</td>
-                    <td><button onclick="deleteExpense(${passId})" style="border:none;background:var(--red);color:white;padding:4px 8px;border-radius:4px;"><i class="fas fa-trash"></i></button></td>
+                    <td><b style="color:var(--primary);">${e.category}</b></td>
+                    <td>${e.title}</td>
+                    <td><b style="color:var(--red);">${e.amount.toLocaleString()} Ks</b></td>
+                    <td style="text-align:center;"><button onclick="deleteExpense(${passId})" style="border:none;background:var(--red);color:white;padding:3px 6px;border-radius:4px;"><i class="fas fa-trash"></i></button></td>
                 </tr>`;
             });
 
-            document.getElementById('sum-expense').innerText = totalExp.toLocaleString();
-            document.getElementById('sum-exp-count').innerText = filtered.length;
+            document.getElementById('exp-total-sum').innerText = total.toLocaleString();
             document.getElementById('exp-body').innerHTML = rows || '<tr><td colspan="5" style="text-align:center;">အသုံးစရိတ် စာရင်းမရှိပါ</td></tr>';
         }
 
-        // --- SHOP & SALESPERSON LEDGER LOGIC ---
-        function renderLedgerTab() {
+        // --- SHOP LEDGER & CREDIT LOGIC ---
+        function renderShopLedger() {
             const q = (document.getElementById('ledger-search').value || "").toLowerCase();
-            let ledgerMap = {};
+            let shopMap = {};
 
             salesData.forEach(s => {
                 let staffName = "Admin";
                 let custName = s.cust || "Guest";
-                
                 let match = custName.match(/(.*?)\s*\((?:Clerk|C):\s*(.*?)\)/);
-                if(match) {
-                    custName = match[1].trim() || "Guest";
-                    staffName = match[2].trim() || "Admin";
-                }
+                if(match) { custName = match[1].trim() || "Guest"; staffName = match[2].trim() || "Admin"; }
 
-                if(q && !custName.toLowerCase().includes(q) && !staffName.toLowerCase().includes(q)) {
-                    return;
+                if (!shopMap[custName]) {
+                    shopMap[custName] = { name: custName, staffSet: new Set(), totalRev: 0, totalPaid: 0, totalCredit: 0 };
                 }
+                shopMap[custName].staffSet.add(staffName);
+                shopMap[custName].totalRev += s.rev;
+                
+                let paid = s.paidAmt !== undefined ? s.paidAmt : (s.payType === 'credit' ? 0 : s.rev);
+                let credit = s.creditAmt !== undefined ? s.creditAmt : (s.payType === 'credit' ? s.rev : 0);
 
-                let key = `${custName}___${staffName}`;
-                if (!ledgerMap[key]) {
-                    ledgerMap[key] = { cust: custName, staff: staffName, rev: 0, paid: 0, credit: 0, prof: 0 };
-                }
-
-                ledgerMap[key].rev += (s.rev || 0);
-                ledgerMap[key].paid += (s.paidAmt !== undefined ? s.paidAmt : (s.rev || 0));
-                ledgerMap[key].credit += (s.creditAmt || 0);
-                ledgerMap[key].prof += (s.prof || 0);
+                shopMap[custName].totalPaid += paid;
+                shopMap[custName].totalCredit += credit;
             });
 
+            let grandRev = 0, grandPaid = 0, grandCredit = 0;
             let rows = "";
-            for(let key in ledgerMap) {
-                let l = ledgerMap[key];
-                rows += `<tr>
-                    <td><b>${l.cust}</b></td>
-                    <td><span class="badge badge-emoney">${l.staff}</span></td>
-                    <td><b>${l.rev.toLocaleString()}</b> Ks</td>
-                    <td style="color:var(--green);">${l.paid.toLocaleString()} Ks</td>
-                    <td style="color:var(--red); font-weight:bold;">${l.credit.toLocaleString()} Ks</td>
-                    <td style="color:var(--blue);">${l.prof.toLocaleString()} Ks</td>
-                </tr>`;
-            }
+            let shopSelectHtml = '<option value="all">ဆိုင်များ အားလုံး</option>';
 
-            document.getElementById('ledger-body').innerHTML = rows || '<tr><td colspan="6" style="text-align:center;">Ledger စာရင်းမရှိပါ</td></tr>';
+            Object.values(shopMap).forEach(shop => {
+                if (shop.name.toLowerCase().includes(q)) {
+                    grandRev += shop.totalRev;
+                    grandPaid += shop.totalPaid;
+                    grandCredit += shop.totalCredit;
+
+                    let staffList = Array.from(shop.staffSet).join(", ");
+                    shopSelectHtml += `<option value="${shop.name}">${shop.name}</option>`;
+
+                    rows += `<tr>
+                        <td><b>${shop.name}</b></td>
+                        <td><small>${staffList}</small></td>
+                        <td>${shop.totalRev.toLocaleString()}</td>
+                        <td style="color:var(--green);">${shop.totalPaid.toLocaleString()}</td>
+                        <td style="color:var(--red); font-weight:bold;">${shop.totalCredit.toLocaleString()}</td>
+                        <td style="text-align:center;">
+                            ${shop.totalCredit > 0 ? `<button onclick="openCreditPayModal('${shop.name}', ${shop.totalCredit})" style="border:none;background:var(--green);color:white;padding:4px 8px;border-radius:4px;font-size:10px;">ငွေဆပ်မည်</button>` : '<span style="color:#aaa;">-</span>'}
+                        </td>
+                    </tr>`;
+                }
+            });
+
+            document.getElementById('ledger-tot-rev').innerText = grandRev.toLocaleString() + " Ks";
+            document.getElementById('ledger-tot-paid').innerText = grandPaid.toLocaleString() + " Ks";
+            document.getElementById('ledger-tot-credit').innerText = grandCredit.toLocaleString() + " Ks";
+            document.getElementById('ledger-shop-select').innerHTML = shopSelectHtml;
+            document.getElementById('ledger-body').innerHTML = rows || '<tr><td colspan="6" style="text-align:center;">Shop Ledger စာရင်းမရှိပါ</td></tr>';
         }
 
-        // --- REPORTS & EXCEL EXPORTS ---
+        function renderShopLedgerDetails() {
+            const selectedShop = document.getElementById('ledger-shop-select').value;
+            if (selectedShop === 'all') return renderShopLedger();
+
+            document.getElementById('ledger-search').value = selectedShop;
+            renderShopLedger();
+        }
+
+        function openCreditPayModal(shopName, currentCredit) {
+            document.getElementById('pay-shop-name').value = shopName;
+            document.getElementById('pay-shop-info').innerHTML = `<b>ဆိုင်:</b> ${shopName} <br><b>လက်ရှိကျန်ရှိ ကြွေးကျန်:</b> <span style="color:red; font-weight:bold;">${currentCredit.toLocaleString()} Ks</span>`;
+            document.getElementById('pay-credit-amt').value = currentCredit;
+            document.getElementById('credit-pay-overlay').style.display = 'flex';
+        }
+
+        async function submitCreditRepayment() {
+            const shopName = document.getElementById('pay-shop-name').value;
+            const payAmt = parseFloat(document.getElementById('pay-credit-amt').value) || 0;
+            const payType = document.getElementById('pay-credit-type').value;
+
+            if (payAmt <= 0) return alert("ငွေဆပ်မည့် ပမာဏ မှန်ကန်စွာ ထည့်ပါ");
+
+            let targetSales = salesData.filter(s => {
+                let cName = s.cust || "";
+                let match = cName.match(/(.*?)\s*\((?:Clerk|C):\s*(.*?)\)/);
+                if (match) cName = match[1].trim();
+                return cName === shopName && (s.creditAmt > 0 || s.payType === 'credit');
+            });
+
+            let remainingPay = payAmt;
+            for (let s of targetSales) {
+                if (remainingPay <= 0) break;
+                let curCredit = s.creditAmt !== undefined ? s.creditAmt : s.rev;
+                let deduct = Math.min(curCredit, remainingPay);
+
+                s.creditAmt = curCredit - deduct;
+                s.paidAmt = (s.paidAmt || 0) + deduct;
+                remainingPay -= deduct;
+
+                try {
+                    if (typeof s.id !== 'string') await _sb.from('sales').update({ paidAmt: s.paidAmt, creditAmt: s.creditAmt }).eq('id', s.id);
+                } catch(e) {
+                    addToQueue('UPDATE_SALE', s);
+                }
+            }
+
+            alert("ကြွေးငွေဆပ်မှု မှတ်တမ်းတင်ပြီးပါပြီ။");
+            closeOverlay('credit-pay-overlay');
+            runReport();
+            renderShopLedger();
+        }
+
+        window.exportShopLedgerExcel = function() {
+            let shopMap = {};
+            salesData.forEach(s => {
+                let staffName = "Admin";
+                let custName = s.cust || "Guest";
+                let match = custName.match(/(.*?)\s*\((?:Clerk|C):\s*(.*?)\)/);
+                if(match) { custName = match[1].trim() || "Guest"; staffName = match[2].trim() || "Admin"; }
+
+                if (!shopMap[custName]) shopMap[custName] = { name: custName, staffSet: new Set(), totalRev: 0, totalPaid: 0, totalCredit: 0 };
+                shopMap[custName].staffSet.add(staffName);
+                shopMap[custName].totalRev += s.rev;
+                
+                let paid = s.paidAmt !== undefined ? s.paidAmt : (s.payType === 'credit' ? 0 : s.rev);
+                let credit = s.creditAmt !== undefined ? s.creditAmt : (s.payType === 'credit' ? s.rev : 0);
+                shopMap[custName].totalPaid += paid;
+                shopMap[custName].totalCredit += credit;
+            });
+
+            const rows = [["ထွန်းတောက်ကြယ် လက်ကားဖြန့်ချိရေး - ဆိုင်အလိုက် Ledger & ကြွေးကျန် စာရင်းချုပ်"], ["ရက်စွဲ", new Date().toLocaleDateString()], [""]];
+            rows.push(["ဆိုင် / ဝယ်သူ အမည်", "တာဝန်ခံ အရောင်းသမား", "စုစုပေါင်း ဝယ်ယူမှု", "ပေးပြီးငွေ (Paid)", "ကျန်ရှိ ကြွေးကျန် (Credit)"]);
+
+            let totRev=0, totPaid=0, totCredit=0;
+            Object.values(shopMap).forEach(s => {
+                rows.push([s.name, Array.from(s.staffSet).join(", "), s.totalRev, s.totalPaid, s.totalCredit]);
+                totRev += s.totalRev; totPaid += s.totalPaid; totCredit += s.totalCredit;
+            });
+            rows.push(["", "", "", "", ""]);
+            rows.push(["စုစုပေါင်း", "", totRev, totPaid, totCredit]);
+
+            const ws = XLSX.utils.aoa_to_sheet(rows);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Shop_Ledger");
+            XLSX.writeFile(wb, `TTK_Shop_Ledger_${new Date().toISOString().split('T')[0]}.xlsx`);
+        };
+
+        // --- REPORTS & FINANCIAL ANALYSIS WITH NET PROFIT ---
         async function runReport() {
             const dt = document.getElementById('rep-date').value;
             const ty = document.getElementById('rep-type').value;
-            const todayStr = new Date().toISOString().split('T')[0];
             
             try {
                 let q = _sb.from('sales').select('*');
@@ -1064,174 +1174,213 @@
                 salesData = data || [];
             } catch(e) {
                 const localSales = JSON.parse(localStorage.getItem('ttk_sales')) || [];
-                salesData = localSales;
+                const queuedSales = offlineQueue.filter(q => q.action === 'ADD_SALE').map(q => q.data);
+                const allSales = [...localSales, ...queuedSales];
+                
+                if(ty==='day') salesData = allSales.filter(s => s.date === dt);
+                else if(ty==='month') salesData = allSales.filter(s => s.date && s.date.startsWith(dt.slice(0,7)));
+                else if(ty==='year') salesData = allSales.filter(s => s.date && s.date.startsWith(dt.slice(0,4)));
+                salesData.sort((a,b) => (b.id.toString() > a.id.toString()) ? 1 : -1);
             }
 
-            let expTotal = 0;
-            expensesData.forEach(e => {
-                if(ty==='day' && e.date === dt) expTotal += parseFloat(e.amount)||0;
-                else if(ty==='month' && e.date && e.date.startsWith(dt.slice(0,7))) expTotal += parseFloat(e.amount)||0;
-                else if(ty==='year' && e.date && e.date.startsWith(dt.slice(0,4))) expTotal += parseFloat(e.amount)||0;
-            });
-
-            let r=0, p=0, rows="";
+            let revSum=0, profSum=0, cashSum=0, emoneySum=0, creditSum=0, rows="";
             salesData.forEach(s => { 
                 let calcProf = 0;
                 const items = Array.isArray(s.items) ? s.items : JSON.parse(s.items || '[]');
-                const isTodaySale = (s.date === todayStr);
-
                 items.forEach(i => {
-                    let actualBuy = 0;
-                    if (isTodaySale) {
-                        const currentProd = products.find(prod => prod.id === i.id || prod.name === i.name);
-                        actualBuy = currentProd ? (parseFloat(currentProd.buy) || 0) : ((i.buy !== undefined && i.buy !== null) ? parseFloat(i.buy) : 0);
-                    } else {
-                        actualBuy = (i.buy !== undefined && i.buy !== null) ? parseFloat(i.buy) : 0;
-                        if (actualBuy === 0) {
-                            const currentProd = products.find(prod => prod.id === i.id || prod.name === i.name);
-                            actualBuy = currentProd ? (parseFloat(currentProd.buy) || 0) : 0;
-                        }
-                    }
+                    let actualBuy = (i.buy !== undefined && i.buy !== null) ? parseFloat(i.buy) : 0;
                     calcProf += Math.round((parseFloat(i.sell) - actualBuy) * parseFloat(i.qty));
                 });
-                
                 s.prof = calcProf;
-                r += s.rev; p += s.prof; 
-                
-                let payBadgeClass = s.payMethod === 'emoney' ? 'badge-emoney' : (s.payMethod === 'credit' ? 'badge-credit' : 'badge-cash');
-                let payBadgeLabel = s.payMethod === 'emoney' ? 'E-Money' : (s.payMethod === 'credit' ? 'ကြွေးကျန်' : 'ငွေသား');
 
+                revSum += s.rev; 
+                profSum += s.prof; 
+
+                let paid = s.paidAmt !== undefined ? s.paidAmt : (s.payType === 'credit' ? 0 : s.rev);
+                let credit = s.creditAmt !== undefined ? s.creditAmt : (s.payType === 'credit' ? s.rev : 0);
+
+                if (s.payType === 'emoney') emoneySum += paid;
+                else cashSum += paid;
+                creditSum += credit;
+                
                 const passId = typeof s.id === 'string' ? `'${s.id}'` : s.id;
                 rows += `<tr onclick="viewSaleDetails(${passId})" style="cursor:pointer;">
-                    <td><b>${formatVoucher(s.id)}</b></td><td>${s.date}</td><td>${s.cust}</td>
-                    <td><span class="badge ${payBadgeClass}">${payBadgeLabel}</span></td>
-                    <td>${s.rev.toLocaleString()}</td>
-                    <td style="text-align:center; display:flex; gap:5px; flex-wrap:wrap; justify-content:center;">
-                        <button onclick="event.stopPropagation(); shareVoucherLink(${passId})" style="border:none;background:#4a90e2;color:white;padding:5px 8px;border-radius:5px;"><i class="fas fa-share-nodes"></i></button>
-                        <button onclick="event.stopPropagation(); rePrintSale(${passId})" style="border:none;background:var(--midnight);color:white;padding:5px 8px;border-radius:5px;"><i class="fas fa-print"></i></button>
-                        <button onclick="event.stopPropagation(); exportSaleToExcel(${passId})" style="border:none;background:var(--excel);color:white;padding:5px 8px;border-radius:5px;font-size:11px;"><i class="fas fa-file-excel"></i> Excel</button>
-                        <button onclick="event.stopPropagation(); deleteSale(${passId})" style="border:none;background:var(--red);color:white;padding:5px 8px;border-radius:5px;"><i class="fas fa-trash"></i></button>
+                    <td><b>${formatVoucher(s.id)}</b></td><td>${s.date}</td><td>${s.cust}</td><td>${s.rev.toLocaleString()}</td>
+                    <td style="text-align:center; display:flex; gap:3px; justify-content:center;">
+                        <button onclick="event.stopPropagation(); shareVoucherLink(${passId})" style="border:none;background:#4a90e2;color:white;padding:3px 6px;border-radius:4px;"><i class="fas fa-share-nodes"></i></button>
+                        <button onclick="event.stopPropagation(); rePrintSale(${passId})" style="border:none;background:var(--midnight);color:white;padding:3px 6px;border-radius:4px;"><i class="fas fa-print"></i></button>
+                        <button onclick="event.stopPropagation(); exportSaleToExcel(${passId})" style="border:none;background:var(--excel);color:white;padding:3px 6px;border-radius:4px;font-size:10px;"><i class="fas fa-file-excel"></i> Excel</button>
+                        <button onclick="event.stopPropagation(); deleteSale(${passId})" style="border:none;background:var(--red);color:white;padding:3px 6px;border-radius:4px;"><i class="fas fa-trash"></i></button>
                     </td></tr>`; 
             }); 
 
-            document.getElementById('sum-rev').innerText = r.toLocaleString();
-            document.getElementById('sum-prof').innerText = p.toLocaleString();
-            document.getElementById('sum-rep-exp').innerText = expTotal.toLocaleString();
-            document.getElementById('sum-net-prof').innerText = (p - expTotal).toLocaleString();
-            document.getElementById('rep-body').innerHTML = rows || '<tr><td colspan="6" style="text-align:center;">စာရင်းမရှိပါ</td></tr>';
+            // Expense calculation for selected period
+            let periodExp = 0;
+            expensesData.forEach(e => {
+                if (ty==='day' && e.date === dt) periodExp += e.amount;
+                else if (ty==='month' && e.date.startsWith(dt.slice(0,7))) periodExp += e.amount;
+                else if (ty==='year' && e.date.startsWith(dt.slice(0,4))) periodExp += e.amount;
+            });
 
-            renderLedgerTab();
+            let netProfit = profSum - periodExp;
+
+            document.getElementById('sum-rev').innerText = revSum.toLocaleString() + " Ks";
+            document.getElementById('sum-prof').innerText = profSum.toLocaleString() + " Ks";
+            document.getElementById('sum-exp').innerText = periodExp.toLocaleString() + " Ks";
+            document.getElementById('sum-net-prof').innerText = netProfit.toLocaleString() + " Ks";
+
+            document.getElementById('sum-cash').innerText = cashSum.toLocaleString() + " Ks";
+            document.getElementById('sum-emoney').innerText = emoneySum.toLocaleString() + " Ks";
+            document.getElementById('sum-credit').innerText = creditSum.toLocaleString() + " Ks";
+
+            document.getElementById('rep-body').innerHTML = rows || '<tr><td colspan="5" style="text-align:center;">စာရင်းမရှိပါ</td></tr>';
+            renderShopLedger();
         }
 
+        // FULL EXPANDED EXCEL REPORT WITH NET PROFIT & ALL BREAKDOWNS
         window.exportGroupedExcel = function() {
-            if(!salesData || salesData.length === 0) return alert("ထုတ်ယူရန် စာရင်းမရှိပါ");
+            if(!salesData || salesData.length === 0) return alert("ထုတ်ရန် စာရင်းမရှိပါ");
             
             const tyOpt = document.getElementById('rep-type').options[document.getElementById('rep-type').selectedIndex].text;
             const dt = document.getElementById('rep-date').value;
             const ty = document.getElementById('rep-type').value;
             let dateLabel = ty === 'day' ? dt : (ty === 'month' ? dt.slice(0,7) : dt.slice(0,4));
 
+            // Expense Breakdown
+            let expMap = { "လစာ": 0, "မီးဖိုး": 0, "ရေဖိုး": 0, "အခွန်ဖိုး": 0, "အထွေထွေ": 0 };
             let totalExp = 0;
-            let expRows = [["ရက်စွဲ", "အမျိုးအစား", "အကြောင်းအရာ", "ကျသင့်ငွေ"]];
             expensesData.forEach(e => {
-                if((ty==='day' && e.date === dt) || (ty==='month' && e.date && e.date.startsWith(dt.slice(0,7))) || (ty==='year' && e.date && e.date.startsWith(dt.slice(0,4)))) {
-                    totalExp += parseFloat(e.amount) || 0;
-                    expRows.push([e.date, e.category, e.title, parseFloat(e.amount) || 0]);
+                let match = false;
+                if (ty==='day' && e.date === dt) match = true;
+                else if (ty==='month' && e.date.startsWith(dt.slice(0,7))) match = true;
+                else if (ty==='year' && e.date.startsWith(dt.slice(0,4))) match = true;
+
+                if (match) {
+                    if (expMap[e.category] !== undefined) expMap[e.category] += e.amount;
+                    else expMap["အထွေထွေ"] += e.amount;
+                    totalExp += e.amount;
                 }
             });
-            
+
+            let totalRev = 0, totalGrossProf = 0, totalCash = 0, totalEmoney = 0, totalCredit = 0;
             let staffMap = {}, custMap = {}, itemMap = {};
-            let totalRev = 0, totalProf = 0, totalCash = 0, totalEmoney = 0, totalCredit = 0;
 
             let detailedRows = [
-                ["ရက်စွဲ", "ဘောင်ချာနံပါတ်", "ဝယ်သူ/ဆိုင်အမည်", "အရောင်းသမား", "ပေးချေမှု", "ပေးငွေ", "ကြွေးကျန်", "ပစ္စည်းအမည်", "အရေအတွက်", "ယူနစ်", "ရောင်းဈေး", "ဝယ်ဈေး", "ရောင်းအားစုစုပေါင်း", "အကြမ်းအမြတ်"]
+                ["ရက်စွဲ", "ဘောင်ချာနံပါတ်", "ဝယ်သူ/ဆိုင်", "အရောင်းသမား", "ပစ္စည်းအမည်", "အရေအတွက်", "ယူနစ်", "ရောင်းဈေး", "ဝယ်ဈေး", "ရောင်းအား", "အကြမ်းအမြတ်", "ငွေပေးချေမှုပုံစံ", "ပေးပြီးငွေ", "ကြွေးကျန်"]
             ];
-            
+
             salesData.forEach(s => {
                 let staffName = "Admin";
                 let custName = s.cust || "Guest";
-                
                 let match = custName.match(/(.*?)\s*\((?:Clerk|C):\s*(.*?)\)/);
-                if(match) {
-                    custName = match[1].trim() || "Guest";
-                    staffName = match[2].trim() || "Admin";
-                }
+                if(match) { custName = match[1].trim() || "Guest"; staffName = match[2].trim() || "Admin"; }
 
                 if(!staffMap[staffName]) staffMap[staffName] = { rev: 0, prof: 0, count: 0 };
                 staffMap[staffName].rev += s.rev;
                 staffMap[staffName].count += 1;
 
-                if(!custMap[custName]) custMap[custName] = { rev: 0, paid: 0, credit: 0, prof: 0, count: 0, staffSet: new Set() };
+                let paid = s.paidAmt !== undefined ? s.paidAmt : (s.payType === 'credit' ? 0 : s.rev);
+                let credit = s.creditAmt !== undefined ? s.creditAmt : (s.payType === 'credit' ? s.rev : 0);
+
+                if(!custMap[custName]) custMap[custName] = { rev: 0, paid: 0, credit: 0, count: 0, staffSet: new Set() };
                 custMap[custName].rev += s.rev;
-                custMap[custName].paid += (s.paidAmt !== undefined ? s.paidAmt : s.rev);
-                custMap[custName].credit += (s.creditAmt || 0);
+                custMap[custName].paid += paid;
+                custMap[custName].credit += credit;
                 custMap[custName].count += 1;
                 custMap[custName].staffSet.add(staffName);
-                
-                totalRev += s.rev;
-                if(s.payMethod === 'emoney') totalEmoney += s.rev;
-                else if(s.payMethod === 'credit') { totalCredit += (s.creditAmt||0); totalCash += (s.paidAmt||0); }
-                else totalCash += s.rev;
 
+                totalRev += s.rev;
+                if (s.payType === 'emoney') totalEmoney += paid;
+                else totalCash += paid;
+                totalCredit += credit;
+
+                let saleProf = 0;
                 const items = Array.isArray(s.items) ? s.items : JSON.parse(s.items || '[]');
                 items.forEach(item => {
                     if(!itemMap[item.name]) itemMap[item.name] = { qty: 0, rev: 0, prof: 0, unit: item.unit || '-' };
                     let actualBuy = (item.buy !== undefined && item.buy !== null) ? parseFloat(item.buy) : 0;
+                    let iQty = parseFloat(item.qty) || 0;
+                    let iSell = parseFloat(item.sell) || 0;
+                    let iRev = Math.round(iSell * iQty);
+                    let iProf = Math.round((iSell - actualBuy) * iQty);
 
-                    let itemQty = parseFloat(item.qty) || 0;
-                    let itemSell = parseFloat(item.sell) || 0;
-                    let itemRev = Math.round(itemSell * itemQty);
-                    let itemProf = Math.round((itemSell - actualBuy) * itemQty);
-                    
-                    itemMap[item.name].qty += itemQty;
-                    itemMap[item.name].rev += itemRev;
-                    itemMap[item.name].prof += itemProf;
+                    itemMap[item.name].qty += iQty;
+                    itemMap[item.name].rev += iRev;
+                    itemMap[item.name].prof += iProf;
+                    saleProf += iProf;
 
-                    detailedRows.push([
-                        s.date, formatVoucher(s.id), custName, staffName, s.payMethod || 'cash', 
-                        s.paidAmt || s.rev, s.creditAmt || 0, item.name, itemQty, item.unit || '-', 
-                        itemSell, actualBuy, itemRev, itemProf   
-                    ]);
+                    detailedRows.push([s.date, formatVoucher(s.id), custName, staffName, item.name, iQty, item.unit || '-', iSell, actualBuy, iRev, iProf, s.payType || 'cash', paid, credit]);
                 });
 
-                staffMap[staffName].prof += s.prof;
-                custMap[custName].prof += s.prof;
-                totalProf += s.prof;
+                staffMap[staffName].prof += saleProf;
+                totalGrossProf += saleProf;
             });
-            
-            const summaryRows = [
-                ["ထွန်းတောက်ကြယ် လက်ကားဖြန့်ချိရေး - စာရင်းချုပ် အစီရင်ခံစာ (" + tyOpt + ")"],
+
+            let totalNetProfit = totalGrossProf - totalExp;
+
+            // SHEET 1: FINANCIAL SUMMARY & NET PROFIT
+            const financialSummaryRows = [
+                ["ထွန်းတောက်ကြယ် လက်ကားဖြန့်ချိရေး - ဘဏ္ဍာရေး အသားတင်အမြတ် အစီရင်ခံစာ (" + tyOpt + ")"],
                 ["ရက်စွဲ/ကာလ", dateLabel],
                 [""],
-                ["စုစုပေါင်း ရောင်းရငွေ (Total Revenue)", totalRev],
-                [" - ငွေသားရရှိမှု (Cash Received)", totalCash],
-                [" - E-Money ရရှိမှု (KPay/Wave)", totalEmoney],
-                [" - ကြွေးကျန် စုစုပေါင်း (Credit Balance)", totalCredit],
+                ["၁။ ဝင်ငွေ နှင့် အကြမ်းအမြတ် စာရင်းချုပ်"],
+                ["စုစုပေါင်း အရောင်းရငွေ (Gross Revenue)", totalRev],
+                ["စုစုပေါင်း ကုန်ကျစရိတ် (COGS / ဝယ်ဈေးစုစုပေါင်း)", totalRev - totalGrossProf],
+                ["စုစုပေါင်း အကြမ်းအမြတ် (Gross Profit)", totalGrossProf],
                 [""],
-                ["စုစုပေါင်း အကြမ်းအမြတ် (Gross Profit)", totalProf],
-                ["နှုတ် - စုစုပေါင်း အသုံးစရိတ် (Total Expenses)", totalExp],
-                ["အသားတင် အမြတ် (Net Profit)", totalProf - totalExp]
+                ["၂။ အသုံးစရိတ် ခွဲခြမ်းစိတ်ဖြာမှု (Expenses Breakdown)"],
+                ["- ဝန်ထမ်းလစာ စုစုပေါင်း (Salaries)", expMap["လစာ"]],
+                ["- မီးဖိုး စုစုပေါင်း (Electricity)", expMap["မီးဖိုး"]],
+                ["- ရေဖိုး စုစုပေါင်း (Water)", expMap["ရေဖိုး"]],
+                ["- အခွန်ဖိုး စုစုပေါင်း (Tax)", expMap["အခွန်ဖိုး"]],
+                ["- နေ့စဉ် အထွေထွေ အသုံးစရိတ် (General Expenses)", expMap["အထွေထွေ"]],
+                ["စုစုပေါင်း အသုံးစရိတ် (Total Expenses)", totalExp],
+                [""],
+                ["၃။ အသားတင် အမြတ် တွက်ချက်မှု (Net Profit Calculation)"],
+                ["==============================================="],
+                ["အသားတင် အမြတ် (Net Profit = Gross Profit - Total Expenses)", totalNetProfit],
+                ["==============================================="],
+                [""],
+                ["၄။ ငွေပေးချေမှုစနစ် ခွဲခြမ်းစိတ်ဖြာမှု (Payment System)"],
+                ["- ငွေသား လက်ခံရရှိမှု (Cash)", totalCash],
+                ["- E-Money / Banking ရရှိမှု (E-Money)", totalEmoney],
+                ["- ရရန်ကျန်ရှိသော ကြွေးကျန် (Credit Balance)", totalCredit]
             ];
 
+            // SHEET 2: EXPENSES DETAILS
+            const expenseDetailRows = [
+                ["ထွန်းတောက်ကြယ် - အသုံးစရိတ် အသေးစိတ် စာရင်း (" + tyOpt + ")"],
+                ["ရက်စွဲ", "အမျိုးအစား", "အကြောင်းအရာ", "ပမာဏ (Ks)"]
+            ];
+            expensesData.forEach(e => {
+                let match = false;
+                if (ty==='day' && e.date === dt) match = true;
+                else if (ty==='month' && e.date.startsWith(dt.slice(0,7))) match = true;
+                else if (ty==='year' && e.date.startsWith(dt.slice(0,4))) match = true;
+                if (match) expenseDetailRows.push([e.date, e.category, e.title, e.amount]);
+            });
+
+            // SHEET 3: STAFF SUMMARY
+            const staffRows = [["အရောင်းသမားအမည်", "ဘောင်ချာအရေအတွက်", "ရောင်းအား စုစုပေါင်း", "အကြမ်းအမြတ်"]];
+            for(let s in staffMap) staffRows.push([s, staffMap[s].count, staffMap[s].rev, staffMap[s].prof]);
+
+            // SHEET 4: SHOP LEDGER
+            const custRows = [["ဆိုင် / ဝယ်သူ အမည်", "အရောင်းသမား", "ဘောင်ချာအရေအတွက်", "စုစုပေါင်း ဝယ်ယူမှု", "ပေးပြီးငွေ", "ကြွေးကျန်"]];
+            for(let c in custMap) custRows.push([c, Array.from(custMap[c].staffSet).join(", "), custMap[c].count, custMap[c].rev, custMap[c].paid, custMap[c].credit]);
+
+            // SHEET 5: ITEMS SUMMARY
+            const itemRows = [["ပစ္စည်းအမည်", "ယူနစ်", "ရောင်းရအရေအတွက်", "ရောင်းအား စုစုပေါင်း", "အမြတ်ငွေ စုစုပေါင်း"]];
+            for(let i in itemMap) itemRows.push([i, itemMap[i].unit, itemMap[i].qty, itemMap[i].rev, itemMap[i].prof]);
+
             const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(summaryRows), "အချုပ်စာရင်း (Summary)");
-            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(expRows), "အသုံးစရိတ်များ (Expenses)");
-            
-            const ledgerRows = [["ဆိုင် / ဝယ်သူ", "အရောင်းသမား", "ဘောင်ချာအရေအတွက်", "ရောင်းအား", "ပေးငွေ", "ကြွေးကျန်", "အမြတ်"]];
-            for(let c in custMap) {
-                ledgerRows.push([c, Array.from(custMap[c].staffSet).join(", "), custMap[c].count, custMap[c].rev, custMap[c].paid, custMap[c].credit, custMap[c].prof]);
-            }
-            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(ledgerRows), "ဆိုင်အလိုက် Ledger");
-            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(detailedRows), "အသေးစိတ် အရောင်း");
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(financialSummaryRows), "ဘဏ္ဍာရေးအနှစ်ချုပ်");
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(expenseDetailRows), "အသုံးစရိတ်အသေးစိတ်");
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(custRows), "ဆိုင်အလိုက်Ledger");
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(staffRows), "အရောင်းသမားချုပ်");
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(itemRows), "ပစ္စည်းချုပ်");
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(detailedRows), "အရောင်းအသေးစိတ်");
 
             XLSX.writeFile(wb, `TTK_Full_Financial_Report_${dateLabel}.xlsx`);
-        };
-
-        window.exportLedgerExcel = function() {
-            renderLedgerTab();
-            const table = document.querySelector('#tab-ledger table');
-            const wb = XLSX.utils.table_to_book(table, {sheet: "Ledger"});
-            XLSX.writeFile(wb, `TTK_Shop_Ledger_${new Date().toISOString().split('T')[0]}.xlsx`);
         };
 
         function exportSaleToExcel(id) {
@@ -1257,49 +1406,69 @@
         function viewSaleDetails(id) {
             const sale = salesData.find(s => s.id === id);
             if(!sale) return;
-            let itemHtml = `<b>ဘောင်ချာနံပါတ်:</b> ${formatVoucher(sale.id)}<br><b>ဘောင်ချာရှင်:</b> ${sale.cust}<br><b>ပေးချေမှု:</b> ${sale.payMethod || 'cash'}<br><br>
-            <table style="width:100%; border-collapse:collapse;">
-                <thead><tr style="background:#f1f5f9;"><th style="padding:5px; text-align:left;">ပစ္စည်း</th><th style="padding:5px; text-align:center;">အရေအတွက်</th><th style="padding:5px; text-align:right;">ဈေး</th><th style="padding:5px; text-align:right;">စုစုပေါင်း</th></tr></thead><tbody>`;
+            let itemHtml = `<b>ဘောင်ချာနံပါတ်:</b> ${formatVoucher(sale.id)}<br><b>ဘောင်ချာရှင်:</b> ${sale.cust}<br><br>
+            <table style="width:100%; border-collapse:collapse;" id="detail-items-table">
+                <thead><tr style="background:#f1f5f9;"><th style="padding:4px; text-align:left;">ပစ္စည်း</th><th style="padding:4px; text-align:center;">ဝယ်ယူဦးရေ</th><th style="padding:4px; text-align:center;">ပြန်အပ်ဦးရေ</th><th style="padding:4px; text-align:right;">ဈေး</th><th style="padding:4px; text-align:right;">စုစုပေါင်း</th></tr></thead><tbody>`;
             
             const items = Array.isArray(sale.items) ? sale.items : JSON.parse(sale.items || '[]');
-            items.forEach((item) => { 
+            items.forEach((item, index) => { 
                 itemHtml += `<tr style="border-bottom:1px solid #eee;">
-                    <td style="padding:8px 5px;">${item.name}</td>
-                    <td style="text-align:center; padding:8px 5px;">${parseFloat(item.qty)} ${item.unit||''}</td>
-                    <td style="text-align:right; padding:8px 5px;">${parseFloat(item.sell).toLocaleString()}</td>
-                    <td style="text-align:right; padding:8px 5px;">${Math.round(item.sell * item.qty).toLocaleString()}</td>
+                    <td style="padding:6px 4px;">${item.name}</td>
+                    <td style="text-align:center;"><span id="orig-qty-${index}">${parseFloat(item.qty)}</span></td>
+                    <td style="text-align:center;">
+                        <input type="number" step="any" id="return-qty-${index}" class="return-input" min="0" max="${item.qty}" value="0" oninput="validateReturnInput(this, ${item.qty}); updateDetailRowTotal(${index})">
+                    </td>
+                    <td style="text-align:right;">
+                        <input type="number" step="any" id="edit-price-${index}" class="return-input" style="width:60px; border-color:#ccc;" value="${item.sell}" oninput="updateDetailRowTotal(${index})">
+                    </td>
+                    <td style="text-align:right;"><span id="detail-row-total-${index}">${Math.round(item.sell * item.qty).toLocaleString()}</span></td>
                 </tr>`; 
             });
-            itemHtml += `</tbody></table><div style="text-align:right; margin-top:10px;"><b>စုစုပေါင်း: ${sale.rev.toLocaleString()} Ks</b></div>`;
+            itemHtml += `</tbody></table><div style="text-align:right; margin-top:8px;"><b>စုစုပေါင်း: <span id="detail-grand-total">${sale.rev.toLocaleString()}</span> Ks</b></div>`;
             
             document.getElementById('detail-content').innerHTML = itemHtml;
             const passSaleId = typeof sale.id === 'string' ? `'${sale.id}'` : sale.id;
             document.getElementById('detail-actions').innerHTML = `
-                <div style="display:flex; gap:10px; width:100%;">
-                    <button class="btn btn-dark" style="background:#f59e0b; flex:1;" onclick="editEntireSale(${passSaleId})"><i class="fas fa-edit"></i> ဘောင်ချာ ပြင်မည်</button>
-                    <button class="btn btn-dark" style="flex:1;" onclick="closeOverlay('detail-overlay')">ပိတ်မည်</button>
+                <div style="display:flex; flex-direction:column; gap:8px; width:100%;">
+                    <div style="display:flex; gap:8px; width:100%;">
+                        <button class="btn btn-dark" style="background:#f59e0b; flex:1;" onclick="editEntireSale(${passSaleId})"><i class="fas fa-edit"></i> ဘောင်ချာ ပြန်ပြင်မည်</button>
+                        <button class="btn btn-dark" style="background:var(--red); flex:1;" onclick="processPartialReturn(${passSaleId})"><i class="fas fa-undo"></i> ပြင်ဆင်မည် / အပ်မည်</button>
+                    </div>
+                    <button class="btn btn-dark" style="width:100%;" onclick="closeOverlay('detail-overlay')">ပိတ်မည်</button>
                 </div>
             `;
             document.getElementById('detail-overlay').style.display = 'flex';
         }
 
+        window.updateDetailRowTotal = function(index) {
+            const price = parseFloat(document.getElementById(`edit-price-${index}`).value) || 0;
+            const returnQty = parseFloat(document.getElementById(`return-qty-${index}`).value) || 0;
+            const origQty = parseFloat(document.getElementById(`orig-qty-${index}`).innerText) || 0;
+            let finalQty = origQty - (returnQty > origQty ? origQty : returnQty);
+            document.getElementById(`detail-row-total-${index}`).innerText = Math.round(price * finalQty).toLocaleString();
+            
+            let grandTotal = 0, i = 0;
+            while(document.getElementById(`detail-row-total-${i}`)) {
+                const p = parseFloat(document.getElementById(`edit-price-${i}`).value) || 0;
+                const rq = parseFloat(document.getElementById(`return-qty-${i}`).value) || 0;
+                const oq = parseFloat(document.getElementById(`orig-qty-${i}`).innerText) || 0;
+                grandTotal += Math.round((oq - (rq > oq ? oq : rq)) * p);
+                i++;
+            }
+            document.getElementById('detail-grand-total').innerText = grandTotal.toLocaleString();
+        };
+
         function editEntireSale(id) {
             const sale = salesData.find(s => s.id === id);
             if(!sale) return;
             editingSaleId = id;
-            
             let parsedItems = Array.isArray(sale.items) ? sale.items : JSON.parse(sale.items || '[]');
             cart = parsedItems.map(i => ({...i, cQty: parseFloat(i.qty), buy: i.buy }));
             
             let custStr = sale.cust || "";
-            let custName = custStr, staffName = "";
             let match = custStr.match(/(.*?)\s*\((?:Clerk|C):\s*(.*?)\)/);
-            if(match) { custName = match[1].trim(); staffName = match[2].trim(); }
-            
-            document.getElementById('cust-name').value = custName;
-            document.getElementById('staff-name').value = staffName;
-            document.getElementById('pay-method').value = sale.payMethod || 'cash';
-            document.getElementById('paid-amt').value = sale.paidAmt !== undefined ? sale.paidAmt : sale.rev;
+            document.getElementById('cust-name').value = match ? match[1].trim() : custStr;
+            document.getElementById('staff-name').value = match ? match[2].trim() : "";
             
             closeOverlay('detail-overlay');
             navTo('tab-sales', document.getElementById('n-sales'));
@@ -1311,17 +1480,80 @@
         }
 
         function cancelEdit() {
-            editingSaleId = null;
-            cart = [];
-            document.getElementById('cust-name').value = "";
-            document.getElementById('staff-name').value = "";
+            editingSaleId = null; cart = [];
+            document.getElementById('cust-name').value = ""; document.getElementById('staff-name').value = "";
             renderCart();
             document.getElementById('edit-indicator').style.display = 'none';
             document.getElementById('btn-print-sale').innerHTML = '<i class="fas fa-print"></i> ဘောင်ချာထုတ်မည်';
         }
 
+        window.validateReturnInput = function(input, max) {
+            let val = parseFloat(input.value) || 0;
+            if (val < 0) input.value = 0;
+            if (val > max) { alert(`ဝယ်ယူထားသော အရေအတွက် ${max} ထက် ပို၍ ပြန်အပ်၍မရပါ`); input.value = max; }
+        };
+
+        async function processPartialReturn(id) {
+            const saleIndex = salesData.findIndex(s => s.id === id);
+            if (saleIndex === -1) return;
+            const sale = salesData[saleIndex];
+            const items = Array.isArray(sale.items) ? sale.items : JSON.parse(sale.items || '[]');
+            
+            let hasChanges = false, updatedItems = [], newRev = 0, newProf = 0;
+
+            for (let i = 0; i < items.length; i++) {
+                const item = items[i];
+                const returnQty = parseFloat(document.getElementById(`return-qty-${i}`).value) || 0;
+                const newPrice = parseFloat(document.getElementById(`edit-price-${i}`).value) || 0;
+                let finalQty = parseFloat(item.qty) - returnQty;
+                
+                if (returnQty > 0) {
+                    hasChanges = true;
+                    const product = products.find(p => p.id === item.id);
+                    if (product) {
+                        product.qty = Number((parseFloat(product.qty) + returnQty).toFixed(3));
+                        try {
+                            if (typeof product.id !== 'string') await _sb.from('products').update({ qty: product.qty }).eq('id', product.id);
+                            else addToQueue('SAVE_PRODUCT', product);
+                        } catch(e) { addToQueue('SAVE_PRODUCT', product); }
+                    }
+                }
+                if (parseFloat(item.sell) !== newPrice) hasChanges = true;
+                
+                if (finalQty > 0) {
+                    let actualBuy = (item.buy !== undefined && item.buy !== null) ? parseFloat(item.buy) : 0;
+                    updatedItems.push({ ...item, buy: actualBuy, qty: Number(finalQty.toFixed(3)), sell: newPrice }); 
+                    newRev += Math.round(newPrice * finalQty);
+                    newProf += Math.round((newPrice - actualBuy) * finalQty);
+                }
+            }
+
+            if (!hasChanges) return alert("ပြောင်းလဲမှုမရှိပါ");
+            if (!confirm("ရွေးချယ်ထားသော အချက်အလက်များအတိုင်း ဘောင်ချာကို ပြင်ဆင်ရန် သေချာပါသလား?")) return;
+
+            localStorage.setItem('ttk_products', JSON.stringify(products));
+
+            if (updatedItems.length === 0) {
+                closeOverlay('detail-overlay');
+                await deleteSale(id);
+                return;
+            }
+
+            sale.items = updatedItems; sale.rev = newRev; sale.prof = newProf;
+
+            try {
+                if (typeof id !== 'string') await _sb.from('sales').update({ items: updatedItems, rev: newRev, prof: newProf }).eq('id', id);
+                else addToQueue('UPDATE_SALE', sale);
+            } catch (e) { addToQueue('UPDATE_SALE', sale); }
+
+            salesData[saleIndex] = sale;
+            alert("ပြင်ဆင်ခြင်း အောင်မြင်ပါသည်။");
+            closeOverlay('detail-overlay');
+            refreshUI(); runReport();
+        }
+
         async function deleteSale(id) {
-            if(confirm("ဤဘောင်ချာတစ်ခုလုံးကို ဖျက်ရန် သေချာပါသလား? (ဝယ်ယူထားသော ပစ္စည်းအားလုံး ဂိုထောင်ထဲသို့ ပြန်ဝင်ပါမည်)")) {
+            if(confirm("ဤဘောင်ချာတစ်ခုလုံးကို ဖျက်ရန် သေချာပါသလား? (ပစ္စည်းများ ဂိုထောင်ထဲ ပြန်ဝင်ပါမည်)")) {
                 const sale = salesData.find(s => s.id === id);
                 const items = Array.isArray(sale.items) ? sale.items : JSON.parse(sale.items || '[]');
                 
@@ -1330,32 +1562,22 @@
                     if(product) {
                         product.qty = Number((parseFloat(product.qty) + parseFloat(item.qty)).toFixed(3));
                         try {
-                            if(typeof product.id !== 'string') {
-                                await _sb.from('products').update({ qty: product.qty }).eq('id', item.id);
-                            }
-                        } catch(e) {
-                            addToQueue('SAVE_PRODUCT', product);
-                        }
+                            if(typeof product.id !== 'string') await _sb.from('products').update({ qty: product.qty }).eq('id', item.id);
+                        } catch(e) { addToQueue('SAVE_PRODUCT', product); }
                     }
                 }
-                
                 localStorage.setItem('ttk_products', JSON.stringify(products));
 
                 try {
-                    if(typeof id !== 'string') {
-                        await _sb.from('sales').delete().eq('id', id);
-                    }
-                } catch(e) {
-                    addToQueue('DEL_SALE', { id });
-                }
+                    if(typeof id !== 'string') await _sb.from('sales').delete().eq('id', id);
+                } catch(e) { addToQueue('DEL_SALE', { id }); }
 
                 salesData = salesData.filter(s => s.id !== id);
-                await loadProductsAndSync(); 
-                runReport();
+                await loadProductsAndSync(); runReport();
             }
         }
 
-        // --- NAVIGATION & PERMISSIONS ---
+        // NAVIGATION & MODAL CONTROLS
         function navTo(tid, btn) {
             document.querySelectorAll('.container').forEach(c => c.classList.remove('active'));
             document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
@@ -1363,7 +1585,7 @@
             btn.classList.add('active');
             if(tid==='tab-rep') runReport(); 
             if(tid==='tab-exp') runExpenseReport();
-            if(tid==='tab-ledger') renderLedgerTab();
+            if(tid==='tab-ledger') renderShopLedger();
             refreshUI();
         }
 
@@ -1451,12 +1673,8 @@
                 localStorage.setItem('ttk_products', JSON.stringify(products));
 
                 try {
-                    if(typeof id !== 'string') {
-                        await _sb.from('products').delete().eq('id', id); 
-                    }
-                } catch(e) {
-                    addToQueue('DEL_PRODUCT', { id });
-                }
+                    if(typeof id !== 'string') await _sb.from('products').delete().eq('id', id); 
+                } catch(e) { addToQueue('DEL_PRODUCT', { id }); }
 
                 closeOverlay('add-overlay'); 
                 await loadProductsAndSync(); 
