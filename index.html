@@ -515,8 +515,12 @@
 
         async function loadProductsAndSync() {
             try {
+                // MODIFIED: Added error check logging
                 const { data, error } = await _sb.from('products').select('*').order('name');
-                if (error) throw error;
+                if (error) {
+                    console.error("Supabase Error Data:", error);
+                    throw error;
+                }
                 
                 if (data && data.length > 0) {
                     products = data;
@@ -535,7 +539,8 @@
                 await processOfflineQueue();
                 refreshUI();
             } catch (err) {
-                setStatus('offline', 'Offline');
+                console.error("Fetch API Failed:", err);
+                setStatus('offline', 'DB Error (Check RLS)'); // MODIFIED: Show clearer error status
                 const localProducts = localStorage.getItem('ttk_products');
                 if (localProducts) {
                     products = JSON.parse(localProducts);
@@ -725,7 +730,7 @@
                     }
                 }
             } catch (e) { 
-                console.log("Offline mode: Sale saved to queue.");
+                console.log("Offline mode: Sale saved to queue.", e);
                 if(!isEditing) {
                     saleData.id = receiptId;
                     addToQueue('ADD_SALE', saleData);
@@ -1349,5 +1354,3 @@
     </script>
 </body>
 </html>
-
-
