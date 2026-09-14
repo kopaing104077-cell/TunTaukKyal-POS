@@ -1,1170 +1,4557 @@
 <!DOCTYPE html>
 <html lang="my">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ထွန်းတောက်ကြယ် POS (Professional Edition)</title>
-    <link rel="manifest" href="manifest.json">
-    <!-- External Libraries -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
-    <style>
-        /* Professional Color Palette & Variables */
-        :root { 
-            --midnight: #0f172a; 
-            --primary: #1e293b; 
-            --green: #059669; 
-            --red: #dc2626; 
-            --gold: #d97706; 
-            --bg: #f1f5f9; 
-            --excel: #166534;
-            --border: #cbd5e1;
-            --text-main: #334155;
-            --text-muted: #64748b;
-        }
-        
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Pyidaungsu', sans-serif; }
-        
-        body { 
-            background: var(--bg); 
-            color: var(--text-main);
-            height: 100dvh; 
-            display: flex; 
-            flex-direction: column; 
-            overflow: hidden; 
-            position: fixed; 
-            width: 100%; 
-        }
+<meta charset="UTF-8">
+<meta name="viewport"
+      content="width=device-width, initial-scale=1.0,
+      maximum-scale=1.0,user-scalable=no,viewport-fit=cover">
 
-        /* Header & Status */
-        .header { 
-            background: var(--midnight); 
-            color: white; 
-            height: 60px; 
-            padding: 0 20px; 
-            display: flex; 
-            align-items: center; 
-            justify-content: space-between; 
-            flex-shrink: 0; 
-            z-index: 1000;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        .db-status { 
-            font-size: 12px; 
-            display: flex; 
-            align-items: center; 
-            gap: 8px; 
-            background: rgba(255,255,255,0.1); 
-            padding: 6px 12px; 
-            border-radius: 20px; 
-            font-weight: 500;
-        }
-        .dot { width: 10px; height: 10px; border-radius: 50%; background: #94a3b8; transition: all 0.3s ease; }
-        .dot.online { background: #10b981; box-shadow: 0 0 10px rgba(16, 185, 129, 0.6); }
-        .dot.offline { background: var(--red); box-shadow: 0 0 10px rgba(220, 38, 38, 0.6); }
-        .dot.syncing { background: #fbbf24; box-shadow: 0 0 10px rgba(251, 191, 36, 0.6); animation: blink 1s infinite; }
-        @keyframes blink { 50% { opacity: 0.4; } }
+<title>ထွန်းတောက်ကြယ် POS PRO</title>
 
-        /* Main Container */
-        .container { flex: 1; overflow: hidden; display: none; width: 100%; max-width: 1200px; margin: auto; position: relative; }
-        .container.active { display: flex; flex-direction: column; animation: fadeIn 0.3s ease; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
-        
-        /* UI Elements */
-        .input-group { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
-        .input-style { 
-            width: 100%; 
-            padding: 12px; 
-            border: 1px solid var(--border); 
-            border-radius: 8px; 
-            font-size: 14px; 
-            outline: none; 
-            background: white; 
-            transition: border-color 0.2s;
-        }
-        .input-style:focus { border-color: var(--midnight); box-shadow: 0 0 0 2px rgba(15, 23, 42, 0.1); }
+<style>
+:root{
+    --dark:#0f172a;
+    --dark2:#1e293b;
+    --green:#059669;
+    --green2:#047857;
+    --red:#dc2626;
+    --orange:#d97706;
+    --blue:#2563eb;
+    --bg:#f1f5f9;
+    --white:#fff;
+    --border:#cbd5e1;
+    --text:#334155;
+    --muted:#64748b;
+    --shadow:0 4px 15px rgba(15,23,42,.08);
+}
 
-        .btn { 
-            padding: 12px; 
-            border-radius: 8px; 
-            border: none; 
-            font-weight: 600; 
-            cursor: pointer; 
-            display: flex; 
-            align-items: center; 
-            justify-content: center; 
-            gap: 8px; 
-            transition: all 0.2s; 
-            font-size: 14px;
-        }
-        .btn:active { transform: scale(0.98); }
-        .btn-dark { background: var(--primary); color: white; }
-        .btn-dark:hover { background: var(--midnight); }
-        .btn-excel { background: var(--excel); color: white; }
-        .btn-excel:hover { background: #14532d; }
-        .btn-danger { background: var(--red); color: white; }
-        .btn-danger:hover { background: #b91c1c; }
+*{
+    box-sizing:border-box;
+    margin:0;
+    padding:0;
+    font-family:"Pyidaungsu","Myanmar Text",Arial,sans-serif;
+    -webkit-tap-highlight-color:transparent;
+}
 
-        /* Sales Tab UI */
-        .sales-sticky { flex-shrink: 0; background: var(--bg); padding: 15px 15px 5px 15px; z-index: 10; border-bottom: 1px solid var(--border); }
-        .cart-box { background: white; border: 1px solid var(--border); border-radius: 12px; margin-bottom: 10px; padding: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.02); }
-        #cart-list { max-height: 180px; overflow-y: auto; margin-bottom: 15px; padding-right: 5px; }
-        
-        /* Custom Scrollbar */
-        ::-webkit-scrollbar { width: 6px; height: 6px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+html,body{
+    width:100%;
+    height:100%;
+    overflow:hidden;
+}
 
-        .cart-item { 
-            display: flex; justify-content: space-between; align-items: center; 
-            background: #f8fafc; padding: 10px 12px; border-radius: 8px; 
-            margin-bottom: 8px; border: 1px solid #e2e8f0; transition: all 0.2s;
-        }
-        .cart-item:hover { border-color: var(--border); }
-        
-        .price-edit-input { width: 85px; padding: 6px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; text-align: right; font-weight: bold; color: var(--red); outline: none; }
-        .qty-edit-input { width: 60px; padding: 6px; border: 1px solid var(--border); border-radius: 6px; font-size: 14px; text-align: center; font-weight: bold; margin: 0 6px; outline: none; }
+body{
+    background:var(--bg);
+    color:var(--text);
+}
 
-        .cat-scroll { display: flex; overflow-x: auto; gap: 8px; padding: 5px 0 10px 0; scrollbar-width: none; }
-        .cat-btn { white-space: nowrap; padding: 8px 18px; border-radius: 20px; border: 1px solid var(--border); background: white; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.2s; color: var(--text-muted); }
-        .cat-btn:hover { border-color: var(--primary); color: var(--primary); }
-        .cat-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
+/* ================= HEADER ================= */
 
-        /* Grid Items */
-        .grid-area { flex: 1; overflow-y: auto; padding: 15px; display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 12px; align-content: start; }
-        .p-card { 
-            background: white; border-radius: 10px; border: 1px solid var(--border); 
-            display: flex; flex-direction: column; justify-content: center; align-items: center; 
-            position: relative; min-height: 95px; padding: 15px 10px; cursor: pointer; 
-            box-shadow: 0 2px 4px rgba(0,0,0,0.02); text-align: center; transition: all 0.2s;
-            user-select: none;
-        }
-        .p-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.08); border-color: #94a3b8; }
-        .p-card:active { transform: scale(0.96); }
-        .stock-tag { position: absolute; top: 6px; right: 6px; background: #f1f5f9; color: var(--text-muted); font-size: 11px; padding: 3px 6px; border-radius: 4px; font-weight: 600; border: 1px solid #e2e8f0; }
-        .stock-tag.low { background: #fef2f2; color: var(--red); border-color: #fca5a5; }
-        .p-name { font-size: 13px; font-weight: 600; color: var(--text-main); line-height: 1.3; margin-top: 8px; margin-bottom: 4px; }
-        .p-price { font-size: 14px; color: var(--green); font-weight: 700; }
+.header{
+    height:58px;
+    min-height:58px;
+    background:var(--dark);
+    color:white;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:0 14px;
+    z-index:100;
+    box-shadow:0 2px 10px rgba(0,0,0,.2);
+}
 
-        /* Navigation */
-        .nav { background: white; height: 65px; display: flex; border-top: 1px solid var(--border); flex-shrink: 0; width: 100%; z-index: 1000; padding-bottom: env(safe-area-inset-bottom); box-shadow: 0 -2px 10px rgba(0,0,0,0.03); }
-        .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; background: none; border: none; color: #94a3b8; font-size: 12px; font-weight: 500; cursor: pointer; transition: all 0.2s; }
-        .nav-item:hover { color: var(--text-main); }
-        .nav-item.active { color: var(--primary); font-weight: 700; border-top: 3px solid var(--primary); }
-        .nav-item i { font-size: 20px; margin-bottom: 5px; }
+.logo{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    font-size:17px;
+    font-weight:bold;
+}
 
-        /* Tables */
-        .table-wrap { flex: 1; overflow-y: auto; background: white; margin: 15px; border-radius: 12px; border: 1px solid var(--border); box-shadow: 0 4px 6px rgba(0,0,0,0.02); }
-        table { width: 100%; border-collapse: collapse; text-align: left; }
-        th { background: #f8fafc; padding: 14px; font-size: 13px; font-weight: 600; color: var(--text-muted); position: sticky; top: 0; border-bottom: 2px solid var(--border); z-index: 2; }
-        td { padding: 14px; border-bottom: 1px solid #f1f5f9; font-size: 14px; vertical-align: middle; }
-        tr:hover td { background: #f8fafc; }
+.logo-star{
+    color:#f59e0b;
+    font-size:20px;
+}
 
-        /* Modals & Overlay */
-        .overlay { display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(4px); z-index: 2000; align-items: center; justify-content: center; padding: 20px; animation: fadeIn 0.2s ease; }
-        .modal-card { background: white; padding: 25px; border-radius: 16px; width: 100%; max-width: 500px; max-height: 90dvh; overflow-y: auto; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); }
-        .modal-header { font-size: 18px; font-weight: 700; border-bottom: 1px solid var(--border); padding-bottom: 15px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; }
+.status{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    font-size:11px;
+    background:rgba(255,255,255,.1);
+    padding:6px 9px;
+    border-radius:20px;
+}
 
-        .stock-in-section { background: #f8fafc; padding: 15px; border-radius: 10px; margin-top: 15px; border: 1px dashed #94a3b8; }
-        
-        /* Toast Notification */
-        .toast {
-            position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%) translateY(100px);
-            background: rgba(15, 23, 42, 0.9); color: white; padding: 12px 24px; border-radius: 30px;
-            font-size: 14px; font-weight: 500; z-index: 3000; opacity: 0; transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15); display: flex; align-items: center; gap: 8px;
-        }
-        .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
-        .toast.error { background: rgba(220, 38, 38, 0.9); }
-        .toast.success { background: rgba(5, 150, 105, 0.9); }
+.dot{
+    width:9px;
+    height:9px;
+    border-radius:50%;
+    background:#94a3b8;
+}
 
-        #receipt-render-area { display: none; }
+.dot.online{
+    background:#10b981;
+    box-shadow:0 0 8px #10b981;
+}
 
-        /* Print Layout (Optimized for Thermal Printers) */
-        @media print {
-            .header, .nav, .container, .overlay, .no-print, .toast { display: none !important; }
-            body { background: white !important; margin: 0; padding: 0; }
-            #receipt-render-area { display: block !important; width: 100% !important; max-width: 80mm; margin: 0 auto; padding: 0; color: #000; }
-            .r-center { width: 100%; text-align: center; }
-            .r-header-title { font-size: 22px; font-weight: 800; margin-bottom: 4px; }
-            .r-header-sub { font-size: 12px; margin-top: 2px; line-height: 1.4; }
-            .r-info { text-align: left; font-size: 12px; margin: 12px 0; border-top: 1px dashed #000; padding-top: 8px; line-height: 1.6; }
-            .r-table { width: 100%; border-collapse: collapse; font-size: 12px; table-layout: fixed; margin: 8px 0; }
-            .r-table th { border-top: 1px dashed #000; border-bottom: 1px dashed #000; padding: 6px 0; text-align: center; }
-            .c-name { width: 42%; text-align: left; }
-            .c-qty { width: 13%; text-align: center; }
-            .c-price { width: 20%; text-align: right; }
-            .c-amt { width: 25%; text-align: right; }
-            .r-table td { padding: 5px 0; vertical-align: top; word-break: break-word; }
-            .r-summary { border-top: 1px dashed #000; margin-top: 8px; padding-top: 8px; font-size: 15px; font-weight: bold; }
-            .r-row { display: flex; justify-content: flex-end; margin-bottom: 4px; }
-            .r-label { width: 60%; text-align: right; padding-right: 15px; }
-            .r-val { width: 40%; text-align: right; }
-            .r-footer { margin-top: 20px; font-size: 12px; border-top: 1px dashed #000; padding-top: 10px; text-align: center; font-weight: bold; }
-            @page { margin: 0; size: auto; }
-        }
-    </style>
+.dot.offline{
+    background:#ef4444;
+    box-shadow:0 0 8px #ef4444;
+}
+
+.dot.syncing{
+    background:#fbbf24;
+    animation:blink 1s infinite;
+}
+
+@keyframes blink{
+    50%{opacity:.3}
+}
+
+/* ================= APP ================= */
+
+.app{
+    width:100%;
+    height:calc(100dvh - 58px);
+    display:flex;
+    flex-direction:column;
+}
+
+.page{
+    display:none;
+    flex:1;
+    min-height:0;
+    overflow:hidden;
+}
+
+.page.active{
+    display:flex;
+    flex-direction:column;
+}
+
+/* ================= INPUT ================= */
+
+.input{
+    width:100%;
+    padding:11px 12px;
+    border:1px solid var(--border);
+    border-radius:9px;
+    background:white;
+    outline:none;
+    font-size:14px;
+    color:var(--text);
+}
+
+.input:focus{
+    border-color:var(--blue);
+    box-shadow:0 0 0 2px rgba(37,99,235,.1);
+}
+
+.grid2{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:9px;
+}
+
+/* ================= BUTTON ================= */
+
+.btn{
+    border:0;
+    border-radius:9px;
+    padding:11px 13px;
+    font-size:13px;
+    font-weight:bold;
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:7px;
+}
+
+.btn:active{
+    transform:scale(.97);
+}
+
+.btn-dark{
+    background:var(--dark2);
+    color:white;
+}
+
+.btn-green{
+    background:var(--green);
+    color:white;
+}
+
+.btn-red{
+    background:var(--red);
+    color:white;
+}
+
+.btn-blue{
+    background:var(--blue);
+    color:white;
+}
+
+.btn-excel{
+    background:#166534;
+    color:white;
+}
+
+/* ================= SALES ================= */
+
+.sales-top{
+    flex-shrink:0;
+    padding:10px;
+    background:var(--bg);
+    border-bottom:1px solid var(--border);
+}
+
+.search{
+    position:relative;
+    margin-top:9px;
+}
+
+.search-icon{
+    position:absolute;
+    left:12px;
+    top:12px;
+    color:#94a3b8;
+}
+
+.search .input{
+    padding-left:34px;
+}
+
+.cart{
+    margin-top:9px;
+    background:white;
+    border:1px solid var(--border);
+    border-radius:12px;
+    padding:10px;
+    box-shadow:var(--shadow);
+}
+
+.cart-list{
+    max-height:165px;
+    overflow-y:auto;
+}
+
+.empty{
+    text-align:center;
+    padding:20px 5px;
+    color:var(--muted);
+    font-size:13px;
+}
+
+.cart-item{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:8px;
+    padding:9px;
+    background:#f8fafc;
+    border:1px solid #e2e8f0;
+    border-radius:8px;
+    margin-bottom:7px;
+}
+
+.cart-name{
+    font-size:13px;
+    font-weight:bold;
+    margin-bottom:5px;
+}
+
+.price-input{
+    width:85px;
+    padding:5px;
+    border:1px solid var(--border);
+    border-radius:6px;
+    text-align:right;
+    font-weight:bold;
+    color:var(--red);
+}
+
+.qty-area{
+    display:flex;
+    align-items:center;
+}
+
+.qty-btn{
+    width:28px;
+    height:28px;
+    border:0;
+    border-radius:6px;
+    background:#e2e8f0;
+    font-weight:bold;
+}
+
+.qty-input{
+    width:55px;
+    margin:0 5px;
+    padding:5px;
+    border:1px solid var(--border);
+    border-radius:6px;
+    text-align:center;
+}
+
+.cart-bottom{
+    border-top:1px dashed var(--border);
+    margin-top:8px;
+    padding-top:9px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+}
+
+.total-label{
+    font-size:12px;
+    color:var(--muted);
+}
+
+.total{
+    font-size:20px;
+    font-weight:bold;
+    color:var(--red);
+}
+
+/* ================= CATEGORY ================= */
+
+.categories{
+    display:flex;
+    gap:7px;
+    overflow-x:auto;
+    padding:8px 0 2px;
+    scrollbar-width:none;
+}
+
+.categories::-webkit-scrollbar{
+    display:none;
+}
+
+.cat{
+    white-space:nowrap;
+    border:1px solid var(--border);
+    background:white;
+    color:var(--muted);
+    border-radius:20px;
+    padding:7px 14px;
+    font-size:12px;
+}
+
+.cat.active{
+    background:var(--dark2);
+    color:white;
+    border-color:var(--dark2);
+}
+
+/* ================= PRODUCT GRID ================= */
+
+.product-grid{
+    flex:1;
+    min-height:0;
+    overflow-y:auto;
+    padding:10px;
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:9px;
+    align-content:start;
+}
+
+.product{
+    min-height:105px;
+    background:white;
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:12px 7px 9px;
+    text-align:center;
+    position:relative;
+    box-shadow:0 2px 5px rgba(0,0,0,.04);
+    cursor:pointer;
+}
+
+.product:active{
+    transform:scale(.96);
+}
+
+.stock{
+    position:absolute;
+    right:5px;
+    top:5px;
+    font-size:9px;
+    padding:3px 5px;
+    background:#f1f5f9;
+    border-radius:5px;
+    color:var(--muted);
+}
+
+.stock.low{
+    color:var(--red);
+    background:#fef2f2;
+}
+
+.product-name{
+    margin-top:14px;
+    font-size:12px;
+    font-weight:bold;
+    line-height:1.35;
+}
+
+.product-price{
+    margin-top:5px;
+    font-size:12px;
+    color:var(--green);
+    font-weight:bold;
+}
+
+/* ================= TABLE ================= */
+
+.page-head{
+    flex-shrink:0;
+    padding:12px;
+}
+
+.card{
+    background:white;
+    border:1px solid var(--border);
+    border-radius:12px;
+    padding:14px;
+    box-shadow:var(--shadow);
+}
+
+.card-title{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:8px;
+}
+
+.card-title h3{
+    font-size:16px;
+}
+
+.table-box{
+    flex:1;
+    min-height:0;
+    overflow:auto;
+    margin:0 10px 10px;
+    background:white;
+    border:1px solid var(--border);
+    border-radius:12px;
+}
+
+table{
+    width:100%;
+    border-collapse:collapse;
+    min-width:500px;
+}
+
+th{
+    position:sticky;
+    top:0;
+    z-index:2;
+    background:#f8fafc;
+    color:var(--muted);
+    padding:11px;
+    font-size:12px;
+    text-align:left;
+    border-bottom:2px solid var(--border);
+}
+
+td{
+    padding:11px;
+    font-size:13px;
+    border-bottom:1px solid #f1f5f9;
+}
+
+/* ================= REPORT ================= */
+
+.report-summary{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:8px;
+    margin-top:10px;
+}
+
+.summary-box{
+    padding:12px 7px;
+    border-radius:9px;
+    background:#f8fafc;
+    border:1px solid #e2e8f0;
+    text-align:center;
+}
+
+.summary-box small{
+    display:block;
+    color:var(--muted);
+    font-size:11px;
+    margin-bottom:5px;
+}
+
+.summary-box b{
+    font-size:16px;
+}
+
+.revenue{
+    color:var(--dark);
+}
+
+.profit{
+    color:var(--green);
+}
+
+/* ================= NAV ================= */
+
+.nav{
+    height:64px;
+    min-height:64px;
+    background:white;
+    border-top:1px solid var(--border);
+    display:flex;
+    z-index:100;
+    padding-bottom:env(safe-area-inset-bottom);
+}
+
+.nav-btn{
+    flex:1;
+    border:0;
+    background:white;
+    color:#94a3b8;
+    font-size:10px;
+    font-weight:bold;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:4px;
+}
+
+.nav-btn .icon{
+    font-size:20px;
+}
+
+.nav-btn.active{
+    color:var(--dark);
+    border-top:3px solid var(--dark);
+}
+
+/* ================= MODAL ================= */
+
+.overlay{
+    position:fixed;
+    inset:0;
+    background:rgba(15,23,42,.72);
+    display:none;
+    align-items:center;
+    justify-content:center;
+    padding:15px;
+    z-index:1000;
+}
+
+.modal{
+    width:100%;
+    max-width:500px;
+    max-height:90dvh;
+    overflow-y:auto;
+    background:white;
+    border-radius:15px;
+    padding:17px;
+    box-shadow:0 20px 50px rgba(0,0,0,.3);
+}
+
+.modal-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    border-bottom:1px solid var(--border);
+    padding-bottom:12px;
+    margin-bottom:14px;
+    font-weight:bold;
+}
+
+.close{
+    border:0;
+    background:none;
+    font-size:20px;
+    color:var(--muted);
+}
+
+/* ================= TOAST ================= */
+
+.toast{
+    position:fixed;
+    left:50%;
+    bottom:75px;
+    transform:translate(-50%,120px);
+    opacity:0;
+    background:rgba(15,23,42,.94);
+    color:white;
+    padding:11px 18px;
+    border-radius:25px;
+    font-size:12px;
+    z-index:2000;
+    transition:.3s;
+    max-width:90%;
+    text-align:center;
+}
+
+.toast.show{
+    transform:translate(-50%,0);
+    opacity:1;
+}
+
+.toast.error{
+    background:rgba(220,38,38,.95);
+}
+
+/* ================= RECEIPT ================= */
+
+#receipt{
+    display:none;
+}
+
+@media print{
+    body{
+        background:white!important;
+        overflow:visible!important;
+    }
+
+    .header,
+    .app,
+    .overlay,
+    .toast{
+        display:none!important;
+    }
+
+    #receipt{
+        display:block!important;
+        width:80mm;
+        margin:0 auto;
+        color:#000;
+        font-family:Arial,"Pyidaungsu",sans-serif;
+        font-size:12px;
+    }
+
+    .receipt-center{
+        text-align:center;
+    }
+
+    .receipt-title{
+        font-size:20px;
+        font-weight:bold;
+    }
+
+    .receipt-sub{
+        font-size:10px;
+        line-height:1.5;
+    }
+
+    .receipt-info{
+        margin-top:8px;
+        padding:7px 0;
+        border-top:1px dashed #000;
+        text-align:left;
+        line-height:1.6;
+    }
+
+    .receipt-table{
+        width:100%;
+        border-collapse:collapse;
+        min-width:0;
+        font-size:10px;
+    }
+
+    .receipt-table th{
+        position:static;
+        padding:4px 0;
+        color:#000;
+        background:white;
+        border-top:1px dashed #000;
+        border-bottom:1px dashed #000;
+    }
+
+    .receipt-table td{
+        padding:4px 0;
+        border:0;
+        font-size:10px;
+    }
+
+    .r-name{width:40%;text-align:left}
+    .r-qty{width:15%;text-align:center}
+    .r-price{width:20%;text-align:right}
+    .r-amt{width:25%;text-align:right}
+
+    .receipt-total{
+        border-top:1px dashed #000;
+        margin-top:7px;
+        padding-top:7px;
+        text-align:right;
+        font-size:14px;
+        font-weight:bold;
+    }
+
+    .receipt-footer{
+        border-top:1px dashed #000;
+        margin-top:12px;
+        padding-top:8px;
+        text-align:center;
+        font-weight:bold;
+    }
+
+    @page{
+        margin:0;
+        size:auto;
+    }
+}
+
+/* ================= SMALL PHONES ================= */
+
+@media(max-width:360px){
+    .product-grid{
+        grid-template-columns:repeat(2,1fr);
+    }
+
+    .logo{
+        font-size:14px;
+    }
+
+    .status{
+        font-size:9px;
+    }
+}
+</style>
 </head>
+
 <body>
 
-    <header class="header">
-        <div style="font-weight:bold; font-size: 1.2rem; display: flex; align-items: center; gap: 10px; letter-spacing: 0.5px;">
-            <i class="fas fa-star" style="color:var(--gold); text-shadow: 0 0 5px rgba(251,191,36,0.5);"></i> ထွန်းတောက်ကြယ်
-        </div>
-        <div style="display:flex; align-items:center; gap:12px;">
-            <button id="logout-btn" onclick="logout()" style="display:none; background:rgba(255,255,255,0.2); color:white; border:none; padding:6px 12px; border-radius:6px; font-size:12px; cursor:pointer; font-weight:600;"><i class="fas fa-sign-out-alt"></i> ထွက်မည်</button>
-            <div class="db-status" id="status-indicator">
-                <div id="status-dot" class="dot syncing"></div>
-                <span id="status-text">Connecting</span>
-            </div>
-        </div>
-    </header>
+<!-- ================= HEADER ================= -->
 
-    <div id="receipt-render-area"></div>
-    <div id="toast-container" class="toast"><i id="toast-icon" class="fas fa-info-circle"></i> <span id="toast-msg"></span></div>
+<header class="header">
 
-    <!-- SALES TAB -->
-    <main id="tab-sales" class="container active">
-        <div class="sales-sticky">
-            <div id="edit-indicator" style="display:none; background: #fef3c7; color: #92400e; padding: 10px; text-align: center; font-size: 14px; font-weight: bold; border-radius: 8px; margin-bottom: 12px; border: 1px solid #f59e0b;">
-                <i class="fas fa-exclamation-triangle"></i> <span id="edit-indicator-text"></span>
-                <button onclick="cancelEdit()" style="margin-left:15px; padding:6px 12px; cursor:pointer; background:var(--red); color:white; border:none; border-radius:6px; font-size: 12px;"><i class="fas fa-times"></i> ဖျက်သိမ်းမည်</button>
-            </div>
-            <div class="input-group">
-                <input type="text" id="cust-name" class="input-style" placeholder="ဝယ်သူ / ဆိုင်အမည်">
-                <input type="text" id="staff-name" class="input-style" placeholder="အရောင်းဝန်ထမ်းအမည်">
-            </div>
-            <div style="position: relative; margin-bottom: 12px;">
-                <i class="fas fa-search" style="position: absolute; left: 12px; top: 14px; color: #94a3b8;"></i>
-                <input type="text" id="search-box" class="input-style" placeholder="ပစ္စည်းအမည် ရှာဖွေရန်..." oninput="refreshUI()" style="padding-left: 35px;">
-            </div>
-            
-            <div class="cart-box">
-                <div id="cart-list"><div style="text-align:center; color:var(--text-muted); font-size:13px; padding: 20px 0;"><i class="fas fa-shopping-basket fa-2x" style="color:#e2e8f0; margin-bottom:10px; display:block;"></i>ခြင်းတောင်းထဲတွင် ပစ္စည်းမရှိသေးပါ</div></div>
-                <div style="display:flex; justify-content:space-between; align-items:center; border-top: 1px dashed var(--border); padding-top: 10px;">
-                    <div style="font-size:14px; color: var(--text-muted);">စုစုပေါင်းသင့်ငွေ:<br><b style="font-size:20px; color:var(--red)"><span id="cart-total">0</span> Ks</b></div>
-                    <button class="btn btn-dark" id="btn-print-sale" style="padding:12px 20px;" onclick="processSale()">
-                        <i class="fas fa-print"></i> ဘောင်ချာထုတ်မည်
-                    </button>
+    <div class="logo">
+        <span class="logo-star">★</span>
+        <span>ထွန်းတောက်ကြယ် POS PRO</span>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:7px">
+
+        <button id="logoutBtn"
+                onclick="logout()"
+                style="display:none;border:0;background:rgba(255,255,255,.15);color:white;padding:6px 8px;border-radius:7px;font-size:10px">
+            ထွက်မည်
+        </button>
+
+        <div class="status">
+            <span id="statusDot" class="dot syncing"></span>
+            <span id="statusText">Starting...</span>
+        </div>
+
+    </div>
+
+</header>
+
+
+<div class="app">
+
+<!-- =========================================================
+     SALES
+========================================================= -->
+
+<section id="salesPage" class="page active">
+
+    <div class="sales-top">
+
+        <div class="grid2">
+
+            <input
+                id="custName"
+                class="input"
+                placeholder="ဝယ်သူ / ဆိုင်အမည်">
+
+            <input
+                id="staffName"
+                class="input"
+                placeholder="အရောင်းဝန်ထမ်း">
+
+        </div>
+
+        <div class="search">
+
+            <span class="search-icon">🔎</span>
+
+            <input
+                id="salesSearch"
+                class="input"
+                placeholder="ပစ္စည်းအမည် ရှာရန်"
+                oninput="renderProducts()">
+
+        </div>
+
+
+        <!-- CART -->
+
+        <div class="cart">
+
+            <div id="cartList" class="cart-list">
+
+                <div class="empty">
+                    🛒<br>
+                    ခြင်းတောင်းထဲတွင် ပစ္စည်းမရှိသေးပါ
                 </div>
-            </div>
-            
-            <div class="cat-scroll" id="sales-cat-container">
-                <!-- Categories injected here -->
-            </div>
-        </div>
-        <div id="pos-grid" class="grid-area"></div>
-    </main>
 
-    <!-- STOCK TAB -->
-    <main id="tab-stock" class="container">
-        <div style="padding:20px 15px 10px 15px; flex-shrink:0;">
-            <div style="display:flex; justify-content:space-between; align-items:center;">
-                <h3 style="color:var(--primary)"><i class="fas fa-clipboard-list" style="color:var(--gold)"></i> လက်ရှိလက်ကျန်</h3>
-                <div style="display:flex; gap: 8px;">
-                    <button class="btn btn-excel" onclick="exportMainStockToExcel()" style="padding:8px 12px; font-size:13px;">
-                        <i class="fas fa-file-excel"></i> Excel
-                    </button>
+            </div>
+
+            <div class="cart-bottom">
+
+                <div>
+                    <div class="total-label">
+                        စုစုပေါင်းသင့်ငွေ
+                    </div>
+
+                    <div class="total">
+                        <span id="cartTotal">0</span> Ks
+                    </div>
                 </div>
-            </div>
-            <div class="cat-scroll" id="stock-cat-container" style="margin-top:15px;">
-                <!-- Categories injected here -->
-            </div>
-        </div>
-        <div class="table-wrap">
-            <table>
-                <thead><tr><th>အမည်</th><th>ရောင်းဈေး</th><th style="text-align:center;">Stock</th></tr></thead>
-                <tbody id="stock-body"></tbody>
-            </table>
-        </div>
-    </main>
 
-    <!-- INVENTORY TAB (Admin) -->
-    <main id="tab-inv" class="container">
-        <div style="padding:20px; background: white; margin: 15px; border-radius: 12px; border: 1px solid var(--border); box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
-            <div style="display:flex; justify-content:space-between; align-items:center;">
-                <h3 style="color:var(--primary)"><i class="fas fa-boxes" style="color:var(--green)"></i> ဂိုထောင်စီမံခန့်ခွဲမှု</h3>
-                <button class="btn btn-dark" onclick="openAddModal()" style="background:var(--green);"><i class="fas fa-plus"></i> အသစ်ထည့်ရန်</button>
-            </div>
-            <div style="position: relative; margin-top: 15px;">
-                <i class="fas fa-search" style="position: absolute; left: 12px; top: 14px; color: #94a3b8;"></i>
-                <input type="text" id="inv-search" class="input-style" placeholder="ပစ္စည်းအမည်ဖြင့် ရှာရန်..." oninput="refreshUI()" style="padding-left: 35px;">
-            </div>
-        </div>
-        <div class="table-wrap">
-            <table>
-                <thead><tr><th>ပစ္စည်းအမည်</th><th>ယူနစ်</th><th>ဝယ်/ရောင်း</th><th>လက်ကျန်</th><th style="text-align:center;">ပြင်ရန်</th></tr></thead>
-                <tbody id="inv-body"></tbody>
-            </table>
-        </div>
-    </main>
+                <button
+                    class="btn btn-dark"
+                    onclick="processSale()">
+                    🖨️ ဘောင်ချာထုတ်
+                </button>
 
-    <!-- REPORTS TAB (Admin) -->
-    <main id="tab-rep" class="container">
-        <div style="padding:20px; background: white; margin: 15px; border-radius: 12px; border: 1px solid var(--border); box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
-            <h3 style="color:var(--primary); margin-bottom: 15px;"><i class="fas fa-chart-line" style="color:var(--primary)"></i> အရောင်းအစီရင်ခံစာ</h3>
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom: 15px;">
-                <select id="rep-type" class="input-style" onchange="runReport()">
-                    <option value="day">နေ့ချုပ်စာရင်း</option>
-                    <option value="month">လချုပ်စာရင်း</option>
-                    <option value="year">နှစ်ချုပ်စာရင်း</option>
+            </div>
+
+        </div>
+
+
+        <div id="salesCategories" class="categories"></div>
+
+    </div>
+
+
+    <div id="productGrid" class="product-grid"></div>
+
+</section>
+
+
+<!-- =========================================================
+     STOCK
+========================================================= -->
+
+<section id="stockPage" class="page">
+
+    <div class="page-head">
+
+        <div class="card">
+
+            <div class="card-title">
+
+                <h3>📦 လက်ရှိလက်ကျန်</h3>
+
+                <button
+                    class="btn btn-excel"
+                    onclick="exportStock()">
+                    Excel
+                </button>
+
+            </div>
+
+            <div id="stockCategories" class="categories"></div>
+
+        </div>
+
+    </div>
+
+    <div class="table-box">
+
+        <table>
+
+            <thead>
+
+                <tr>
+                    <th>ပစ္စည်း</th>
+                    <th>ရောင်းဈေး</th>
+                    <th>Stock</th>
+                </tr>
+
+            </thead>
+
+            <tbody id="stockBody"></tbody>
+
+        </table>
+
+    </div>
+
+</section>
+
+
+<!-- =========================================================
+     INVENTORY
+========================================================= -->
+
+<section id="inventoryPage" class="page">
+
+    <div class="page-head">
+
+        <div class="card">
+
+            <div class="card-title">
+
+                <h3>🏭 ဂိုထောင်စီမံခန့်ခွဲမှု</h3>
+
+                <button
+                    class="btn btn-green"
+                    onclick="openProductModal()">
+                    ＋ အသစ်
+                </button>
+
+            </div>
+
+            <div class="search" style="margin-top:12px">
+
+                <span class="search-icon">🔎</span>
+
+                <input
+                    id="inventorySearch"
+                    class="input"
+                    placeholder="ပစ္စည်းအမည်ရှာရန်"
+                    oninput="renderInventory()">
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <div class="table-box">
+
+        <table>
+
+            <thead>
+
+                <tr>
+                    <th>ပစ္စည်း</th>
+                    <th>ယူနစ်</th>
+                    <th>ဝယ်/ရောင်း</th>
+                    <th>Stock</th>
+                    <th>ပြင်</th>
+                </tr>
+
+            </thead>
+
+            <tbody id="inventoryBody"></tbody>
+
+        </table>
+
+    </div>
+
+</section>
+
+
+<!-- =========================================================
+     REPORT
+========================================================= -->
+
+<section id="reportPage" class="page">
+
+    <div class="page-head">
+
+        <div class="card">
+
+            <h3>📊 အရောင်းအစီရင်ခံစာ</h3>
+
+            <div class="grid2" style="margin-top:12px">
+
+                <select
+                    id="reportType"
+                    class="input"
+                    onchange="runReport()">
+
+                    <option value="day">နေ့ချုပ်</option>
+                    <option value="month">လချုပ်</option>
+                    <option value="year">နှစ်ချုပ်</option>
+
                 </select>
-                <input type="date" id="rep-date" class="input-style" onchange="runReport()">
+
+                <input
+                    type="date"
+                    id="reportDate"
+                    class="input"
+                    onchange="runReport()">
+
             </div>
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
-                <div style="background:#f1f5f9; padding:15px; border-radius:10px; text-align:center; border:1px solid #e2e8f0;">
-                    <div style="color:var(--text-muted); font-size:13px; margin-bottom:5px;">စုစုပေါင်း ရောင်းရငွေ</div>
-                    <b id="sum-rev" style="font-size:18px; color:var(--primary);">0</b> Ks
+
+
+            <div class="report-summary">
+
+                <div class="summary-box">
+
+                    <small>ရောင်းရငွေ</small>
+
+                    <b id="sumRevenue" class="revenue">
+                        0
+                    </b>
+
+                    <small>Ks</small>
+
                 </div>
-                <div style="background:#f0fdf4; padding:15px; border-radius:10px; text-align:center; border:1px solid #dcfce3;">
-                    <div style="color:var(--text-muted); font-size:13px; margin-bottom:5px;">ရရှိသော အမြတ်ငွေ</div>
-                    <b id="sum-prof" style="font-size:18px; color:var(--green);">0</b> Ks
+
+
+                <div class="summary-box">
+
+                    <small>အမြတ်</small>
+
+                    <b id="sumProfit" class="profit">
+                        0
+                    </b>
+
+                    <small>Ks</small>
+
                 </div>
+
             </div>
-            <button class="btn btn-excel" onclick="exportGroupedExcel()" style="width:100%; margin-top:15px;">
-                <i class="fas fa-file-excel"></i> အစီရင်ခံစာအပြည့်အစုံ (Excel) ထုတ်မည်
+
+
+            <button
+                class="btn btn-excel"
+                style="width:100%;margin-top:10px"
+                onclick="exportReport()">
+
+                📊 Excel / CSV ထုတ်မည်
+
             </button>
-        </div>
-        <div class="table-wrap">
-            <table>
-                <thead><tr><th>Voucher #</th><th>ရက်စွဲ</th><th>ဝယ်သူ/ဝန်ထမ်း</th><th>ကျသင့်ငွေ</th><th style="text-align:center;">လုပ်ဆောင်ချက်</th></tr></thead>
-                <tbody id="rep-body"></tbody>
-            </table>
-        </div>
-    </main>
 
-    <!-- Bottom Navigation -->
-    <nav class="nav">
-        <button class="nav-item active" id="n-sales" onclick="navTo('tab-sales', this)"><i class="fas fa-cash-register"></i>အရောင်း</button>
-        <button class="nav-item" id="n-stock" onclick="navTo('tab-stock', this)"><i class="fas fa-box-open"></i>လက်ကျန်</button>
-        <button class="nav-item" id="n-inv" onclick="askPass('tab-inv', this)"><i class="fas fa-warehouse"></i>ဂိုထောင်</button>
-        <button class="nav-item" id="n-rep" onclick="askPass('tab-rep', this)"><i class="fas fa-chart-pie"></i>စာရင်းချုပ်</button>
-    </nav>
-
-    <!-- Modals -->
-    <div id="login-overlay" class="overlay">
-        <div class="modal-card" style="max-width: 350px;">
-            <div class="modal-header">
-                <span><i class="fas fa-lock" style="color:var(--red)"></i> Admin Login</span>
-                <i class="fas fa-times" style="color:var(--text-muted); cursor:pointer;" onclick="closeOverlay('login-overlay')"></i>
-            </div>
-            <p style="font-size:13px; color:var(--text-muted); margin-bottom:15px; text-align:center;">ဤနေရာသို့ဝင်ရောက်ရန် စကားဝှက်လိုအပ်ပါသည်</p>
-            <input type="password" id="pass-input" class="input-style" placeholder="Password ရိုက်ထည့်ပါ" style="text-align:center; letter-spacing: 5px; font-size: 18px;">
-            <button class="btn btn-dark" style="margin-top:20px; width:100%;" onclick="checkPass()">ဝင်ရောက်မည်</button>
         </div>
+
     </div>
 
-    <div id="add-overlay" class="overlay">
-        <div class="modal-card">
-            <div class="modal-header">
-                <span id="modal-title">ပစ္စည်းအချက်အလက်</span>
-                <i class="fas fa-times" style="color:var(--text-muted); cursor:pointer;" onclick="closeOverlay('add-overlay')"></i>
-            </div>
-            <input type="hidden" id="edit-id">
-            
-            <label style="font-size: 12px; font-weight: 600; color: var(--text-muted); margin-bottom: 5px; display: block;">ပစ္စည်းအမည်</label>
-            <input type="text" id="p-name" class="input-style" placeholder="ပစ္စည်းအမည်" style="margin-bottom:15px;">
-            
-            <label style="font-size: 12px; font-weight: 600; color: var(--text-muted); margin-bottom: 5px; display: block;">ယူနစ် (ဥပမာ- ခု၊ ပိဿာ၊ ထုပ်)</label>
-            <input type="text" id="p-unit" class="input-style" placeholder="ယူနစ် (ဥပမာ- ခု)" style="margin-bottom:15px;">
-            
-            <div class="input-group">
-                <div>
-                    <label style="font-size: 12px; font-weight: 600; color: var(--text-muted); margin-bottom: 5px; display: block;">လက်ရှိဝယ်ဈေး (ပျမ်းမျှ)</label>
-                    <input type="number" step="any" id="p-buy" class="input-style" placeholder="0">
-                </div>
-                <div>
-                    <label style="font-size: 12px; font-weight: 600; color: var(--text-muted); margin-bottom: 5px; display: block;">ရောင်းဈေး</label>
-                    <input type="number" step="any" id="p-sell" class="input-style" placeholder="0">
-                </div>
-            </div>
 
-            <label style="font-size: 12px; font-weight: 600; color: var(--text-muted); margin-bottom: 5px; display: block;">လက်ကျန်အရေအတွက် (Stock)</label>
-            <input type="number" step="any" id="p-qty" class="input-style" placeholder="0" style="margin-bottom:10px;">
+    <div class="table-box">
 
-            <div id="stock-in-area" class="stock-in-section">
-                <p style="font-size: 13px; font-weight: 600; margin-bottom: 10px; color: var(--primary);"><i class="fas fa-truck-loading"></i> အသစ်ဝယ်ယူမှု ထည့်သွင်းရန်</p>
-                <div class="input-group">
-                    <div>
-                        <small style="font-size: 11px; color: var(--text-muted);">အသစ်ဝယ်ယူသည့် အရေအတွက်</small>
-                        <input type="number" step="any" id="p-new-qty" class="input-style" placeholder="0" value="0">
-                    </div>
-                    <div>
-                        <small style="font-size: 11px; color: var(--text-muted);">အသစ်ဝယ်ဈေး (တစ်ခုချင်း)</small>
-                        <input type="number" step="any" id="p-new-buy" class="input-style" placeholder="0" value="0">
-                    </div>
-                </div>
-                <p style="font-size: 11px; color: var(--gold); margin-top: 8px;"><i class="fas fa-info-circle"></i> စနစ်မှ ပျမ်းမျှဝယ်ဈေးအသစ်ကို အလိုအလျောက် တွက်ချက်ပေးပါမည်။</p>
-            </div>
+        <table>
 
-            <label style="font-size: 12px; font-weight: 600; color: var(--text-muted); margin: 15px 0 5px 0; display: block;">အမျိုးအစား (Category)</label>
-            <select id="p-cat" class="input-style">
-                <option value="အအေး">အအေး</option>
-                <option value="ကော်ဖီ">ကော်ဖီ</option>
-                <option value="ခေါက်ဆွဲ">ခေါက်ဆွဲ</option>
-                <option value="မီးဖိုချောင်သုံး">မီးဖိုချောင်သုံး</option>
-                <option value="လူသုံးကုန်">လူသုံးကုန်</option>
-                <option value="အခြား">အခြား</option>
-            </select>
+            <thead>
 
-            <div style="display:flex; gap:10px; margin-top:20px;">
-                <button id="del-btn" class="btn btn-danger" style="display:none; flex:1;" onclick="deleteProduct()"><i class="fas fa-trash"></i> ဖျက်မည်</button>
-                <button class="btn btn-dark" style="background:var(--green); flex:2;" onclick="saveProduct()"><i class="fas fa-save"></i> သိမ်းဆည်းမည်</button>
-            </div>
-        </div>
+                <tr>
+                    <th>Voucher</th>
+                    <th>ရက်စွဲ</th>
+                    <th>ဝယ်သူ</th>
+                    <th>ငွေ</th>
+                    <th>လုပ်ဆောင်ချက်</th>
+                </tr>
+
+            </thead>
+
+            <tbody id="reportBody"></tbody>
+
+        </table>
+
     </div>
 
-    <div id="detail-overlay" class="overlay">
-        <div class="modal-card" style="max-width: 600px;">
-            <div class="modal-header">
-                <span><i class="fas fa-receipt"></i> အရောင်းဘောင်ချာ အသေးစိတ်</span>
-                <i class="fas fa-times" style="color:var(--text-muted); cursor:pointer;" onclick="closeOverlay('detail-overlay')"></i>
-            </div>
-            <div id="detail-content" style="font-size:14px;"></div>
-            <div id="detail-actions" style="margin-top:20px; padding-top:15px; border-top:1px solid var(--border);"></div>
+</section>
+
+
+<!-- =========================================================
+     BOTTOM NAV
+========================================================= -->
+
+<nav class="nav">
+
+    <button
+        id="navSales"
+        class="nav-btn active"
+        onclick="goPage('sales')">
+
+        <span class="icon">🛒</span>
+        အရောင်း
+
+    </button>
+
+
+    <button
+        id="navStock"
+        class="nav-btn"
+        onclick="goPage('stock')">
+
+        <span class="icon">📦</span>
+        လက်ကျန်
+
+    </button>
+
+
+    <button
+        id="navInventory"
+        class="nav-btn"
+        onclick="requestAdmin('inventory')">
+
+        <span class="icon">🏭</span>
+        ဂိုထောင်
+
+    </button>
+
+
+    <button
+        id="navReport"
+        class="nav-btn"
+        onclick="requestAdmin('report')">
+
+        <span class="icon">📊</span>
+        စာရင်းချုပ်
+
+    </button>
+
+</nav>
+
+</div>
+
+
+<!-- =========================================================
+     LOGIN MODAL
+========================================================= -->
+
+<div id="loginModal" class="overlay">
+
+    <div class="modal" style="max-width:350px">
+
+        <div class="modal-head">
+
+            <span>🔐 Admin Login</span>
+
+            <button
+                class="close"
+                onclick="closeModal('loginModal')">
+                ×
+            </button>
+
         </div>
+
+        <p style="text-align:center;color:#64748b;font-size:12px;margin-bottom:12px">
+            Admin Area သို့ဝင်ရန် Password လိုအပ်ပါသည်
+        </p>
+
+        <input
+            id="passwordInput"
+            type="password"
+            class="input"
+            placeholder="Password"
+            style="text-align:center">
+
+        <button
+            class="btn btn-dark"
+            style="width:100%;margin-top:12px"
+            onclick="checkPassword()">
+
+            ဝင်ရောက်မည်
+
+        </button>
+
     </div>
 
-    <script>
-        // Supabase Config - UPDATED API KEY
-        const SUPA_URL = "https://iyhskfxxpemtpspohjve.supabase.co";
-        const SUPA_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml5aHNrZnh4cGVtdHBzcG9oanZlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMyMDk0MTUsImV4cCI6MjA4ODc4NTQxNX0.qc8RyQj_JBxnCtP4XzTU-5iQr0jrIVv99mvacNj1A5"; 
-        const _sb = supabase.createClient(SUPA_URL, SUPA_KEY);
+</div>
 
-        // Core State
-        let products = [], cart = [], salesData = [];
-        let isAdmin = false;
-        let curCat = "all", curStockCat = "all", nextTab = "";
-        let editingSaleId = null; 
-        let offlineQueue = JSON.parse(localStorage.getItem('ttk_offline_queue')) || [];
 
-        // Categories List
-        const categories = ["အားလုံး", "အအေး", "ကော်ဖီ", "ခေါက်ဆွဲ", "မီးဖိုချောင်သုံး", "လူသုံးကုန်", "အခြား"];
+<!-- =========================================================
+     PRODUCT MODAL
+========================================================= -->
 
-        // Initialization
-        window.onload = async () => {
-            renderCategories();
-            document.getElementById('rep-date').value = new Date().toISOString().split('T')[0];
-            
-            const localProducts = localStorage.getItem('ttk_products');
-            if (localProducts) {
-                try { products = JSON.parse(localProducts); refreshUI(); } catch(e){}
-            }
+<div id="productModal" class="overlay">
 
-            await loadProductsAndSync();
+    <div class="modal">
 
-            if(sessionStorage.getItem('TTK_ADMIN')) { 
-                isAdmin = true; 
-                document.getElementById('logout-btn').style.display = 'block'; 
-            }
-        };
+        <div class="modal-head">
 
-        // --- UTILITIES ---
-        function safeFloat(val) { const n = parseFloat(val); return isNaN(n) ? 0 : n; }
-        
-        let toastTimeout;
-        function showToast(msg, type = 'success') {
-            const toast = document.getElementById('toast-container');
-            document.getElementById('toast-msg').innerText = msg;
-            document.getElementById('toast-icon').className = type === 'error' ? 'fas fa-exclamation-triangle' : 'fas fa-check-circle';
-            toast.className = `toast show ${type}`;
-            clearTimeout(toastTimeout);
-            toastTimeout = setTimeout(() => toast.classList.remove('show'), 3000);
-        }
+            <span id="productModalTitle">
+                ပစ္စည်းအသစ်
+            </span>
 
-        function setStatus(state, text) {
-            document.getElementById('status-dot').className = `dot ${state}`;
-            document.getElementById('status-text').innerText = text;
-        }
+            <button
+                class="close"
+                onclick="closeModal('productModal')">
+                ×
+            </button>
 
-        function renderCategories() {
-            const salesContainer = document.getElementById('sales-cat-container');
-            const stockContainer = document.getElementById('stock-cat-container');
-            let salesHtml = '', stockHtml = '';
-            categories.forEach(cat => {
-                let val = cat === "အားလုံး" ? "all" : cat;
-                salesHtml += `<button class="cat-btn ${val === 'all' ? 'active' : ''}" onclick="setCategory('${val}', this)">${cat}</button>`;
-                stockHtml += `<button class="cat-btn ${val === 'all' ? 'active' : ''}" onclick="setStockCategory('${val}', this)">${cat}</button>`;
-            });
-            salesContainer.innerHTML = salesHtml;
-            stockContainer.innerHTML = stockHtml;
-        }
+        </div>
 
-        // --- OFFLINE SYNC LOGIC ---
-        function addToQueue(action, data) {
-            offlineQueue.push({ action, data, timestamp: Date.now() });
-            localStorage.setItem('ttk_offline_queue', JSON.stringify(offlineQueue));
-        }
 
-        async function processOfflineQueue() {
-            if (offlineQueue.length === 0) return;
-            setStatus('syncing', 'Syncing...');
-            let newQueue = [];
-            let hasError = false;
-            
-            for (let item of offlineQueue) {
-                try {
-                    if (item.action === 'ADD_SALE') {
-                        const { id, tempId, ...saleData } = item.data;
-                        const { error } = await _sb.from('sales').insert([saleData]);
-                        if(error) throw error;
-                    } else if (item.action === 'SAVE_PRODUCT') {
-                        if (typeof item.data.id === 'string' && item.data.id.startsWith('temp_')) {
-                            const { id, ...prodData } = item.data;
-                            const { error } = await _sb.from('products').insert([prodData]);
-                            if(error) throw error;
-                        } else {
-                            const { id, ...prodData } = item.data;
-                            const { error } = await _sb.from('products').update(prodData).eq('id', item.data.id);
-                            if(error) throw error;
-                        }
-                    } else if (item.action === 'DEL_PRODUCT') {
-                        const { error } = await _sb.from('products').delete().eq('id', item.data.id);
-                        if(error) throw error;
-                    } else if (item.action === 'DEL_SALE') {
-                        const { error } = await _sb.from('sales').delete().eq('id', item.data.id);
-                        if(error) throw error;
-                    } else if (item.action === 'UPDATE_SALE') {
-                        const { id, ...saleData } = item.data;
-                        const { error } = await _sb.from('sales').update(saleData).eq('id', item.data.id);
-                        if(error) throw error;
-                    }
-                } catch (error) {
-                    console.error("Sync failed for item:", item, error);
-                    newQueue.push(item);
-                    hasError = true;
-                }
-            }
-            
-            offlineQueue = newQueue;
-            localStorage.setItem('ttk_offline_queue', JSON.stringify(offlineQueue));
-            
-            if (offlineQueue.length === 0) {
-                setStatus('online', 'Online');
-                showToast("စနစ်တွင်းသို့ အချက်အလက်များ လွှဲပြောင်းပြီးပါပြီ။");
-            } else {
-                setStatus('offline', 'Offline (Pending)');
-                if(hasError) showToast("အချို့အချက်အလက်များ Sync လုပ်၍ မရသေးပါ။", "error");
-            }
-        }
+        <input
+            id="editProductId"
+            type="hidden">
 
-        // --- CORE DATA FETCHING ---
-        async function loadProductsAndSync() {
-            setStatus('syncing', 'Connecting...');
-            try {
-                const { data, error } = await _sb.from('products').select('*').order('name');
-                if (error) throw error; 
-                
-                products = data || [];
-                localStorage.setItem('ttk_products', JSON.stringify(products));
-                setStatus('online', 'Online');
-                await processOfflineQueue();
-            } catch (err) {
-                console.warn("Using Local Data due to Connection Error.");
-                setStatus('offline', 'Offline (Local Mode)');
-                const localProducts = localStorage.getItem('ttk_products');
-                products = localProducts ? JSON.parse(localProducts) : [];
-                showToast("Database နှင့် ချိတ်ဆက်၍မရပါ။ Local Data ကို အသုံးပြုနေပါသည်။", "error");
-            } finally {
-                refreshUI();
-            }
-        }
 
-        function refreshUI() {
-            // 1. Sales POS Grid
-            const qS = (document.getElementById('search-box').value || "").toLowerCase().trim();
-            const posFiltered = products.filter(p => (curCat === 'all' || p.category === curCat) && p.name.toLowerCase().includes(qS));
-            const grid = document.getElementById('pos-grid');
-            
-            if (posFiltered.length === 0) {
-                grid.innerHTML = '<div style="grid-column: 1/-1; text-align:center; padding:40px; color:var(--text-muted);"><i class="fas fa-box-open fa-3x" style="opacity:0.2; margin-bottom:10px; display:block;"></i>ပစ္စည်းရှာမတွေ့ပါ</div>';
-            } else {
-                grid.innerHTML = posFiltered.map(p => {
-                    let qty = safeFloat(p.qty);
-                    let tagClass = qty < 5 ? 'stock-tag low' : 'stock-tag';
-                    let idStr = typeof p.id === 'string' ? `'${p.id}'` : p.id;
-                    return `
-                    <div class="p-card" onclick="addToCart(${idStr})">
-                        <div class="${tagClass}">S: ${qty}</div>
-                        <div class="p-name">${p.name}</div>
-                        <div class="p-price">${safeFloat(p.sell).toLocaleString()} Ks</div>
-                    </div>`;
-                }).join('');
-            }
+        <label>ပစ္စည်းအမည်</label>
 
-            // 2. Stock Table
-            const stockFiltered = products.filter(p => (curStockCat === 'all' || p.category === curStockCat));
-            document.getElementById('stock-body').innerHTML = stockFiltered.length === 0 ? '<tr><td colspan="3" style="text-align:center; padding:30px;">ပစ္စည်းမရှိပါ</td></tr>' : stockFiltered.map(p => {
-                let qty = safeFloat(p.qty);
-                let color = qty < 5 ? 'var(--red)' : 'var(--green)';
-                return `<tr>
-                    <td><b style="color:var(--text-main);">${p.name}</b><br><small style="color:var(--text-muted);">${p.unit||'ခု'}</small></td>
-                    <td>${safeFloat(p.sell).toLocaleString()} Ks</td>
-                    <td style="text-align:center;"><span style="color:${color}; font-weight:bold; padding:4px 8px; background:rgba(0,0,0,0.03); border-radius:6px;">${qty}</span></td>
-                </tr>`;
-            }).join('');
+        <input
+            id="productName"
+            class="input"
+            placeholder="ဥပမာ - Coca Cola"
+            style="margin:5px 0 12px">
 
-            // 3. Inventory Table
-            const qI = (document.getElementById('inv-search').value || "").toLowerCase().trim();
-            const invFiltered = products.filter(p => p.name.toLowerCase().includes(qI));
-            document.getElementById('inv-body').innerHTML = invFiltered.length === 0 ? '<tr><td colspan="5" style="text-align:center; padding:30px;">ပစ္စည်းမရှိပါ</td></tr>' : invFiltered.map(p => {
-                let idStr = typeof p.id === 'string' ? `'${p.id}'` : p.id;
-                return `<tr>
-                    <td><b style="color:var(--text-main);">${p.name}</b><br><small style="color:var(--text-muted);">${p.category}</small></td>
-                    <td>${p.unit || '-'}</td>
-                    <td><span style="color:var(--text-muted)">${safeFloat(p.buy).toLocaleString()}</span><br><span style="color:var(--green); font-weight:bold;">${safeFloat(p.sell).toLocaleString()}</span></td>
-                    <td><span style="font-weight:bold;">${safeFloat(p.qty)}</span></td>
-                    <td style="text-align:center;"><button onclick="editProduct(${idStr})" class="btn" style="background:#e2e8f0; color:var(--primary); padding:8px; display:inline-flex;"><i class="fas fa-edit"></i></button></td>
-                </tr>`;
-            }).join('');
-        }
 
-        // --- CART LOGIC ---
-        function addToCart(id) {
-            const p = products.find(x => x.id === id);
-            if(!p) return;
-            const ex = cart.find(x => x.id === id);
-            if(ex) { ex.cQty = safeFloat(ex.cQty) + 1; } 
-            else { cart.push({...p, cQty: 1}); }
-            renderCart();
-            showToast(`'${p.name}' ခြင်းတောင်းထဲထည့်ပြီးပါပြီ`);
-        }
+        <label>ယူနစ်</label>
 
-        function updateCartPrice(id, inputElem) {
-            const item = cart.find(x => x.id === id);
-            if (item) { 
-                let newPrice = safeFloat(inputElem.value);
-                item.sell = newPrice; 
-                inputElem.value = newPrice; 
-                renderTotalOnly(); 
-            }
-        }
+        <input
+            id="productUnit"
+            class="input"
+            placeholder="ခု / ထုပ် / ဖာ"
+            style="margin:5px 0 12px">
 
-        window.updateCartQty = function(id, inputElem) {
-            const item = cart.find(x => x.id === id);
-            if (item) {
-                let qty = safeFloat(inputElem.value);
-                if (qty <= 0) { removeItem(id); return; }
-                item.cQty = qty;
-                inputElem.value = qty;
-                renderTotalOnly();
-            }
-        };
 
-        function adjustQty(id, d) { 
-            const i = cart.find(x => x.id === id); 
-            if(i) { 
-                i.cQty = safeFloat(i.cQty) + d; 
-                if(i.cQty <= 0) removeItem(id); else renderCart(); 
-            } 
-        }
+        <div class="grid2">
 
-        function removeItem(id) { 
-            cart = cart.filter(x => x.id !== id); 
-            renderCart(); 
-        }
+            <div>
 
-        function renderTotalOnly() {
-            let total = 0; 
-            cart.forEach(i => total += Math.round(safeFloat(i.sell) * safeFloat(i.cQty)));
-            document.getElementById('cart-total').innerText = total.toLocaleString();
-        }
+                <label>ဝယ်ဈေး</label>
 
-        function renderCart() {
-            const list = document.getElementById('cart-list');
-            if(cart.length === 0) { 
-                list.innerHTML = '<div style="text-align:center; color:var(--text-muted); font-size:13px; padding: 20px 0;"><i class="fas fa-shopping-basket fa-2x" style="color:#e2e8f0; margin-bottom:10px; display:block;"></i>ခြင်းတောင်းထဲတွင် ပစ္စည်းမရှိသေးပါ</div>'; 
-                document.getElementById('cart-total').innerText = "0";
+                <input
+                    id="productBuy"
+                    type="number"
+                    class="input"
+                    placeholder="0"
+                    style="margin-top:5px">
+
+            </div>
+
+
+            <div>
+
+                <label>ရောင်းဈေး</label>
+
+                <input
+                    id="productSell"
+                    type="number"
+                    class="input"
+                    placeholder="0"
+                    style="margin-top:5px">
+
+            </div>
+
+        </div>
+
+
+        <label style="display:block;margin-top:12px">
+            လက်ရှိ Stock
+        </label>
+
+        <input
+            id="productQty"
+            type="number"
+            class="input"
+            placeholder="0"
+            style="margin:5px 0 12px">
+
+
+        <div
+            style="
+            background:#f8fafc;
+            border:1px dashed #94a3b8;
+            border-radius:9px;
+            padding:12px;
+            margin-bottom:12px">
+
+            <b style="font-size:13px">
+                🚚 အသစ်ဝယ်ယူမှု
+            </b>
+
+            <div class="grid2" style="margin-top:8px">
+
+                <input
+                    id="newQty"
+                    type="number"
+                    class="input"
+                    placeholder="အသစ် Qty"
+                    value="0">
+
+                <input
+                    id="newBuy"
+                    type="number"
+                    class="input"
+                    placeholder="အသစ်ဝယ်ဈေး"
+                    value="0">
+
+            </div>
+
+            <small style="display:block;margin-top:6px;color:#d97706">
+                ပျမ်းမျှဝယ်ဈေးကို အလိုအလျောက်တွက်ပေးပါမည်။
+            </small>
+
+        </div>
+
+
+        <label>အမျိုးအစား</label>
+
+        <select
+            id="productCategory"
+            class="input"
+            style="margin-top:5px">
+
+            <option>အအေး</option>
+            <option>ကော်ဖီ</option>
+            <option>ခေါက်ဆွဲ</option>
+            <option>မီးဖိုချောင်သုံး</option>
+            <option>လူသုံးကုန်</option>
+            <option>အခြား</option>
+
+        </select>
+
+
+        <div style="display:flex;gap:8px;margin-top:15px">
+
+            <button
+                id="deleteProductBtn"
+                class="btn btn-red"
+                style="display:none;flex:1"
+                onclick="deleteProduct()">
+
+                🗑️ ဖျက်မည်
+
+            </button>
+
+            <button
+                class="btn btn-green"
+                style="flex:2"
+                onclick="saveProduct()">
+
+                💾 သိမ်းမည်
+
+            </button>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- =========================================================
+     SALE DETAIL MODAL
+========================================================= -->
+
+<div id="saleModal" class="overlay">
+
+    <div class="modal">
+
+        <div class="modal-head">
+
+            <span>🧾 ဘောင်ချာအသေးစိတ်</span>
+
+            <button
+                class="close"
+                onclick="closeModal('saleModal')">
+                ×
+            </button>
+
+        </div>
+
+        <div id="saleDetail"></div>
+
+    </div>
+
+</div>
+
+
+<!-- TOAST -->
+
+<div id="toast" class="toast"></div>
+
+
+<!-- PRINT RECEIPT -->
+
+<div id="receipt"></div>
+
+
+<script>
+
+/* =========================================================
+   SAFE INITIALIZATION
+========================================================= */
+
+"use strict";
+
+
+/* ---------------- SUPABASE CONFIG ---------------- */
+
+const SUPA_URL =
+"https://iyhskfxxpemtpspohjve.supabase.co";
+
+const SUPA_KEY =
+"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml5aHNrZnh4cGVtdHBzcG9oanZlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMyMDk0MTUsImV4cCI6MjA4ODc4NTQxNX0.qc8RyQj_JBxnCtP4XzTU-5iQr0jrIVv99mvacNj1A5";
+
+
+let sb = null;
+
+
+/* =========================================================
+   STATE
+========================================================= */
+
+let products = [];
+let cart = [];
+let sales = [];
+
+let admin = false;
+let pendingPage = "";
+
+let currentCategory = "all";
+let currentStockCategory = "all";
+
+let offlineQueue =
+    JSON.parse(
+        localStorage.getItem("ttk_offline_queue") || "[]"
+    );
+
+
+const categories = [
+    "အားလုံး",
+    "အအေး",
+    "ကော်ဖီ",
+    "ခေါက်ဆွဲ",
+    "မီးဖိုချောင်သုံး",
+    "လူသုံးကုန်",
+    "အခြား"
+];
+
+
+/* =========================================================
+   UTILITY
+========================================================= */
+
+function num(v){
+
+    const n = Number(v);
+
+    return Number.isFinite(n) ? n : 0;
+
+}
+
+
+function money(v){
+
+    return Math.round(num(v))
+        .toLocaleString();
+
+}
+
+
+function esc(v){
+
+    return String(v ?? "")
+        .replace(/&/g,"&amp;")
+        .replace(/</g,"&lt;")
+        .replace(/>/g,"&gt;")
+        .replace(/"/g,"&quot;")
+        .replace(/'/g,"&#039;");
+
+}
+
+
+function saveProducts(){
+
+    localStorage.setItem(
+        "ttk_products",
+        JSON.stringify(products)
+    );
+
+}
+
+
+function saveSales(){
+
+    localStorage.setItem(
+        "ttk_sales",
+        JSON.stringify(sales)
+    );
+
+}
+
+
+function saveQueue(){
+
+    localStorage.setItem(
+        "ttk_offline_queue",
+        JSON.stringify(offlineQueue)
+    );
+
+}
+
+
+/* =========================================================
+   TOAST
+========================================================= */
+
+let toastTimer;
+
+function toast(message,error=false){
+
+    const el =
+        document.getElementById("toast");
+
+    el.innerText = message;
+
+    el.className =
+        "toast show" +
+        (error ? " error" : "");
+
+    clearTimeout(toastTimer);
+
+    toastTimer =
+        setTimeout(()=>{
+            el.className="toast";
+        },3000);
+
+}
+
+
+/* =========================================================
+   STATUS
+========================================================= */
+
+function status(type,text){
+
+    document.getElementById("statusDot")
+        .className = "dot " + type;
+
+    document.getElementById("statusText")
+        .innerText = text;
+
+}
+
+
+/* =========================================================
+   LOAD SUPABASE SAFELY
+========================================================= */
+
+function loadSupabase(){
+
+    return new Promise(resolve=>{
+
+        if(window.supabase){
+
+            try{
+
+                sb =
+                window.supabase.createClient(
+                    SUPA_URL,
+                    SUPA_KEY
+                );
+
+                resolve(true);
+
                 return;
+
+            }catch(e){
+
+                console.warn(e);
+
             }
-            
-            let total = 0; 
-            list.innerHTML = cart.map(i => {
-                let pSell = safeFloat(i.sell);
-                let pQty = safeFloat(i.cQty);
-                total += Math.round(pSell * pQty);
-                const passId = typeof i.id === 'string' ? `'${i.id}'` : i.id;
-                
-                return `<div class="cart-item">
-                    <div style="flex:1;">
-                        <b style="color:var(--text-main); font-size:13px; display:block; margin-bottom:4px;">${i.name}</b>
-                        <input type="number" step="any" class="price-edit-input" value="${pSell}" onchange="updateCartPrice(${passId}, this)"> <small style="color:var(--text-muted)">Ks</small>
-                    </div>
-                    <div style="display:flex; align-items:center;">
-                        <button onclick="adjustQty(${passId},-1)" style="border:none; width:28px; height:28px; border-radius:6px; background:#e2e8f0; color:var(--text-main); cursor:pointer; font-weight:bold;">-</button>
-                        <input type="number" step="any" class="qty-edit-input" value="${pQty}" onchange="updateCartQty(${passId}, this)">
-                        <button onclick="adjustQty(${passId},1)" style="border:none; width:28px; height:28px; border-radius:6px; background:#e2e8f0; color:var(--text-main); cursor:pointer; font-weight:bold;">+</button>
-                        <i class="fas fa-trash-alt" style="color:var(--red); margin-left:12px; cursor:pointer; padding:5px;" onclick="removeItem(${passId})" title="ဖျက်မည်"></i>
-                    </div>
-                </div>`;
-            }).join('');
-            
-            document.getElementById('cart-total').innerText = total.toLocaleString();
+
         }
 
-        // --- CHECKOUT & RECEIPT ---
-        function formatVoucher(id) { 
-            if(typeof id === 'string' && id.startsWith('temp_')) return "OFFLINE";
-            return id.toString().padStart(7, '0'); 
+
+        const script =
+            document.createElement("script");
+
+        script.src =
+            "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2";
+
+        script.async = true;
+
+        script.onload = ()=>{
+
+            try{
+
+                sb =
+                window.supabase.createClient(
+                    SUPA_URL,
+                    SUPA_KEY
+                );
+
+                resolve(true);
+
+            }catch(e){
+
+                console.warn(e);
+
+                resolve(false);
+
+            }
+
+        };
+
+        script.onerror = ()=>{
+
+            console.warn(
+                "Supabase library unavailable"
+            );
+
+            resolve(false);
+
+        };
+
+        document.head.appendChild(script);
+
+    });
+
+}
+
+
+/* =========================================================
+   INITIALIZE
+========================================================= */
+
+document.addEventListener(
+    "DOMContentLoaded",
+    init
+);
+
+
+async function init(){
+
+    renderCategories();
+
+    renderAll();
+
+    const today =
+        new Date()
+        .toISOString()
+        .slice(0,10);
+
+    document.getElementById(
+        "reportDate"
+    ).value = today;
+
+
+    /* LOCAL DATA FIRST */
+
+    try{
+
+        products =
+            JSON.parse(
+                localStorage.getItem(
+                    "ttk_products"
+                ) || "[]"
+            );
+
+    }catch(e){
+
+        products=[];
+
+    }
+
+
+    try{
+
+        sales =
+            JSON.parse(
+                localStorage.getItem(
+                    "ttk_sales"
+                ) || "[]"
+            );
+
+    }catch(e){
+
+        sales=[];
+
+    }
+
+
+    renderAll();
+
+
+    /* ADMIN SESSION */
+
+    if(
+        sessionStorage.getItem(
+            "TTK_ADMIN"
+        ) === "1"
+    ){
+
+        admin=true;
+
+        document.getElementById(
+            "logoutBtn"
+        ).style.display="block";
+
+    }
+
+
+    status(
+        "syncing",
+        "Connecting..."
+    );
+
+
+    /* LOAD CLOUD SAFELY */
+
+    const connected =
+        await loadSupabase();
+
+
+    if(!connected){
+
+        status(
+            "offline",
+            "Offline Local"
+        );
+
+        toast(
+            "Cloud မရပါ။ Local Mode ဖြင့် အလုပ်လုပ်နေပါသည်",
+            true
+        );
+
+        return;
+
+    }
+
+
+    await syncCloud();
+
+}
+
+
+/* =========================================================
+   CLOUD SYNC
+========================================================= */
+
+async function syncCloud(){
+
+    if(!sb){
+
+        status(
+            "offline",
+            "Offline Local"
+        );
+
+        return;
+
+    }
+
+
+    try{
+
+        status(
+            "syncing",
+            "Connecting..."
+        );
+
+
+        const result =
+            await sb
+            .from("products")
+            .select("*")
+            .order("name");
+
+
+        if(result.error)
+            throw result.error;
+
+
+        products =
+            result.data || [];
+
+
+        saveProducts();
+
+
+        status(
+            "online",
+            "Cloud Online"
+        );
+
+
+        await processQueue();
+
+
+        renderAll();
+
+
+    }catch(error){
+
+        console.warn(
+            "Cloud connection failed",
+            error
+        );
+
+        status(
+            "offline",
+            "Offline Local"
+        );
+
+        renderAll();
+
+    }
+
+}
+
+
+/* =========================================================
+   OFFLINE QUEUE
+========================================================= */
+
+function queue(action,data){
+
+    offlineQueue.push({
+
+        action,
+        data,
+        time:Date.now()
+
+    });
+
+    saveQueue();
+
+}
+
+
+async function processQueue(){
+
+    if(!sb || offlineQueue.length===0)
+        return;
+
+
+    status(
+        "syncing",
+        "Syncing..."
+    );
+
+
+    const remaining=[];
+
+
+    for(const item of offlineQueue){
+
+        try{
+
+            if(item.action==="ADD_SALE"){
+
+                const d={
+                    ...item.data
+                };
+
+                delete d.id;
+
+                const r =
+                    await sb
+                    .from("sales")
+                    .insert([d]);
+
+                if(r.error)
+                    throw r.error;
+
+            }
+
+
+            else if(
+                item.action==="SAVE_PRODUCT"
+            ){
+
+                const d={
+                    ...item.data
+                };
+
+                const id=d.id;
+
+                delete d.id;
+
+
+                if(
+                    String(id)
+                    .startsWith("temp_")
+                ){
+
+                    const r =
+                        await sb
+                        .from("products")
+                        .insert([d]);
+
+                    if(r.error)
+                        throw r.error;
+
+                }else{
+
+                    const r =
+                        await sb
+                        .from("products")
+                        .update(d)
+                        .eq("id",id);
+
+                    if(r.error)
+                        throw r.error;
+
+                }
+
+            }
+
+
+            else if(
+                item.action==="DELETE_PRODUCT"
+            ){
+
+                const r =
+                    await sb
+                    .from("products")
+                    .delete()
+                    .eq("id",item.data.id);
+
+                if(r.error)
+                    throw r.error;
+
+            }
+
+
+            else if(
+                item.action==="DELETE_SALE"
+            ){
+
+                const r =
+                    await sb
+                    .from("sales")
+                    .delete()
+                    .eq("id",item.data.id);
+
+                if(r.error)
+                    throw r.error;
+
+            }
+
+        }catch(e){
+
+            console.warn(
+                "Queue failed",
+                e
+            );
+
+            remaining.push(item);
+
         }
 
-        function generateReceiptHTML(data, isReprint = false) {
-            let rows = "";
-            const items = Array.isArray(data.items) ? data.items : JSON.parse(data.items || '[]');
-            items.forEach(i => {
-                rows += `<tr>
-                    <td class="c-name">${i.name}</td>
-                    <td class="c-qty">${safeFloat(i.qty)} ${i.unit||''}</td>
-                    <td class="c-price">${safeFloat(i.sell).toLocaleString()}</td>
-                    <td class="c-amt">${Math.round(safeFloat(i.sell) * safeFloat(i.qty)).toLocaleString()}</td>
-                </tr>`;
-            });
-            return `<div class="r-center">
-                <div class="r-header-title">ထွန်းတောက်ကြယ်</div>
-                <div class="r-header-sub">အမှတ်(၁၅)၊ ထင်းရှူးရိပ်သာ(၁)ပတ်လမ်း၊ ဇေကမ္ဘာဝင်း</div>
-                <div class="r-header-sub">မင်္ဂလာဒုံမြို့နယ်</div>
-                <div class="r-header-sub">09-777715161, 09-940005161</div>
-                <div class="r-info">${isReprint ? '<b>[RE-PRINT/EDITED]</b><br>' : ''}VOUCHER#: ${formatVoucher(data.id)}<br>Date: ${data.date}<br>Cust: ${data.cust}</div>
-                <table class="r-table">
-                    <thead><tr><th class="c-name">Item</th><th class="c-qty">Qty</th><th class="c-price">Price</th><th class="c-amt">Amount</th></tr></thead>
-                    <tbody>${rows}</tbody>
-                </table>
-                <div class="r-summary"><div class="r-row"><span class="r-label">Total Amount:</span><span class="r-val">${safeFloat(data.rev).toLocaleString()} Ks</span></div></div>
-                <div class="r-footer">*** ဝယ်ယူအားပေးမှုကို ကျေးဇူးတင်ပါသည်။ ***</div>
+    }
+
+
+    offlineQueue=remaining;
+
+    saveQueue();
+
+
+    if(offlineQueue.length){
+
+        status(
+            "offline",
+            "Pending Sync"
+        );
+
+    }else{
+
+        status(
+            "online",
+            "Cloud Online"
+        );
+
+    }
+
+}
+
+
+/* =========================================================
+   CATEGORIES
+========================================================= */
+
+function renderCategories(){
+
+    const salesEl =
+        document.getElementById(
+            "salesCategories"
+        );
+
+    const stockEl =
+        document.getElementById(
+            "stockCategories"
+        );
+
+
+    salesEl.innerHTML =
+        categories.map(c=>{
+
+            const val =
+                c==="အားလုံး"
+                ? "all"
+                : c;
+
+            return `
+            <button
+                class="cat ${val==="all"?"active":""}"
+                onclick="setSalesCategory('${esc(val)}',this)">
+                ${esc(c)}
+            </button>`;
+
+        }).join("");
+
+
+    stockEl.innerHTML =
+        categories.map(c=>{
+
+            const val =
+                c==="အားလုံး"
+                ? "all"
+                : c;
+
+            return `
+            <button
+                class="cat ${val==="all"?"active":""}"
+                onclick="setStockCategory('${esc(val)}',this)">
+                ${esc(c)}
+            </button>`;
+
+        }).join("");
+
+}
+
+
+/* =========================================================
+   RENDER ALL
+========================================================= */
+
+function renderAll(){
+
+    renderProducts();
+
+    renderStock();
+
+    renderInventory();
+
+    if(
+        document.getElementById(
+            "reportPage"
+        ).classList.contains("active")
+    ){
+
+        runReport();
+
+    }
+
+}
+
+
+/* =========================================================
+   PRODUCTS
+========================================================= */
+
+function renderProducts(){
+
+    const q =
+        (
+            document.getElementById(
+                "salesSearch"
+            )?.value || ""
+        )
+        .toLowerCase()
+        .trim();
+
+
+    const list =
+        products.filter(p=>{
+
+            const catOK =
+                currentCategory==="all" ||
+                p.category===currentCategory;
+
+            const searchOK =
+                String(p.name||"")
+                .toLowerCase()
+                .includes(q);
+
+            return catOK && searchOK;
+
+        });
+
+
+    const grid =
+        document.getElementById(
+            "productGrid"
+        );
+
+
+    if(!list.length){
+
+        grid.innerHTML=`
+        <div style="
+            grid-column:1/-1;
+            text-align:center;
+            padding:50px 10px;
+            color:#64748b">
+
+            📦<br>
+            ပစ္စည်းမတွေ့ပါ
+
+        </div>`;
+
+        return;
+
+    }
+
+
+    grid.innerHTML =
+        list.map(p=>{
+
+            const qty=num(p.qty);
+
+            return `
+            <div
+                class="product"
+                onclick="addCart(${JSON.stringify(p.id)})">
+
+                <span class="stock ${qty<5?"low":""}">
+                    S:${qty}
+                </span>
+
+                <div class="product-name">
+                    ${esc(p.name)}
+                </div>
+
+                <div class="product-price">
+                    ${money(p.sell)} Ks
+                </div>
+
             </div>`;
-        }
 
-        async function processSale() {
-            if(!cart.length) {
-                showToast("ခြင်းတောင်းထဲတွင် ပစ္စည်းမရှိသေးပါ", "error");
-                return;
-            }
-            if(!confirm("အရောင်းစာရင်းသွင်းပြီး ဘောင်ချာထုတ်မှာ သေချာပါသလား?")) return;
+        }).join("");
 
-            const isEditing = editingSaleId !== null;
-            let oldSale = isEditing ? salesData.find(s => s.id === editingSaleId) : null;
-            let oldItems = oldSale ? (Array.isArray(oldSale.items) ? oldSale.items : JSON.parse(oldSale.items || '[]')) : [];
-            
-            const now = new Date();
-            const date = (isEditing && oldSale) ? oldSale.date : now.toISOString().split('T')[0];
-            
-            const staff = document.getElementById('staff-name').value.trim() || "Admin";
-            const cust = document.getElementById('cust-name').value.trim() || "Guest";
-            let receiptId = isEditing ? editingSaleId : 'temp_' + Date.now();
+}
 
-            let tempProducts = JSON.parse(JSON.stringify(products));
 
-            if(isEditing) {
-                oldItems.forEach(oldI => {
-                    let p = tempProducts.find(x => x.id === oldI.id);
-                    if(p) p.qty = safeFloat(p.qty) + safeFloat(oldI.qty);
-                });
-            }
+/* =========================================================
+   CART
+========================================================= */
 
-            let rev=0, prof=0;
-            const items = cart.map(i => {
-                const prodIndex = tempProducts.findIndex(p => p.id === i.id);
-                let actualBuy = (i.buy !== undefined && i.buy !== null) ? safeFloat(i.buy) : 0;
-                if (actualBuy === 0 && prodIndex > -1) actualBuy = safeFloat(tempProducts[prodIndex].buy);
-                
-                let iQty = safeFloat(i.cQty);
-                let iSell = safeFloat(i.sell);
-                
-                rev += Math.round(iSell * iQty); 
-                prof += Math.round((iSell - actualBuy) * iQty);
-                
-                if(prodIndex > -1) tempProducts[prodIndex].qty = safeFloat(tempProducts[prodIndex].qty) - iQty;
-                return { id: i.id, name: i.name, qty: iQty, sell: iSell, buy: actualBuy, unit: i.unit };
-            });
+function addCart(id){
 
-            products = tempProducts;
-            localStorage.setItem('ttk_products', JSON.stringify(products));
+    const p =
+        products.find(
+            x=>String(x.id)===String(id)
+        );
 
-            const saleData = { date, rev, prof, cust: `${cust} (C: ${staff})`, items };
+    if(!p)return;
 
-            try {
-                if (isEditing && typeof receiptId !== 'string') {
-                    const { error } = await _sb.from('sales').update({ rev, prof, cust: saleData.cust, items }).eq('id', receiptId);
-                    if(error) throw error;
-                } else if (!isEditing) {
-                    const { data: inserted, error: saleErr } = await _sb.from('sales').insert([saleData]).select();
-                    if(saleErr) throw saleErr;
-                    if (inserted && inserted.length > 0) receiptId = inserted[0].id;
-                } else {
-                    saleData.id = receiptId;
-                    addToQueue('UPDATE_SALE', saleData);
-                }
-                
-                let productsToUpdate = new Set([...oldItems.map(i=>i.id), ...cart.map(i=>i.id)]);
-                for(let pid of productsToUpdate) { 
-                    const currentProd = products.find(p => p.id === pid);
-                    if(currentProd) {
-                        if(typeof currentProd.id !== 'string') {
-                            await _sb.from('products').update({ qty: currentProd.qty }).eq('id', pid); 
-                        } else {
-                            addToQueue('SAVE_PRODUCT', currentProd);
-                        }
-                    }
-                }
-            } catch (e) { 
-                console.warn("Sale saved offline", e.message);
-                if(!isEditing) {
-                    saleData.id = receiptId;
-                    addToQueue('ADD_SALE', saleData);
-                }
-                setStatus('offline', 'Offline (Saved Local)');
-            }
 
-            document.getElementById('receipt-render-area').innerHTML = generateReceiptHTML({ id: receiptId, date, cust: `${cust} (C: ${staff})`, rev, items }, isEditing);
-            
-            setTimeout(() => { 
-                window.print(); 
-                cart = []; 
-                document.getElementById('cust-name').value = ""; 
-                renderCart(); 
-                refreshUI(); 
-                if(isEditing) { cancelEdit(); runReport(); }
-                showToast("အရောင်းစာရင်း မှတ်တမ်းတင်ပြီးပါပြီ");
-            }, 500);
-        }
+    const existing =
+        cart.find(
+            x=>String(x.id)===String(id)
+        );
 
-        // --- REPORTS & EXPORT ---
-        async function runReport() {
-            const dt = document.getElementById('rep-date').value;
-            const ty = document.getElementById('rep-type').value;
-            const todayStr = new Date().toISOString().split('T')[0];
-            
-            try {
-                let q = _sb.from('sales').select('*');
-                if(ty==='day') q = q.eq('date', dt); 
-                else if(ty==='month') q = q.like('date', `${dt.slice(0,7)}%`);
-                else if(ty==='year') q = q.like('date', `${dt.slice(0,4)}%`);
-                
-                const { data, error } = await q.order('id', {ascending: false});
-                if(error) throw error;
-                salesData = data || [];
-                
-                let allLocalSales = JSON.parse(localStorage.getItem('ttk_sales')) || [];
-                salesData.forEach(newSale => {
-                    const idx = allLocalSales.findIndex(s => s.id === newSale.id);
-                    if (idx > -1) allLocalSales[idx] = newSale;
-                    else allLocalSales.push(newSale);
-                });
-                localStorage.setItem('ttk_sales', JSON.stringify(allLocalSales));
-            } catch(e) {
-                console.warn("Report fetching offline.");
-                const localSales = JSON.parse(localStorage.getItem('ttk_sales')) || [];
-                const queuedSales = offlineQueue.filter(q => q.action === 'ADD_SALE').map(q => q.data);
-                const allSales = [...localSales, ...queuedSales];
-                
-                if(ty==='day') salesData = allSales.filter(s => s.date === dt);
-                else if(ty==='month') salesData = allSales.filter(s => s.date && s.date.startsWith(dt.slice(0,7)));
-                else if(ty==='year') salesData = allSales.filter(s => s.date && s.date.startsWith(dt.slice(0,4)));
-                
-                salesData.sort((a,b) => (b.id.toString() > a.id.toString()) ? 1 : -1);
-            }
 
-            let r=0, p=0, rows="";
-            if(salesData.length === 0) {
-                rows = '<tr><td colspan="5" style="text-align:center; padding:30px;">စာရင်းမရှိပါ</td></tr>';
-            } else {
-                salesData.forEach(s => { 
-                    let calcProf = 0;
-                    const items = Array.isArray(s.items) ? s.items : JSON.parse(s.items || '[]');
-                    const isTodaySale = (s.date === todayStr);
+    if(existing){
 
-                    items.forEach(i => {
-                        let actualBuy = 0;
-                        if (isTodaySale) {
-                            const currentProd = products.find(prod => prod.id === i.id || prod.name === i.name);
-                            actualBuy = currentProd ? safeFloat(currentProd.buy) : ((i.buy !== undefined && i.buy !== null) ? safeFloat(i.buy) : 0);
-                        } else {
-                            actualBuy = (i.buy !== undefined && i.buy !== null) ? safeFloat(i.buy) : 0;
-                            if (actualBuy === 0) {
-                                const currentProd = products.find(prod => prod.id === i.id || prod.name === i.name);
-                                actualBuy = currentProd ? safeFloat(currentProd.buy) : 0;
-                            }
-                        }
-                        calcProf += Math.round((safeFloat(i.sell) - actualBuy) * safeFloat(i.qty));
-                    });
-                    
-                    s.prof = calcProf;
-                    r += safeFloat(s.rev); 
-                    p += s.prof; 
-                    
-                    const passId = typeof s.id === 'string' ? `'${s.id}'` : s.id;
-                    rows += `<tr onclick="viewSaleDetails(${passId})" style="cursor:pointer;">
-                        <td><b>${formatVoucher(s.id)}</b></td><td>${s.date}</td><td>${s.cust}</td>
-                        <td style="font-weight:bold; color:var(--text-main);">${safeFloat(s.rev).toLocaleString()} Ks</td>
-                        <td style="text-align:center; display:flex; gap:6px; flex-wrap:wrap; justify-content:center;">
-                            <button onclick="event.stopPropagation(); rePrintSale(${passId})" class="btn btn-dark" style="padding:6px 10px;" title="Print"><i class="fas fa-print"></i></button>
-                            <button onclick="event.stopPropagation(); deleteSale(${passId})" class="btn btn-danger" style="padding:6px 10px;" title="Delete"><i class="fas fa-trash"></i></button>
-                        </td></tr>`; 
-                }); 
-            }
-            
-            document.getElementById('sum-rev').innerText = r.toLocaleString();
-            document.getElementById('sum-prof').innerText = p.toLocaleString();
-            document.getElementById('rep-body').innerHTML = rows;
-        }
+        existing.qty =
+            num(existing.qty)+1;
 
-        // --- PRODUCT CRUD ---
-        function openAddModal() { 
-            document.getElementById('edit-id').value = ""; document.getElementById('p-name').value = ""; document.getElementById('p-unit').value = "";
-            document.getElementById('p-buy').value = ""; document.getElementById('p-sell').value = ""; document.getElementById('p-qty').value = "";
-            document.getElementById('p-new-qty').value = 0; document.getElementById('p-new-buy').value = 0;
-            document.getElementById('modal-title').innerHTML = '<i class="fas fa-box"></i> ပစ္စည်းအသစ်ထည့်မည်';
-            document.getElementById('del-btn').style.display='none'; 
-            document.getElementById('add-overlay').style.display='flex'; 
-        }
+    }else{
 
-        function editProduct(id) {
-            const p = products.find(x => x.id === id); if(!p) return;
-            document.getElementById('edit-id').value = p.id; document.getElementById('p-name').value = p.name;
-            document.getElementById('p-unit').value = p.unit; document.getElementById('p-buy').value = p.buy;
-            document.getElementById('p-sell').value = p.sell; document.getElementById('p-qty').value = p.qty;
-            document.getElementById('p-cat').value = p.category;
-            document.getElementById('p-new-qty').value = 0; document.getElementById('p-new-buy').value = 0;
-            document.getElementById('modal-title').innerHTML = '<i class="fas fa-edit"></i> ပစ္စည်းအချက်အလက် ပြင်မည်';
-            document.getElementById('del-btn').style.display='flex'; 
-            document.getElementById('add-overlay').style.display='flex';
-        }
+        cart.push({
 
-        async function saveProduct() {
-            let id = document.getElementById('edit-id').value;
-            const name = document.getElementById('p-name').value.trim();
-            if(!name) { showToast("ပစ္စည်းအမည် ထည့်ပေးပါ", "error"); return; }
-            
-            let cb = safeFloat(document.getElementById('p-buy').value);
-            let cq = safeFloat(document.getElementById('p-qty').value);
-            let nq = safeFloat(document.getElementById('p-new-qty').value);
-            let nb = safeFloat(document.getElementById('p-new-buy').value);
-            
-            let fq = cq + nq;
-            let fb = (nq > 0 && nb > 0) ? Math.round(((cq * cb) + (nq * nb)) / fq) : cb;
-            
-            const obj = { 
-                name, 
-                unit: document.getElementById('p-unit').value.trim(), 
-                buy: fb, 
-                sell: safeFloat(document.getElementById('p-sell').value), 
-                qty: fq, 
-                category: document.getElementById('p-cat').value 
+            ...p,
+            qty:1
+
+        });
+
+    }
+
+
+    renderCart();
+
+    toast(
+        `${p.name} ခြင်းတောင်းထဲထည့်ပြီးပါပြီ`
+    );
+
+}
+
+
+function removeCart(id){
+
+    cart =
+        cart.filter(
+            x=>String(x.id)!==String(id)
+        );
+
+    renderCart();
+
+}
+
+
+function changeCartQty(id,delta){
+
+    const item =
+        cart.find(
+            x=>String(x.id)===String(id)
+        );
+
+    if(!item)return;
+
+
+    item.qty =
+        num(item.qty)+delta;
+
+
+    if(item.qty<=0){
+
+        removeCart(id);
+
+    }else{
+
+        renderCart();
+
+    }
+
+}
+
+
+function changeCartQtyInput(id,value){
+
+    const item =
+        cart.find(
+            x=>String(x.id)===String(id)
+        );
+
+    if(!item)return;
+
+
+    item.qty=num(value);
+
+
+    if(item.qty<=0){
+
+        removeCart(id);
+
+    }else{
+
+        renderCart();
+
+    }
+
+}
+
+
+function changeCartPrice(id,value){
+
+    const item =
+        cart.find(
+            x=>String(x.id)===String(id)
+        );
+
+    if(!item)return;
+
+
+    item.sell=num(value);
+
+    renderCart();
+
+}
+
+
+function renderCart(){
+
+    const box =
+        document.getElementById(
+            "cartList"
+        );
+
+
+    if(!cart.length){
+
+        box.innerHTML=`
+        <div class="empty">
+            🛒<br>
+            ခြင်းတောင်းထဲတွင် ပစ္စည်းမရှိသေးပါ
+        </div>`;
+
+        document.getElementById(
+            "cartTotal"
+        ).innerText="0";
+
+        return;
+
+    }
+
+
+    let total=0;
+
+
+    box.innerHTML =
+        cart.map(item=>{
+
+            const amount =
+                Math.round(
+                    num(item.sell)*
+                    num(item.qty)
+                );
+
+            total+=amount;
+
+
+            return `
+            <div class="cart-item">
+
+                <div style="flex:1">
+
+                    <div class="cart-name">
+                        ${esc(item.name)}
+                    </div>
+
+                    <input
+                        class="price-input"
+                        type="number"
+                        value="${num(item.sell)}"
+                        onchange="changeCartPrice(${JSON.stringify(item.id)},this.value)">
+                    Ks
+
+                </div>
+
+
+                <div class="qty-area">
+
+                    <button
+                        class="qty-btn"
+                        onclick="changeCartQty(${JSON.stringify(item.id)},-1)">
+                        −
+                    </button>
+
+                    <input
+                        class="qty-input"
+                        type="number"
+                        value="${num(item.qty)}"
+                        onchange="changeCartQtyInput(${JSON.stringify(item.id)},this.value)">
+
+                    <button
+                        class="qty-btn"
+                        onclick="changeCartQty(${JSON.stringify(item.id)},1)">
+                        ＋
+                    </button>
+
+                    <button
+                        onclick="removeCart(${JSON.stringify(item.id)})"
+                        style="
+                        border:0;
+                        background:none;
+                        color:#dc2626;
+                        font-size:17px;
+                        margin-left:5px">
+                        🗑
+                    </button>
+
+                </div>
+
+            </div>`;
+
+        }).join("");
+
+
+    document.getElementById(
+        "cartTotal"
+    ).innerText=money(total);
+
+}
+
+
+/* =========================================================
+   PROCESS SALE
+========================================================= */
+
+async function processSale(){
+
+    if(!cart.length){
+
+        toast(
+            "ခြင်းတောင်းထဲတွင် ပစ္စည်းမရှိသေးပါ",
+            true
+        );
+
+        return;
+
+    }
+
+
+    if(
+        !confirm(
+            "အရောင်းစာရင်းသွင်းပြီး ဘောင်ချာထုတ်မည်မှာ သေချာပါသလား?"
+        )
+    )return;
+
+
+    const customer =
+        document.getElementById(
+            "custName"
+        ).value.trim() || "Guest";
+
+
+    const staff =
+        document.getElementById(
+            "staffName"
+        ).value.trim() || "Admin";
+
+
+    const date =
+        new Date()
+        .toISOString()
+        .slice(0,10);
+
+
+    let revenue=0;
+    let profit=0;
+
+
+    const items =
+        cart.map(item=>{
+
+            const qty=num(item.qty);
+            const sell=num(item.sell);
+            const buy=num(item.buy);
+
+            revenue +=
+                Math.round(
+                    sell*qty
+                );
+
+            profit +=
+                Math.round(
+                    (sell-buy)*qty
+                );
+
+
+            return {
+
+                id:item.id,
+                name:item.name,
+                unit:item.unit || "ခု",
+                qty,
+                sell,
+                buy
+
             };
-            
-            if(id) {
-                obj.id = id.startsWith('temp_') ? id : parseInt(id);
-                const index = products.findIndex(p => p.id == obj.id);
-                if(index > -1) products[index] = obj;
-            } else {
-                obj.id = 'temp_' + Date.now();
-                products.push(obj);
+
+        });
+
+
+    /* STOCK IS ALLOWED TO GO NEGATIVE */
+
+    for(const item of items){
+
+        const p =
+            products.find(
+                x=>String(x.id)===
+                   String(item.id)
+            );
+
+        if(p){
+
+            p.qty =
+                num(p.qty)-
+                num(item.qty);
+
+        }
+
+    }
+
+
+    saveProducts();
+
+
+    const sale={
+
+        id:"temp_"+Date.now(),
+
+        date,
+
+        rev:revenue,
+
+        prof:profit,
+
+        cust:
+            `${customer} (C: ${staff})`,
+
+        items
+
+    };
+
+
+    /* LOCAL SAVE FIRST */
+
+    sales.unshift(sale);
+
+    saveSales();
+
+
+    /* CLOUD SAVE */
+
+    let cloudSaved=false;
+
+
+    if(sb){
+
+        try{
+
+            const cloudData={
+
+                date,
+                rev:revenue,
+                prof:profit,
+                cust:sale.cust,
+                items
+
+            };
+
+
+            const result =
+                await sb
+                .from("sales")
+                .insert([cloudData])
+                .select();
+
+
+            if(result.error)
+                throw result.error;
+
+
+            if(
+                result.data &&
+                result.data[0]
+            ){
+
+                sale.id =
+                    result.data[0].id;
+
+                sales[0]=sale;
+
+                saveSales();
+
             }
 
-            localStorage.setItem('ttk_products', JSON.stringify(products));
 
-            try {
-                if(id && !id.startsWith('temp_')) {
-                    const { id: updateId, ...updateData } = obj;
-                    const {error} = await _sb.from('products').update(updateData).eq('id', obj.id); 
-                    if(error) throw error;
-                } else {
-                    const { id: tempId, ...insertObj } = obj;
-                    const {error} = await _sb.from('products').insert([insertObj]);
-                    if(error) throw error;
-                }
-            } catch (err) { 
-                addToQueue('SAVE_PRODUCT', obj);
-                setStatus('offline', 'Offline (Saved Local)');
+            cloudSaved=true;
+
+
+        }catch(e){
+
+            console.warn(
+                "Sale saved locally",
+                e
+            );
+
+        }
+
+    }
+
+
+    if(!cloudSaved){
+
+        queue(
+            "ADD_SALE",
+            sale
+        );
+
+        status(
+            "offline",
+            "Offline Saved"
+        );
+
+    }
+
+
+    /* UPDATE STOCK */
+
+    for(const item of items){
+
+        const p =
+            products.find(
+                x=>String(x.id)===
+                   String(item.id)
+            );
+
+        if(!p)continue;
+
+
+        const id=p.id;
+
+
+        if(
+            sb &&
+            !String(id).startsWith("temp_")
+        ){
+
+            try{
+
+                const result =
+                    await sb
+                    .from("products")
+                    .update({
+                        qty:p.qty
+                    })
+                    .eq("id",id);
+
+
+                if(result.error)
+                    throw result.error;
+
+
+            }catch(e){
+
+                queue(
+                    "SAVE_PRODUCT",
+                    p
+                );
+
             }
-            
-            closeOverlay('add-overlay'); 
-            showToast("သိမ်းဆည်းပြီးပါပြီ");
-            await loadProductsAndSync();
+
+        }else{
+
+            queue(
+                "SAVE_PRODUCT",
+                p
+            );
+
         }
 
-        async function deleteProduct() { 
-            if(confirm("ဤပစ္စည်းကို အပြီးအပိုင်ဖျက်ရန် သေချာပါသလား?")) { 
-                let id = document.getElementById('edit-id').value;
-                if(!id.startsWith('temp_')) id = parseInt(id);
+    }
 
-                products = products.filter(p => p.id !== id);
-                localStorage.setItem('ttk_products', JSON.stringify(products));
 
-                try {
-                    if(typeof id !== 'string') {
-                        const {error} = await _sb.from('products').delete().eq('id', id); 
-                        if(error) throw error;
-                    }
-                } catch(e) {
-                    addToQueue('DEL_PRODUCT', { id });
+    saveProducts();
+
+
+    /* PRINT */
+
+    document.getElementById(
+        "receipt"
+    ).innerHTML =
+        makeReceipt(
+            sale,
+            false
+        );
+
+
+    setTimeout(()=>{
+
+        window.print();
+
+    },300);
+
+
+    cart=[];
+
+    document.getElementById(
+        "custName"
+    ).value="";
+
+
+    renderCart();
+
+    renderAll();
+
+
+    toast(
+        cloudSaved
+        ? "အရောင်းစာရင်းသိမ်းပြီးပါပြီ"
+        : "Offline အဖြစ် သိမ်းပြီးပါပြီ"
+    );
+
+}
+
+
+/* =========================================================
+   RECEIPT
+========================================================= */
+
+function voucher(id){
+
+    if(String(id).startsWith("temp_"))
+        return "OFFLINE";
+
+    return String(id)
+        .padStart(7,"0");
+
+}
+
+
+function makeReceipt(sale,reprint){
+
+    const items =
+        Array.isArray(sale.items)
+        ? sale.items
+        : [];
+
+
+    const rows =
+        items.map(item=>`
+
+        <tr>
+
+            <td class="r-name">
+                ${esc(item.name)}
+            </td>
+
+            <td class="r-qty">
+                ${num(item.qty)}
+            </td>
+
+            <td class="r-price">
+                ${money(item.sell)}
+            </td>
+
+            <td class="r-amt">
+                ${money(
+                    num(item.qty)*
+                    num(item.sell)
+                )}
+            </td>
+
+        </tr>
+
+        `).join("");
+
+
+    return `
+
+    <div class="receipt-center">
+
+        <div class="receipt-title">
+            ထွန်းတောက်ကြယ်
+        </div>
+
+        <div class="receipt-sub">
+            အမှတ်(၁၅)၊ ထင်းရှူးရိပ်သာ(၁)ပတ်လမ်း၊
+            ဇေကမ္ဘာဝင်း
+        </div>
+
+        <div class="receipt-sub">
+            မင်္ဂလာဒုံမြို့နယ်
+        </div>
+
+        <div class="receipt-sub">
+            09-777715161, 09-940005161
+        </div>
+
+
+        <div class="receipt-info">
+
+            ${reprint ? "<b>RE-PRINT</b><br>" : ""}
+
+            Voucher:
+            ${voucher(sale.id)}
+            <br>
+
+            Date:
+            ${esc(sale.date)}
+            <br>
+
+            Customer:
+            ${esc(sale.cust)}
+
+        </div>
+
+
+        <table class="receipt-table">
+
+            <thead>
+
+                <tr>
+
+                    <th class="r-name">
+                        Item
+                    </th>
+
+                    <th class="r-qty">
+                        Qty
+                    </th>
+
+                    <th class="r-price">
+                        Price
+                    </th>
+
+                    <th class="r-amt">
+                        Amount
+                    </th>
+
+                </tr>
+
+            </thead>
+
+            <tbody>
+
+                ${rows}
+
+            </tbody>
+
+        </table>
+
+
+        <div class="receipt-total">
+
+            Total:
+            ${money(sale.rev)}
+            Ks
+
+        </div>
+
+
+        <div class="receipt-footer">
+
+            ဝယ်ယူအားပေးမှုကို ကျေးဇူးတင်ပါသည်။
+
+        </div>
+
+    </div>
+
+    `;
+
+}
+
+
+/* =========================================================
+   STOCK
+========================================================= */
+
+function renderStock(){
+
+    const list =
+        products.filter(p=>
+            currentStockCategory==="all" ||
+            p.category===currentStockCategory
+        );
+
+
+    const body =
+        document.getElementById(
+            "stockBody"
+        );
+
+
+    if(!list.length){
+
+        body.innerHTML=`
+        <tr>
+            <td colspan="3"
+                style="text-align:center">
+                ပစ္စည်းမရှိပါ
+            </td>
+        </tr>`;
+
+        return;
+
+    }
+
+
+    body.innerHTML =
+        list.map(p=>{
+
+            const qty=num(p.qty);
+
+            return `
+
+            <tr>
+
+                <td>
+
+                    <b>${esc(p.name)}</b>
+
+                    <br>
+
+                    <small style="color:#64748b">
+                        ${esc(p.unit||"ခု")}
+                    </small>
+
+                </td>
+
+
+                <td>
+                    ${money(p.sell)} Ks
+                </td>
+
+
+                <td style="
+                    text-align:center;
+                    font-weight:bold;
+                    color:${qty<5?"#dc2626":"#059669"}">
+
+                    ${qty}
+
+                </td>
+
+            </tr>`;
+
+        }).join("");
+
+}
+
+
+/* =========================================================
+   INVENTORY
+========================================================= */
+
+function renderInventory(){
+
+    const q =
+        (
+            document.getElementById(
+                "inventorySearch"
+            )?.value || ""
+        )
+        .toLowerCase()
+        .trim();
+
+
+    const list =
+        products.filter(p=>
+            String(p.name||"")
+            .toLowerCase()
+            .includes(q)
+        );
+
+
+    const body =
+        document.getElementById(
+            "inventoryBody"
+        );
+
+
+    if(!list.length){
+
+        body.innerHTML=`
+        <tr>
+            <td colspan="5"
+                style="text-align:center">
+                ပစ္စည်းမရှိပါ
+            </td>
+        </tr>`;
+
+        return;
+
+    }
+
+
+    body.innerHTML =
+        list.map(p=>`
+
+        <tr>
+
+            <td>
+
+                <b>
+                    ${esc(p.name)}
+                </b>
+
+                <br>
+
+                <small style="color:#64748b">
+                    ${esc(p.category||"")}
+                </small>
+
+            </td>
+
+
+            <td>
+                ${esc(p.unit||"ခု")}
+            </td>
+
+
+            <td>
+
+                <span style="color:#64748b">
+                    ${money(p.buy)}
+                </span>
+
+                <br>
+
+                <b style="color:#059669">
+                    ${money(p.sell)}
+                </b>
+
+            </td>
+
+
+            <td>
+                <b>
+                    ${num(p.qty)}
+                </b>
+            </td>
+
+
+            <td>
+
+                <button
+                    class="btn"
+                    style="
+                    padding:7px;
+                    background:#e2e8f0"
+                    onclick="editProduct(${JSON.stringify(p.id)})">
+
+                    ✏️
+
+                </button>
+
+            </td>
+
+        </tr>
+
+        `).join("");
+
+}
+
+
+/* =========================================================
+   PRODUCT MODAL
+========================================================= */
+
+function openProductModal(){
+
+    document.getElementById(
+        "productModalTitle"
+    ).innerText =
+        "📦 ပစ္စည်းအသစ်ထည့်မည်";
+
+
+    document.getElementById(
+        "editProductId"
+    ).value="";
+
+
+    document.getElementById(
+        "productName"
+    ).value="";
+
+
+    document.getElementById(
+        "productUnit"
+    ).value="";
+
+
+    document.getElementById(
+        "productBuy"
+    ).value="";
+
+
+    document.getElementById(
+        "productSell"
+    ).value="";
+
+
+    document.getElementById(
+        "productQty"
+    ).value="";
+
+
+    document.getElementById(
+        "newQty"
+    ).value=0;
+
+
+    document.getElementById(
+        "newBuy"
+    ).value=0;
+
+
+    document.getElementById(
+        "productCategory"
+    ).value="အခြား";
+
+
+    document.getElementById(
+        "deleteProductBtn"
+    ).style.display="none";
+
+
+    document.getElementById(
+        "productModal"
+    ).style.display="flex";
+
+}
+
+
+function editProduct(id){
+
+    const p =
+        products.find(
+            x=>String(x.id)===
+               String(id)
+        );
+
+    if(!p)return;
+
+
+    document.getElementById(
+        "productModalTitle"
+    ).innerText =
+        "✏️ ပစ္စည်းပြင်မည်";
+
+
+    document.getElementById(
+        "editProductId"
+    ).value=p.id;
+
+
+    document.getElementById(
+        "productName"
+    ).value=p.name||"";
+
+
+    document.getElementById(
+        "productUnit"
+    ).value=p.unit||"";
+
+
+    document.getElementById(
+        "productBuy"
+    ).value=num(p.buy);
+
+
+    document.getElementById(
+        "productSell"
+    ).value=num(p.sell);
+
+
+    document.getElementById(
+        "productQty"
+    ).value=num(p.qty);
+
+
+    document.getElementById(
+        "newQty"
+    ).value=0;
+
+
+    document.getElementById(
+        "newBuy"
+    ).value=0;
+
+
+    document.getElementById(
+        "productCategory"
+    ).value=
+        p.category||"အခြား";
+
+
+    document.getElementById(
+        "deleteProductBtn"
+    ).style.display="flex";
+
+
+    document.getElementById(
+        "productModal"
+    ).style.display="flex";
+
+}
+
+
+/* =========================================================
+   SAVE PRODUCT
+========================================================= */
+
+async function saveProduct(){
+
+    const id =
+        document.getElementById(
+            "editProductId"
+        ).value;
+
+
+    const name =
+        document.getElementById(
+            "productName"
+        ).value.trim();
+
+
+    if(!name){
+
+        toast(
+            "ပစ္စည်းအမည်ထည့်ပါ",
+            true
+        );
+
+        return;
+
+    }
+
+
+    const unit =
+        document.getElementById(
+            "productUnit"
+        ).value.trim() || "ခု";
+
+
+    const buy =
+        num(
+            document.getElementById(
+                "productBuy"
+            ).value
+        );
+
+
+    const sell =
+        num(
+            document.getElementById(
+                "productSell"
+            ).value
+        );
+
+
+    const currentQty =
+        num(
+            document.getElementById(
+                "productQty"
+            ).value
+        );
+
+
+    const newQty =
+        num(
+            document.getElementById(
+                "newQty"
+            ).value
+        );
+
+
+    const newBuy =
+        num(
+            document.getElementById(
+                "newBuy"
+            ).value
+        );
+
+
+    let finalQty =
+        currentQty + newQty;
+
+
+    let finalBuy=buy;
+
+
+    if(
+        newQty>0 &&
+        newBuy>0
+    ){
+
+        finalBuy =
+            Math.round(
+                (
+                    currentQty*buy +
+                    newQty*newBuy
+                )
+                /
+                finalQty
+            );
+
+    }
+
+
+    const product={
+
+        name,
+
+        unit,
+
+        buy:finalBuy,
+
+        sell,
+
+        qty:finalQty,
+
+        category:
+            document.getElementById(
+                "productCategory"
+            ).value
+
+    };
+
+
+    if(id){
+
+        product.id =
+            String(id).startsWith("temp_")
+            ? id
+            : Number(id);
+
+
+        const index =
+            products.findIndex(
+                p=>String(p.id)===
+                   String(product.id)
+            );
+
+
+        if(index>=0){
+
+            products[index]=product;
+
+        }
+
+    }else{
+
+        product.id =
+            "temp_"+Date.now();
+
+        products.push(product);
+
+    }
+
+
+    saveProducts();
+
+
+    let cloudOK=false;
+
+
+    if(sb){
+
+        try{
+
+            if(
+                String(product.id)
+                .startsWith("temp_")
+            ){
+
+                const data={
+                    ...product
+                };
+
+                delete data.id;
+
+
+                const result =
+                    await sb
+                    .from("products")
+                    .insert([data])
+                    .select();
+
+
+                if(result.error)
+                    throw result.error;
+
+
+                if(
+                    result.data &&
+                    result.data[0]
+                ){
+
+                    product.id =
+                        result.data[0].id;
+
+                    const idx =
+                        products.findIndex(
+                            p=>String(p.id)===
+                               String(
+                                   "temp_"+product.id
+                               )
+                        );
+
+                    /* Refresh from cloud later */
+
                 }
 
-                if(typeof id === 'string') {
-                     offlineQueue = offlineQueue.filter(q => !(q.action === 'SAVE_PRODUCT' && q.data.id === id));
-                     localStorage.setItem('ttk_offline_queue', JSON.stringify(offlineQueue));
-                }
+            }else{
 
-                closeOverlay('add-overlay'); 
-                showToast("ဖျက်သိမ်းပြီးပါပြီ");
-                await loadProductsAndSync(); 
-            } 
-        }
+                const data={
+                    ...product
+                };
 
-        // --- FULL DETAIL, DELETE & REPRINT SALE LOGIC ---
-        function cancelEdit() {
-            editingSaleId = null;
-            document.getElementById('edit-indicator').style.display = 'none';
-            cart = [];
-            renderCart();
-            document.getElementById('cust-name').value = '';
-        }
+                delete data.id;
 
-        function viewSaleDetails(id) {
-            const sale = salesData.find(s => s.id === id);
-            if(!sale) return;
-            const items = Array.isArray(sale.items) ? sale.items : JSON.parse(sale.items || '[]');
-            
-            let rows = items.map(i => `<tr>
-                <td style="padding:10px; border-bottom:1px solid #e2e8f0;">${i.name}</td>
-                <td style="padding:10px; border-bottom:1px solid #e2e8f0; text-align:center;">${safeFloat(i.qty)}</td>
-                <td style="padding:10px; border-bottom:1px solid #e2e8f0; text-align:right;">${safeFloat(i.sell).toLocaleString()}</td>
-                <td style="padding:10px; border-bottom:1px solid #e2e8f0; text-align:right;">${(safeFloat(i.sell)*safeFloat(i.qty)).toLocaleString()}</td>
-            </tr>`).join('');
-            
-            let html = `
-                <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
-                    <div><b>Voucher:</b> <span style="color:var(--primary); font-weight:bold;">${formatVoucher(sale.id)}</span></div>
-                    <div><b>Date:</b> ${sale.date}</div>
-                </div>
-                <div style="margin-bottom:15px; color:var(--text-muted);"><b>Customer/Staff:</b> ${sale.cust}</div>
-                <div style="background:#f8fafc; border-radius:8px; overflow:hidden; border:1px solid #e2e8f0; margin-bottom: 15px;">
-                    <table style="width:100%; border-collapse: collapse;">
-                        <tr style="background:#e2e8f0;"><th style="padding:10px; text-align:left;">Item</th><th style="padding:10px; text-align:center;">Qty</th><th style="padding:10px; text-align:right;">Price</th><th style="padding:10px; text-align:right;">Amount</th></tr>
-                        ${rows}
-                    </table>
-                </div>
-                <div style="text-align:right; font-size:18px;">Total: <b style="color:var(--red);">${safeFloat(sale.rev).toLocaleString()} Ks</b></div>
-            `;
-            document.getElementById('detail-content').innerHTML = html;
-            
-            const passId = typeof sale.id === 'string' ? `'${sale.id}'` : sale.id;
-            document.getElementById('detail-actions').innerHTML = `
-                <div style="display:flex; gap:10px;">
-                    <button class="btn btn-dark" onclick="rePrintSale(${passId})" style="flex:1;"><i class="fas fa-print"></i> ဘောင်ချာ ပြန်ထုတ်မည်</button>
-                    <button class="btn btn-danger" onclick="deleteSale(${passId}); closeOverlay('detail-overlay');" style="padding:12px;"><i class="fas fa-trash"></i> ဖျက်မည်</button>
-                </div>
-            `;
-            document.getElementById('detail-overlay').style.display = 'flex';
-        }
 
-        function rePrintSale(id) {
-            const sale = salesData.find(s => s.id === id);
-            if(!sale) return;
-            document.getElementById('receipt-render-area').innerHTML = generateReceiptHTML(sale, true);
-            setTimeout(() => { window.print(); }, 500);
-        }
+                const result =
+                    await sb
+                    .from("products")
+                    .update(data)
+                    .eq("id",product.id);
 
-        async function deleteSale(id) {
-            if(!confirm("ဤအရောင်းဘောင်ချာကို ဖျက်ရန် သေချာပါသလား? ဖျက်လိုက်ပါက ပစ္စည်းအရေအတွက်များ (Stock) ပြန်လည်ပေါင်းထည့်မည် မဟုတ်ပါ။")) return;
-            
-            let allLocalSales = JSON.parse(localStorage.getItem('ttk_sales')) || [];
-            allLocalSales = allLocalSales.filter(s => s.id !== id);
-            localStorage.setItem('ttk_sales', JSON.stringify(allLocalSales));
 
-            try {
-                if(typeof id !== 'string') {
-                    const { error } = await _sb.from('sales').delete().eq('id', id);
-                    if(error) throw error;
-                }
-            } catch(e) {
-                addToQueue('DEL_SALE', { id });
+                if(result.error)
+                    throw result.error;
+
             }
-            
-            showToast("ဘောင်ချာ ဖျက်သိမ်းပြီးပါပြီ");
-            runReport();
+
+
+            cloudOK=true;
+
+        }catch(e){
+
+            console.warn(e);
+
         }
 
-        window.exportGroupedExcel = function() {
-            if(salesData.length === 0) { showToast("ထုတ်ယူရန် ဒေတာမရှိပါ", "error"); return; }
-            const rows = [["Voucher ID", "Date", "Customer / Staff", "Item Name", "Qty", "Price", "Amount", "Total Voucher Amount"]];
-            salesData.forEach(sale => {
-                const items = Array.isArray(sale.items) ? sale.items : JSON.parse(sale.items || '[]');
-                items.forEach((item, index) => {
-                    rows.push([
-                        index === 0 ? formatVoucher(sale.id) : "",
-                        index === 0 ? sale.date : "",
-                        index === 0 ? sale.cust : "",
-                        item.name,
-                        safeFloat(item.qty),
-                        safeFloat(item.sell),
-                        (safeFloat(item.sell) * safeFloat(item.qty)),
-                        index === 0 ? safeFloat(sale.rev) : ""
-                    ]);
-                });
+    }
+
+
+    if(!cloudOK){
+
+        queue(
+            "SAVE_PRODUCT",
+            product
+        );
+
+        status(
+            "offline",
+            "Offline Saved"
+        );
+
+    }
+
+
+    closeModal("productModal");
+
+    renderAll();
+
+    toast(
+        cloudOK
+        ? "ပစ္စည်းသိမ်းပြီးပါပြီ"
+        : "Local အဖြစ် သိမ်းပြီးပါပြီ"
+    );
+
+
+    if(cloudOK){
+
+        await syncCloud();
+
+    }
+
+}
+
+
+/* =========================================================
+   DELETE PRODUCT
+========================================================= */
+
+async function deleteProduct(){
+
+    const id =
+        document.getElementById(
+            "editProductId"
+        ).value;
+
+
+    if(!id)return;
+
+
+    if(
+        !confirm(
+            "ဤပစ္စည်းကို ဖျက်ရန် သေချာပါသလား?"
+        )
+    )return;
+
+
+    products =
+        products.filter(
+            p=>String(p.id)!==
+               String(id)
+        );
+
+
+    saveProducts();
+
+
+    if(
+        sb &&
+        !String(id).startsWith("temp_")
+    ){
+
+        try{
+
+            const result =
+                await sb
+                .from("products")
+                .delete()
+                .eq("id",Number(id));
+
+
+            if(result.error)
+                throw result.error;
+
+
+        }catch(e){
+
+            queue(
+                "DELETE_PRODUCT",
+                {id:Number(id)}
+            );
+
+        }
+
+    }
+
+
+    closeModal("productModal");
+
+    renderAll();
+
+    toast(
+        "ပစ္စည်းဖျက်ပြီးပါပြီ"
+    );
+
+}
+
+
+/* =========================================================
+   REPORT
+========================================================= */
+
+async function runReport(){
+
+    const type =
+        document.getElementById(
+            "reportType"
+        ).value;
+
+
+    const date =
+        document.getElementById(
+            "reportDate"
+        ).value;
+
+
+    let list=[];
+
+
+    /* CLOUD FIRST */
+
+    if(sb){
+
+        try{
+
+            let query =
+                sb
+                .from("sales")
+                .select("*");
+
+
+            if(type==="day"){
+
+                query =
+                    query.eq(
+                        "date",
+                        date
+                    );
+
+            }
+            else if(type==="month"){
+
+                query =
+                    query.like(
+                        "date",
+                        date.slice(0,7)+"%"
+                    );
+
+            }
+            else{
+
+                query =
+                    query.like(
+                        "date",
+                        date.slice(0,4)+"%"
+                    );
+
+            }
+
+
+            const result =
+                await query
+                .order(
+                    "id",
+                    {ascending:false}
+                );
+
+
+            if(result.error)
+                throw result.error;
+
+
+            list =
+                result.data || [];
+
+
+            /* LOCAL CACHE */
+
+            const local =
+                JSON.parse(
+                    localStorage.getItem(
+                        "ttk_sales"
+                    ) || "[]"
+                );
+
+
+            for(const s of list){
+
+                const index =
+                    local.findIndex(
+                        x=>String(x.id)===
+                           String(s.id)
+                    );
+
+                if(index>=0)
+                    local[index]=s;
+                else
+                    local.push(s);
+
+            }
+
+
+            localStorage.setItem(
+                "ttk_sales",
+                JSON.stringify(local)
+            );
+
+
+        }catch(e){
+
+            list =
+                getLocalSales(
+                    type,
+                    date
+                );
+
+        }
+
+    }else{
+
+        list =
+            getLocalSales(
+                type,
+                date
+            );
+
+    }
+
+
+    sales=list;
+
+    renderReportRows(list);
+
+}
+
+
+function getLocalSales(type,date){
+
+    let all=[];
+
+
+    try{
+
+        all =
+            JSON.parse(
+                localStorage.getItem(
+                    "ttk_sales"
+                ) || "[]"
+            );
+
+    }catch(e){
+
+        all=[];
+
+    }
+
+
+    /* Add unsynced sales */
+
+    const queued =
+        offlineQueue
+        .filter(
+            x=>x.action==="ADD_SALE"
+        )
+        .map(
+            x=>x.data
+        );
+
+
+    const map=new Map();
+
+
+    [...all,...queued]
+    .forEach(s=>{
+
+        map.set(
+            String(s.id),
+            s
+        );
+
+    });
+
+
+    all =
+        Array.from(map.values());
+
+
+    if(type==="day"){
+
+        return all.filter(
+            s=>s.date===date
+        );
+
+    }
+
+
+    if(type==="month"){
+
+        return all.filter(
+            s=>
+                String(s.date||"")
+                .startsWith(
+                    date.slice(0,7)
+                )
+        );
+
+    }
+
+
+    return all.filter(
+        s=>
+            String(s.date||"")
+            .startsWith(
+                date.slice(0,4)
+            )
+    );
+
+}
+
+
+/* =========================================================
+   REPORT ROWS
+========================================================= */
+
+function renderReportRows(list){
+
+    let revenue=0;
+    let profit=0;
+
+
+    const body =
+        document.getElementById(
+            "reportBody"
+        );
+
+
+    if(!list.length){
+
+        body.innerHTML=`
+        <tr>
+            <td colspan="5"
+                style="text-align:center;padding:30px">
+                စာရင်းမရှိပါ
+            </td>
+        </tr>`;
+
+
+        document.getElementById(
+            "sumRevenue"
+        ).innerText="0";
+
+
+        document.getElementById(
+            "sumProfit"
+        ).innerText="0";
+
+
+        return;
+
+    }
+
+
+    body.innerHTML =
+        list.map(s=>{
+
+            const items =
+                Array.isArray(s.items)
+                ? s.items
+                : [];
+
+
+            let p=0;
+
+
+            items.forEach(i=>{
+
+                p +=
+                    Math.round(
+                        (
+                            num(i.sell)-
+                            num(i.buy)
+                        )*
+                        num(i.qty)
+                    );
+
             });
-            const ws = XLSX.utils.aoa_to_sheet(rows);
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "Sales_Report");
-            XLSX.writeFile(wb, `TTK_Sales_Report_${document.getElementById('rep-date').value}.xlsx`);
-        };
 
-        window.exportMainStockToExcel = function() {
-            const stockFiltered = products.filter(p => (curStockCat === 'all' || p.category === curStockCat));
-            if(stockFiltered.length === 0) return showToast("ထုတ်ယူရန် ဒေတာမရှိပါ", "error");
-            
-            const rows = [["အမည်", "အမျိုးအစား", "ယူနစ်", "ရောင်းဈေး", "ဝယ်ဈေး", "လက်ကျန် (Stock)"]];
-            stockFiltered.forEach(p => rows.push([p.name, p.category, p.unit || 'ခု', p.sell, p.buy, p.qty]));
-            
-            const ws = XLSX.utils.aoa_to_sheet(rows);
-            const wb = XLSX.utils.book_new();
-            let sheetName = curStockCat === 'all' ? "All_Stock" : curStockCat;
-            XLSX.utils.book_append_sheet(wb, ws, "Stock_List");
-            XLSX.writeFile(wb, `TTK_Stock_${sheetName}_${new Date().toISOString().split('T')[0]}.xlsx`);
-        };
 
-        // --- NAVIGATION & UI HELPERS ---
-        function navTo(tid, btn) {
-            document.querySelectorAll('.container').forEach(c => c.classList.remove('active'));
-            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-            document.getElementById(tid).classList.add('active');
-            btn.classList.add('active');
-            if(tid==='tab-rep') runReport(); 
-            refreshUI();
+            revenue += num(s.rev);
+
+            profit += p;
+
+
+            return `
+
+            <tr
+                onclick="viewSale(${JSON.stringify(s.id)})"
+                style="cursor:pointer">
+
+                <td>
+                    <b>
+                        ${voucher(s.id)}
+                    </b>
+                </td>
+
+                <td>
+                    ${esc(s.date)}
+                </td>
+
+                <td>
+                    ${esc(s.cust)}
+                </td>
+
+                <td>
+                    <b>
+                        ${money(s.rev)}
+                    </b>
+                </td>
+
+                <td>
+
+                    <button
+                        class="btn btn-dark"
+                        style="padding:6px"
+                        onclick="
+                        event.stopPropagation();
+                        reprint(${JSON.stringify(s.id)})
+                        ">
+                        🖨
+                    </button>
+
+                    <button
+                        class="btn btn-red"
+                        style="padding:6px"
+                        onclick="
+                        event.stopPropagation();
+                        deleteSale(${JSON.stringify(s.id)})
+                        ">
+                        🗑
+                    </button>
+
+                </td>
+
+            </tr>`;
+
+        }).join("");
+
+
+    document.getElementById(
+        "sumRevenue"
+    ).innerText=money(revenue);
+
+
+    document.getElementById(
+        "sumProfit"
+    ).innerText=money(profit);
+
+}
+
+
+/* =========================================================
+   VIEW SALE
+========================================================= */
+
+function viewSale(id){
+
+    const sale =
+        sales.find(
+            s=>String(s.id)===
+               String(id)
+        );
+
+    if(!sale)return;
+
+
+    const items =
+        Array.isArray(sale.items)
+        ? sale.items
+        : [];
+
+
+    const rows =
+        items.map(i=>`
+
+        <tr>
+
+            <td>
+                ${esc(i.name)}
+            </td>
+
+            <td style="text-align:center">
+                ${num(i.qty)}
+            </td>
+
+            <td style="text-align:right">
+                ${money(i.sell)}
+            </td>
+
+            <td style="text-align:right">
+                ${money(
+                    num(i.qty)*
+                    num(i.sell)
+                )}
+            </td>
+
+        </tr>
+
+        `).join("");
+
+
+    document.getElementById(
+        "saleDetail"
+    ).innerHTML=`
+
+        <p>
+            <b>Voucher:</b>
+            ${voucher(sale.id)}
+        </p>
+
+        <p style="margin-top:5px">
+            <b>Date:</b>
+            ${esc(sale.date)}
+        </p>
+
+        <p style="margin:5px 0 12px">
+            <b>Customer:</b>
+            ${esc(sale.cust)}
+        </p>
+
+
+        <div style="
+            overflow:auto;
+            border:1px solid #e2e8f0;
+            border-radius:8px">
+
+            <table
+                style="min-width:420px">
+
+                <tr>
+
+                    <th>Item</th>
+                    <th>Qty</th>
+                    <th>Price</th>
+                    <th>Amount</th>
+
+                </tr>
+
+                ${rows}
+
+            </table>
+
+        </div>
+
+
+        <div style="
+            text-align:right;
+            font-size:18px;
+            margin-top:12px">
+
+            Total:
+            <b style="color:#dc2626">
+                ${money(sale.rev)} Ks
+            </b>
+
+        </div>
+
+
+        <div style="
+            display:flex;
+            gap:8px;
+            margin-top:15px">
+
+            <button
+                class="btn btn-dark"
+                style="flex:1"
+                onclick="
+                reprint(${JSON.stringify(sale.id)})
+                ">
+
+                🖨 ပြန်ထုတ်
+
+            </button>
+
+            <button
+                class="btn btn-red"
+                onclick="
+                deleteSale(${JSON.stringify(sale.id)});
+                closeModal('saleModal')
+                ">
+
+                🗑 ဖျက်
+
+            </button>
+
+        </div>
+
+    `;
+
+
+    document.getElementById(
+        "saleModal"
+    ).style.display="flex";
+
+}
+
+
+/* =========================================================
+   REPRINT
+========================================================= */
+
+function reprint(id){
+
+    const sale =
+        sales.find(
+            s=>String(s.id)===
+               String(id)
+        );
+
+    if(!sale)return;
+
+
+    document.getElementById(
+        "receipt"
+    ).innerHTML =
+        makeReceipt(
+            sale,
+            true
+        );
+
+
+    closeModal("saleModal");
+
+
+    setTimeout(()=>{
+        window.print();
+    },200);
+
+}
+
+
+/* =========================================================
+   DELETE SALE
+========================================================= */
+
+async function deleteSale(id){
+
+    if(
+        !confirm(
+            "ဒီဘောင်ချာကို ဖျက်မည်မှာ သေချာပါသလား?\n\nဖျက်ပြီးနောက် Stock ကို အလိုအလျောက် ပြန်မပေါင်းပါ။"
+        )
+    )return;
+
+
+    sales =
+        sales.filter(
+            s=>String(s.id)!==
+               String(id)
+        );
+
+
+    saveSales();
+
+
+    if(
+        sb &&
+        !String(id).startsWith("temp_")
+    ){
+
+        try{
+
+            const result =
+                await sb
+                .from("sales")
+                .delete()
+                .eq("id",Number(id));
+
+
+            if(result.error)
+                throw result.error;
+
+
+        }catch(e){
+
+            queue(
+                "DELETE_SALE",
+                {id:Number(id)}
+            );
+
         }
 
-        function askPass(tid, btn) { 
-            if(isAdmin) navTo(tid, btn); 
-            else { 
-                nextTab = tid; 
-                document.getElementById('pass-input').value = "";
-                document.getElementById('login-overlay').style.display = 'flex'; 
-                setTimeout(() => document.getElementById('pass-input').focus(), 100);
-            } 
+    }else{
+
+        offlineQueue =
+            offlineQueue.filter(
+                x=>!(
+                    x.action==="ADD_SALE" &&
+                    String(x.data.id)===
+                    String(id)
+                )
+            );
+
+        saveQueue();
+
+    }
+
+
+    toast(
+        "ဘောင်ချာဖျက်ပြီးပါပြီ"
+    );
+
+
+    runReport();
+
+}
+
+
+/* =========================================================
+   NAVIGATION
+========================================================= */
+
+function goPage(page){
+
+    document.querySelectorAll(
+        ".page"
+    ).forEach(
+        x=>x.classList.remove("active")
+    );
+
+
+    document.querySelectorAll(
+        ".nav-btn"
+    ).forEach(
+        x=>x.classList.remove("active")
+    );
+
+
+    document.getElementById(
+        page+"Page"
+    ).classList.add("active");
+
+
+    document.getElementById(
+        "nav"+
+        page.charAt(0).toUpperCase()+
+        page.slice(1)
+    ).classList.add("active");
+
+
+    if(page==="report"){
+
+        runReport();
+
+    }
+
+
+    renderAll();
+
+}
+
+
+/* =========================================================
+   ADMIN
+========================================================= */
+
+function requestAdmin(page){
+
+    if(admin){
+
+        goPage(page);
+
+        return;
+
+    }
+
+
+    pendingPage=page;
+
+    document.getElementById(
+        "passwordInput"
+    ).value="";
+
+
+    document.getElementById(
+        "loginModal"
+    ).style.display="flex";
+
+
+    setTimeout(()=>{
+
+        document.getElementById(
+            "passwordInput"
+        ).focus();
+
+    },100);
+
+}
+
+
+function checkPassword(){
+
+    const password =
+        document.getElementById(
+            "passwordInput"
+        ).value;
+
+
+    if(password==="111111"){
+
+        admin=true;
+
+        sessionStorage.setItem(
+            "TTK_ADMIN",
+            "1"
+        );
+
+
+        document.getElementById(
+            "logoutBtn"
+        ).style.display="block";
+
+
+        closeModal("loginModal");
+
+
+        goPage(pendingPage);
+
+
+        toast(
+            "Admin အဖြစ် ဝင်ရောက်ပြီးပါပြီ"
+        );
+
+    }else{
+
+        toast(
+            "Password မှားနေပါသည်",
+            true
+        );
+
+    }
+
+}
+
+
+function logout(){
+
+    admin=false;
+
+    sessionStorage.removeItem(
+        "TTK_ADMIN"
+    );
+
+
+    location.reload();
+
+}
+
+
+/* =========================================================
+   CATEGORY
+========================================================= */
+
+function setSalesCategory(cat,button){
+
+    currentCategory=cat;
+
+
+    document.querySelectorAll(
+        "#salesCategories .cat"
+    ).forEach(
+        x=>x.classList.remove("active")
+    );
+
+
+    button.classList.add("active");
+
+    renderProducts();
+
+}
+
+
+function setStockCategory(cat,button){
+
+    currentStockCategory=cat;
+
+
+    document.querySelectorAll(
+        "#stockCategories .cat"
+    ).forEach(
+        x=>x.classList.remove("active")
+    );
+
+
+    button.classList.add("active");
+
+    renderStock();
+
+}
+
+
+/* =========================================================
+   MODAL
+========================================================= */
+
+function closeModal(id){
+
+    document.getElementById(
+        id
+    ).style.display="none";
+
+}
+
+
+/* =========================================================
+   EXCEL / CSV EXPORT
+========================================================= */
+
+function downloadCSV(filename,rows){
+
+    const csv =
+        rows.map(row=>
+            row.map(value=>{
+
+                const text =
+                    String(value ?? "")
+                    .replace(/"/g,'""');
+
+                return `"${text}"`;
+
+            }).join(",")
+        ).join("\n");
+
+
+    const blob =
+        new Blob(
+            ["\uFEFF"+csv],
+            {
+                type:"text/csv;charset=utf-8;"
+            }
+        );
+
+
+    const url =
+        URL.createObjectURL(blob);
+
+
+    const a =
+        document.createElement("a");
+
+    a.href=url;
+
+    a.download=filename;
+
+    document.body.appendChild(a);
+
+    a.click();
+
+    a.remove();
+
+    URL.revokeObjectURL(url);
+
+}
+
+
+function exportStock(){
+
+    const list =
+        products.filter(p=>
+            currentStockCategory==="all" ||
+            p.category===currentStockCategory
+        );
+
+
+    if(!list.length){
+
+        toast(
+            "Export လုပ်ရန် data မရှိပါ",
+            true
+        );
+
+        return;
+
+    }
+
+
+    const rows=[
+
+        [
+            "ပစ္စည်းအမည်",
+            "အမျိုးအစား",
+            "ယူနစ်",
+            "ဝယ်ဈေး",
+            "ရောင်းဈေး",
+            "Stock"
+        ]
+
+    ];
+
+
+    list.forEach(p=>{
+
+        rows.push([
+
+            p.name,
+            p.category,
+            p.unit,
+            p.buy,
+            p.sell,
+            p.qty
+
+        ]);
+
+    });
+
+
+    downloadCSV(
+        "TTK_Stock.csv",
+        rows
+    );
+
+
+    toast(
+        "Stock CSV ထုတ်ပြီးပါပြီ"
+    );
+
+}
+
+
+function exportReport(){
+
+    if(!sales.length){
+
+        toast(
+            "Export လုပ်ရန် data မရှိပါ",
+            true
+        );
+
+        return;
+
+    }
+
+
+    const rows=[
+
+        [
+            "Voucher",
+            "Date",
+            "Customer / Staff",
+            "Item",
+            "Qty",
+            "Buy",
+            "Sell",
+            "Amount"
+        ]
+
+    ];
+
+
+    sales.forEach(sale=>{
+
+        const items =
+            Array.isArray(sale.items)
+            ? sale.items
+            : [];
+
+
+        items.forEach(item=>{
+
+            rows.push([
+
+                voucher(sale.id),
+                sale.date,
+                sale.cust,
+                item.name,
+                item.qty,
+                item.buy,
+                item.sell,
+                num(item.qty)*
+                num(item.sell)
+
+            ]);
+
+        });
+
+    });
+
+
+    downloadCSV(
+        "TTK_Sales_Report.csv",
+        rows
+    );
+
+
+    toast(
+        "Sales Report CSV ထုတ်ပြီးပါပြီ"
+    );
+
+}
+
+
+/* =========================================================
+   NETWORK RECONNECT
+========================================================= */
+
+window.addEventListener(
+    "online",
+    async ()=>{
+
+        toast(
+            "Internet ပြန်ရပါပြီ။ Sync လုပ်နေပါသည်..."
+        );
+
+        if(!sb){
+
+            const ok =
+                await loadSupabase();
+
+            if(!ok)return;
+
         }
-        
-        function checkPass() { 
-            if(document.getElementById('pass-input').value === "111111") { 
-                isAdmin = true; 
-                sessionStorage.setItem('TTK_ADMIN','1'); 
-                document.getElementById('login-overlay').style.display='none'; 
-                document.getElementById('logout-btn').style.display='block';
-                navTo(nextTab, document.getElementById('n-' + nextTab.split('-')[1])); 
-                showToast("Admin အဖြစ် ဝင်ရောက်ပြီးပါပြီ");
-            } else { 
-                showToast("စကားဝှက် မှားယွင်းနေပါသည်", "error"); 
-            } 
+
+        await syncCloud();
+
+    }
+);
+
+
+window.addEventListener(
+    "offline",
+    ()=>{
+
+        status(
+            "offline",
+            "Offline Mode"
+        );
+
+        toast(
+            "Internet ပြတ်သွားပါပြီ။ Local Mode သို့ပြောင်းပါပြီ",
+            true
+        );
+
+    }
+);
+
+
+/* =========================================================
+   PASSWORD ENTER KEY
+========================================================= */
+
+document.addEventListener(
+    "keydown",
+    e=>{
+
+        if(
+            e.key==="Enter" &&
+            document.getElementById(
+                "loginModal"
+            ).style.display==="flex"
+        ){
+
+            checkPassword();
+
         }
-        
-        function closeOverlay(id) { document.getElementById(id).style.display = 'none'; }
-        function logout() { isAdmin = false; sessionStorage.clear(); location.reload(); }
-        
-        function setCategory(c, b) { curCat = c; document.querySelectorAll('#sales-cat-container .cat-btn').forEach(x => x.classList.remove('active')); b.classList.add('active'); refreshUI(); }
-        function setStockCategory(c, b) { curStockCat = c; document.querySelectorAll('#stock-cat-container .cat-btn').forEach(x => x.classList.remove('active')); b.classList.add('active'); refreshUI(); }
-    </script>
+
+    }
+);
+
+</script>
+
 </body>
 </html>
-
