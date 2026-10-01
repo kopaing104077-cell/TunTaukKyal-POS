@@ -1,4 +1,5 @@
-<!DOCTYPE html>  <html lang="my">  
+<!DOCTYPE html>  
+<html lang="my">  
 <head>  
     <meta charset="UTF-8">  
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">  
@@ -6,7 +7,8 @@
     <link rel="manifest" href="manifest.json">  
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>  
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>  
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">  <style>  
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">  
+    <style>  
     :root { --midnight: #020617; --primary: #1e293b; --green: #10b981; --red: #ef4444; --gold: #fbbf24; --bg: #f8fafc; --excel: #1d6f42; }  
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Pyidaungsu', sans-serif; }  
       
@@ -109,7 +111,8 @@
 </style>
 
 </head>  
-<body>  <header class="header">  
+<body>  
+<header class="header">  
     <div style="font-weight:bold; font-size: 1.1rem; display: flex; align-items: center; gap: 8px;">  
         <i class="fas fa-star" style="color:var(--gold)"></i> ထွန်းတောက်ကြယ်  
     </div>  
@@ -305,8 +308,7 @@
 
 <script>  
     // Supabase Config  
-    const SUPA_URL = "https://iyhskfxxpemtpspohjve.supabase.co";  
-    // UPDATED: အသစ်ပေးထားသော Service Role Key ကို ဤနေရာတွင် အစားထိုးထားပါသည်။
+    const SUPA_URL = "https://ttk-pos-proxy.kopaing104077.workers.dev";  
     const SUPA_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml5aHNrZnh4cGVtdHBzcG9oanZlIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MzIwOTQxNSwiZXhwIjoyMDg4Nzg1NDE1fQ.FLf2dLGivKDXC__451NHnXjJ8Dr1XkwSsSCd07sxetA";  
     const _sb = supabase.createClient(SUPA_URL, SUPA_KEY);  
 
@@ -673,7 +675,6 @@
         let rev=0, prof=0;  
         const items = cart.map(i => {  
             const prodIndex = tempProducts.findIndex(p => p.id === i.id);  
-            // ပြင်ဆင်ချက် - Edit လုပ်သည့်အခါ မူလဝယ်ဈေး (i.buy) ရှိနေပါက ယင်းကိုသာ အသုံးပြုရန်  
             let actualBuy = (i.buy !== undefined && i.buy !== null) ? parseFloat(i.buy) : 0;  
             if (actualBuy === 0 && prodIndex > -1) {  
                 actualBuy = parseFloat(tempProducts[prodIndex].buy) || 0;  
@@ -791,11 +792,9 @@
                 let actualBuy = 0;  
                   
                 if (isTodaySale) {  
-                    // ဒီနေ့အရောင်းဖြစ်ပါက လက်ရှိ Master Data မှ ဝယ်စျေးကို အမြဲယူမည် (ဒီနေ့ စျေးပြင်ထားလျှင် လိုက်ပြောင်းရန်)  
                     const currentProd = products.find(prod => prod.id === i.id || prod.name === i.name);  
                     actualBuy = currentProd ? (parseFloat(currentProd.buy) || 0) : ((i.buy !== undefined && i.buy !== null) ? parseFloat(i.buy) : 0);  
                 } else {  
-                    // ယခင်နေ့များဖြစ်ပါက မှတ်တမ်းဟောင်းမှ ဝယ်စျေးကိုသာ ယူမည်  
                     actualBuy = (i.buy !== undefined && i.buy !== null) ? parseFloat(i.buy) : 0;  
                     if (actualBuy === 0) {  
                         const currentProd = products.find(prod => prod.id === i.id || prod.name === i.name);  
@@ -875,11 +874,9 @@
                 let actualBuy = 0;  
                   
                 if (isTodaySale) {  
-                    // ဒီနေ့အရောင်းဖြစ်ပါက လက်ရှိ Master Data မှ ဝယ်စျေးကို အမြဲယူမည် (Excel တွင်လည်း)  
                     const currentProd = products.find(p => p.id === item.id || p.name === item.name);  
                     actualBuy = currentProd ? (parseFloat(currentProd.buy) || 0) : ((item.buy !== undefined && item.buy !== null) ? parseFloat(item.buy) : 0);  
                 } else {  
-                    // ယခင်နေ့များဖြစ်ပါက မှတ်တမ်းဟောင်းမှ ဝယ်စျေးကိုသာ ယူမည်  
                     actualBuy = (item.buy !== undefined && item.buy !== null) ? parseFloat(item.buy) : 0;  
                     if (actualBuy === 0) {  
                         const currentProd = products.find(p => p.id === item.id || p.name === item.name);  
@@ -1058,7 +1055,6 @@
         editingSaleId = id;  
           
         let parsedItems = Array.isArray(sale.items) ? sale.items : JSON.parse(sale.items || '[]');  
-        // ပြင်ဆင်ချက် - ဝယ်ဈေးဟောင်းကို ခြင်းတောင်းထဲသို့ ထည့်သိမ်းပေးလိုက်ပါသည်  
         cart = parsedItems.map(i => ({...i, cQty: parseFloat(i.qty), buy: i.buy }));  
           
         let custStr = sale.cust || "";  
@@ -1143,7 +1139,6 @@
             }  
               
             if (finalQty > 0) {  
-                // ပြင်ဆင်ချက် - Return ပြန်အပ်သည့်အခါတွင်လည်း ဝယ်ဈေးဟောင်းကို မဖျက်ဘဲ ဆက်လက်ထိန်းသိမ်းပါသည်  
                 let actualBuy = (item.buy !== undefined && item.buy !== null) ? parseFloat(item.buy) : 0;  
                   
                 updatedItems.push({ ...item, buy: actualBuy, qty: Number(finalQty.toFixed(3)), sell: newPrice });   
@@ -1343,7 +1338,7 @@
             await loadProductsAndSync();   
         }   
     }  
-</script>
+</script>  
 
 </body>  
 </html>
