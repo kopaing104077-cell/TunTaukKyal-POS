@@ -1239,7 +1239,10 @@
     }  
 
     function askPass(tid, btn) { if(isAdmin) navTo(tid, btn); else { nextTab=tid; document.getElementById('login-overlay').style.display='flex'; } }  
-    function checkPass() { if(document.getElementById('pass-input').value === "111111") { isAdmin=true; sessionStorage.setItem('TTK_ADMIN','1'); document.getElementById('login-overlay').style.display='none'; navTo(nextTab, document.getElementById('n-' + nextTab.split('-')[1])); } else alert("Password မှားနေပါသည်"); }  
+    
+    // လုံခြုံရေးအရ Default Password ကို 123456 လို့ ပြောင်းလဲထားပါတယ်
+    function checkPass() { if(document.getElementById('pass-input').value === "123456") { isAdmin=true; sessionStorage.setItem('TTK_ADMIN','1'); document.getElementById('login-overlay').style.display='none'; navTo(nextTab, document.getElementById('n-' + nextTab.split('-')[1])); } else alert("Password မှားနေပါသည်"); }  
+    
     function closeOverlay(id) { document.getElementById(id).style.display='none'; }  
     function logout() { isAdmin=false; sessionStorage.clear(); location.reload(); }  
       
