@@ -356,26 +356,32 @@
             try {  
                 if (item.action === 'ADD_SALE') {  
                     const { id, tempId, ...saleData } = item.data;  
-                    await _sb.from('sales').insert([saleData]);  
+                    const { error } = await _sb.from('sales').insert([saleData]);  
+                    if (error) throw error;
                 }   
                 else if (item.action === 'SAVE_PRODUCT') {  
                     if (typeof item.data.id === 'string' && item.data.id.startsWith('temp_')) {  
                         const { id, ...prodData } = item.data;  
-                        await _sb.from('products').insert([prodData]);  
+                        const { error } = await _sb.from('products').insert([prodData]);  
+                        if (error) throw error;
                     } else {  
                         const { id, ...prodData } = item.data;  
-                        await _sb.from('products').update(prodData).eq('id', item.data.id);  
+                        const { error } = await _sb.from('products').update(prodData).eq('id', parseInt(item.data.id));  
+                        if (error) throw error;
                     }  
                 }  
                 else if (item.action === 'DEL_PRODUCT') {  
-                    await _sb.from('products').delete().eq('id', item.data.id);  
+                    const { error } = await _sb.from('products').delete().eq('id', parseInt(item.data.id));  
+                    if (error) throw error;
                 }  
                 else if (item.action === 'DEL_SALE') {  
-                    await _sb.from('sales').delete().eq('id', item.data.id);  
+                    const { error } = await _sb.from('sales').delete().eq('id', parseInt(item.data.id));  
+                    if (error) throw error;
                 }  
                 else if (item.action === 'UPDATE_SALE') {  
                     const { id, ...saleData } = item.data;  
-                    await _sb.from('sales').update(saleData).eq('id', item.data.id);  
+                    const { error } = await _sb.from('sales').update(saleData).eq('id', parseInt(item.data.id));  
+                    if (error) throw error;
                 }  
             } catch (error) {  
                 console.error("Sync failed for item:", item, error);  
@@ -518,8 +524,15 @@
             if (error) throw error;  
               
             if (data && data.length > 0) {  
-                products = data;  
-                localStorage.setItem('ttk_products', JSON.stringify(products));  
+                const hasPendingProductUpdates = offlineQueue.some(q => q.action === 'SAVE_PRODUCT');
+                const localProducts = JSON.parse(localStorage.getItem('ttk_products')) || [];
+                
+                if (hasPendingProductUpdates && localProducts.length > 0) {
+                     products = localProducts;
+                } else {
+                     products = data;  
+                     localStorage.setItem('ttk_products', JSON.stringify(products));  
+                }
             } else if (data && data.length === 0) {  
                 const localProducts = localStorage.getItem('ttk_products');  
                 if (localProducts && JSON.parse(localProducts).length > 0) {  
@@ -699,7 +712,8 @@
 
         try {  
             if (isEditing && typeof receiptId !== 'string') {  
-                await _sb.from('sales').update({ rev, prof, cust: saleData.cust, items }).eq('id', receiptId);  
+                const { error } = await _sb.from('sales').update({ rev, prof, cust: saleData.cust, items }).eq('id', parseInt(receiptId));  
+                if (error) throw error;
             } else if (!isEditing) {  
                 const { data: inserted, error: saleErr } = await _sb.from('sales').insert([saleData]).select();  
                 if(saleErr) throw saleErr;  
@@ -716,14 +730,15 @@
                 const currentProd = products.find(p => p.id === pid);  
                 if(currentProd) {  
                     if(typeof currentProd.id !== 'string') {  
-                        await _sb.from('products').update({ qty: currentProd.qty }).eq('id', pid);   
+                        const { error } = await _sb.from('products').update({ qty: currentProd.qty }).eq('id', parseInt(pid));   
+                        if (error) throw error;
                     } else {  
                         addToQueue('SAVE_PRODUCT', currentProd);  
                     }  
                 }  
             }  
         } catch (e) {   
-            console.log("Offline mode: Sale saved to queue.");  
+            console.log("Offline mode or Error: Sale saved to queue.", e);  
             if(!isEditing) {  
                 saleData.id = receiptId;  
                 addToQueue('ADD_SALE', saleData);  
@@ -1124,7 +1139,8 @@
                     product.qty = Number((parseFloat(product.qty) + returnQty).toFixed(3));  
                     if (typeof product.id !== 'string') {  
                         try {  
-                            await _sb.from('products').update({ qty: product.qty }).eq('id', product.id);  
+                            const { error } = await _sb.from('products').update({ qty: product.qty }).eq('id', parseInt(product.id));  
+                            if (error) throw error;
                         } catch(e) {  
                             addToQueue('SAVE_PRODUCT', product);  
                         }  
@@ -1164,7 +1180,8 @@
 
         try {  
             if (typeof id !== 'string') {  
-                await _sb.from('sales').update({ items: updatedItems, rev: newRev, prof: newProf }).eq('id', id);  
+                const { error } = await _sb.from('sales').update({ items: updatedItems, rev: newRev, prof: newProf }).eq('id', parseInt(id));  
+                if (error) throw error;
             } else {  
                 addToQueue('UPDATE_SALE', sale);  
             }  
@@ -1198,7 +1215,8 @@
                     product.qty = Number((parseFloat(product.qty) + parseFloat(item.qty)).toFixed(3));  
                     try {  
                         if(typeof product.id !== 'string') {  
-                            await _sb.from('products').update({ qty: product.qty }).eq('id', item.id);  
+                            const { error } = await _sb.from('products').update({ qty: product.qty }).eq('id', parseInt(item.id));  
+                            if (error) throw error;
                         }  
                     } catch(e) {  
                         addToQueue('SAVE_PRODUCT', product);  
@@ -1210,7 +1228,8 @@
 
             try {  
                 if(typeof id !== 'string') {  
-                    await _sb.from('sales').delete().eq('id', id);  
+                    const { error } = await _sb.from('sales').delete().eq('id', parseInt(id));  
+                    if (error) throw error;
                 }  
             } catch(e) {  
                 addToQueue('DEL_SALE', { id });  
@@ -1279,7 +1298,9 @@
         let fq = cq + nq;  
         let fb = (nq > 0 && nb > 0) ? Math.round(((cq * cb) + (nq * nb)) / fq) : cb;  
           
+        const targetId = id ? (id.startsWith('temp_') ? id : parseInt(id)) : ('temp_' + Date.now());
         const obj = {   
+            id: targetId,
             name,   
             unit: document.getElementById('p-unit').value,   
             buy: fb,   
@@ -1289,31 +1310,40 @@
         };  
           
         if(id) {  
-            obj.id = id.startsWith('temp_') ? id : parseInt(id);  
             const index = products.findIndex(p => p.id == obj.id);  
             if(index > -1) products[index] = obj;  
         } else {  
-            obj.id = 'temp_' + Date.now();  
             products.push(obj);  
         }  
 
         localStorage.setItem('ttk_products', JSON.stringify(products));  
 
         try {  
-            if(id && !id.startsWith('temp_')) {  
+            if(id && !id.toString().startsWith('temp_')) {  
                 const { id: updateId, ...updateData } = obj;  
-                await _sb.from('products').update(updateData).eq('id', obj.id);   
+                const { error } = await _sb.from('products').update(updateData).eq('id', parseInt(id));   
+                if (error) throw error;
             } else {  
                 const { id: tempId, ...insertObj } = obj;  
-                await _sb.from('products').insert([insertObj]);  
+                const { data, error } = await _sb.from('products').insert([insertObj]).select();  
+                if (error) throw error;
+                if (data && data.length > 0) {
+                    const realId = data[0].id;
+                    obj.id = realId;
+                    const idx = products.findIndex(p => p.id === targetId);
+                    if (idx > -1) products[idx].id = realId;
+                    localStorage.setItem('ttk_products', JSON.stringify(products));
+                }
             }  
+            setStatus('online', 'Online');
         } catch (err) {   
+            console.error("Supabase Save Error:", err);
             addToQueue('SAVE_PRODUCT', obj);  
             setStatus('offline', 'Offline (Saved local)');  
         }  
           
         closeOverlay('add-overlay');   
-        await loadProductsAndSync();  
+        refreshUI();
     }  
 
     async function deleteProduct() {   
@@ -1326,7 +1356,8 @@
 
             try {  
                 if(typeof id !== 'string') {  
-                    await _sb.from('products').delete().eq('id', id);   
+                    const { error } = await _sb.from('products').delete().eq('id', id);   
+                    if (error) throw error;
                 }  
             } catch(e) {  
                 addToQueue('DEL_PRODUCT', { id });  
@@ -1338,7 +1369,7 @@
             }  
 
             closeOverlay('add-overlay');   
-            await loadProductsAndSync();   
+            refreshUI();
         }   
     }  
 </script>  
