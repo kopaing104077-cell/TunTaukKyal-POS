@@ -589,6 +589,12 @@
                 shops = sData;
                 localStorage.setItem('ttk_shops', JSON.stringify(shops));
             }
+
+            // Load Sales for local cache
+            const { data: salesList } = await _sb.from('sales').select('*');
+            if(salesList) {
+                localStorage.setItem('ttk_sales', JSON.stringify(salesList));
+            }
               
             setStatus('online', 'Online');  
             await processOfflineQueue();  
@@ -711,7 +717,7 @@
         if(!confirm("အရောင်းစာရင်းသွင်းပြီး ဘောင်ချာထုတ်မှာ သေချာပါသလား?")) return;  
 
         const isEditing = editingSaleId !== null;  
-        let oldSale = isEditing ? salesData.find(s => s.id === editingSaleId) : null;  
+        let oldSale = isEditing ? salesData.find(s => String(s.id) === String(editingSaleId)) : null;  
         let oldItems = oldSale ? (Array.isArray(oldSale.items) ? oldSale.items : JSON.parse(oldSale.items || '[]')) : [];  
           
         const now = new Date();  
@@ -803,6 +809,14 @@
             setStatus('offline', 'Offline (Saved local)');  
         }  
 
+        // Update local sales storage
+        let allLocalSales = JSON.parse(localStorage.getItem('ttk_sales')) || [];
+        saleData.id = receiptId;
+        const existIdx = allLocalSales.findIndex(s => String(s.id) === String(receiptId));
+        if(existIdx > -1) allLocalSales[existIdx] = saleData;
+        else allLocalSales.unshift(saleData);
+        localStorage.setItem('ttk_sales', JSON.stringify(allLocalSales));
+
         document.getElementById('receipt-render-area').innerHTML = generateReceiptHTML({ id: receiptId, ...saleData }, isEditing);  
         setTimeout(() => {   
             window.print();   
@@ -832,7 +846,7 @@
               
             let allLocalSales = JSON.parse(localStorage.getItem('ttk_sales')) || [];  
             salesData.forEach(newSale => {  
-                const idx = allLocalSales.findIndex(s => s.id === newSale.id);  
+                const idx = allLocalSales.findIndex(s => String(s.id) === String(newSale.id));  
                 if (idx > -1) allLocalSales[idx] = newSale;  
                 else allLocalSales.push(newSale);  
             });  
@@ -851,7 +865,7 @@
                 const year = dt.slice(0,4);  
                 salesData = allSales.filter(s => s.date && s.date.startsWith(year));  
             }  
-            salesData.sort((a,b) => (b.id.toString() > a.id.toString()) ? 1 : -1);  
+            salesData.sort((a,b) => (String(b.id) > String(a.id)) ? 1 : -1);  
         }  
 
         let r=0, p=0, rows="";  
@@ -899,6 +913,10 @@
     // --- EXPORT GROUPED REPORT TO EXCEL (FIXED & PLAIN NUMBERS) ---
     function exportGroupedExcel() {
         if (!salesData || salesData.length === 0) {
+            // Fallback load from localStorage if salesData is empty
+            salesData = JSON.parse(localStorage.getItem('ttk_sales')) || [];
+        }
+        if (!salesData || salesData.length === 0) {
             alert("ထုတ်ယူရန် အရောင်းစာရင်း မရှိပါ");
             return;
         }
@@ -935,7 +953,6 @@
 
         const ws = XLSX.utils.aoa_to_sheet(excelData);
         
-        // Prevent scientific notation by defining proper column widths
         ws['!cols'] = [
             {wch: 15}, // Voucher ID
             {wch: 12}, // Date
@@ -989,27 +1006,54 @@
         XLSX.writeFile(wb, `Price_List_${catTitle}.xlsx`);
     }
 
+    function copyToClipboard(text, successMsg) {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(() => {
+                alert(successMsg);
+            }).catch(() => {
+                fallbackCopyText(text, successMsg);
+            });
+        } else {
+            fallbackCopyText(text, successMsg);
+        }
+    }
+
+    function fallbackCopyText(text, successMsg) {
+        const textArea = document.createElement("textarea");
+        textArea.value = text;
+        textArea.style.position = "fixed";
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        try {
+            const successful = document.execCommand('copy');
+            if (successful) {
+                alert(successMsg);
+            } else {
+                prompt("ဒီ Link ကို Copy ကူးပါ:", text);
+            }
+        } catch (err) {
+            prompt("ဒီ Link ကို Copy ကူးပါ:", text);
+        }
+        document.body.removeChild(textArea);
+    }
+
     function shareStockLink() {
         let url = window.location.href.split('?')[0] + `?stock=${curStockCat}`;
-        navigator.clipboard.writeText(url).then(() => {
-            alert("ဈေးနှုန်းစာရင်း မျှဝေရန် Link ကို ကူးယူပြီးပါပြီ။");
-        }).catch(() => {
-            prompt("ဒီ Link ကို Copy ကူးပါ:", url);
-        });
+        copyToClipboard(url, "ဈေးနှုန်းစာရင်း မျှဝေရန် Link ကို ကူးယူပြီးပါပြီ။");
     }
 
     function shareVoucherLink(id) {
         let url = window.location.href.split('?')[0] + `?v=${id}`;
-        navigator.clipboard.writeText(url).then(() => {
-            alert("ဘောင်ချာ Link ကို ကူးယူပြီးပါပြီ။");
-        }).catch(() => {
-            prompt("ဒီ Link ကို Copy ကူးပါ:", url);
-        });
+        copyToClipboard(url, "ဘောင်ချာ Link ကို ကူးယူပြီးပါပြီ။");
     }
 
     function rePrintSale(id) {
-        const sale = salesData.find(s => s.id === id);
-        if (!sale) return;
+        const sale = salesData.find(s => String(s.id) === String(id)) || (JSON.parse(localStorage.getItem('ttk_sales')) || []).find(s => String(s.id) === String(id));
+        if (!sale) {
+            alert("ဘောင်ချာအချက်အလက် ရှာမတွေ့ပါ။");
+            return;
+        }
         document.getElementById('receipt-render-area').innerHTML = generateReceiptHTML(sale, true);
         setTimeout(() => {
             window.print();
@@ -1019,15 +1063,15 @@
     async function deleteSale(id) {
         if (!confirm("ဤဘောင်ချာကို ဖျက်မှာ သေချာပါသလား? လက်ကျန်ပစ္စည်းများ ပြန်လည်ဝင်ရောက်မည် မဟုတ်ပါ။")) return;
         try {
-            if (typeof id !== 'string') {
+            if (typeof id !== 'string' && !isNaN(id)) {
                 const { error } = await _sb.from('sales').delete().eq('id', parseInt(id));
                 if (error) throw error;
             } else {
                 addToQueue('DEL_SALE', { id });
             }
-            salesData = salesData.filter(s => s.id !== id);
+            salesData = salesData.filter(s => String(s.id) !== String(id));
             let allLocalSales = JSON.parse(localStorage.getItem('ttk_sales')) || [];
-            allLocalSales = allLocalSales.filter(s => s.id !== id);
+            allLocalSales = allLocalSales.filter(s => String(s.id) !== String(id));
             localStorage.setItem('ttk_sales', JSON.stringify(allLocalSales));
             runReport();
             alert("ဘောင်ချာ ဖျက်ပြီးပါပြီ။");
@@ -1037,7 +1081,7 @@
     }
 
     function viewSaleDetails(id) {  
-        const sale = salesData.find(s => s.id === id);  
+        const sale = salesData.find(s => String(s.id) === String(id)) || (JSON.parse(localStorage.getItem('ttk_sales')) || []).find(s => String(s.id) === String(id));
         if(!sale) return;  
         let itemHtml = `<b>ဘောင်ချာနံပါတ်:</b> ${formatVoucher(sale.id)}<br><b>ဘောင်ချာရှင်:</b> ${sale.cust}<br><br>  
         <table style="width:100%; border-collapse:collapse;" id="detail-items-table">  
@@ -1087,7 +1131,7 @@
     // --- PAYMENT LOGIC ---
     function openPaymentModal(id) {
         closeOverlay('detail-overlay');
-        const sale = salesData.find(s => s.id === id);  
+        const sale = salesData.find(s => String(s.id) === String(id)) || (JSON.parse(localStorage.getItem('ttk_sales')) || []).find(s => String(s.id) === String(id));  
         if(!sale) return;
 
         document.getElementById('pay-sale-id').value = id;
@@ -1103,7 +1147,7 @@
 
     function calcRemainingDebt() {
         const id = document.getElementById('pay-sale-id').value;
-        const sale = salesData.find(s => s.id == id);
+        const sale = salesData.find(s => String(s.id) === String(id)) || (JSON.parse(localStorage.getItem('ttk_sales')) || []).find(s => String(s.id) === String(id));
         if(!sale) return;
 
         let total = sale.rev;
@@ -1117,7 +1161,7 @@
 
     async function savePayment() {
         const id = document.getElementById('pay-sale-id').value;
-        const saleIndex = salesData.findIndex(s => s.id == id);
+        const saleIndex = salesData.findIndex(s => String(s.id) === String(id));
         if(saleIndex === -1) return;
 
         let sale = salesData[saleIndex];
@@ -1130,7 +1174,7 @@
         sale.paid_wave = w;
 
         try {
-            if(typeof id !== 'string') {
+            if(typeof id !== 'string' && !isNaN(id)) {
                 const { error } = await _sb.from('sales').update({
                     paid_cash: c, paid_kpay: k, paid_wave: w
                 }).eq('id', parseInt(id));
@@ -1145,7 +1189,7 @@
 
         salesData[saleIndex] = sale;
         let allLocalSales = JSON.parse(localStorage.getItem('ttk_sales')) || [];  
-        const masterIdx = allLocalSales.findIndex(s => s.id == id);  
+        const masterIdx = allLocalSales.findIndex(s => String(s.id) === String(id));  
         if (masterIdx > -1) {  
             allLocalSales[masterIdx] = sale;  
             localStorage.setItem('ttk_sales', JSON.stringify(allLocalSales));  
@@ -1167,7 +1211,7 @@
     }
 
     function editShop(id) {
-        const s = shops.find(x => x.id === id); if(!s) return;
+        const s = shops.find(x => String(x.id) === String(id)); if(!s) return;
         document.getElementById('s-edit-id').value = s.id;
         document.getElementById('s-name').value = s.name;
         document.getElementById('s-route').value = s.route;
@@ -1190,7 +1234,7 @@
         };
 
         if(id) {
-            const idx = shops.findIndex(s => s.id == obj.id);
+            const idx = shops.findIndex(s => String(s.id) === String(obj.id));
             if(idx > -1) shops[idx] = obj;
         } else {
             shops.push(obj);
@@ -1198,7 +1242,7 @@
         localStorage.setItem('ttk_shops', JSON.stringify(shops));
 
         try {
-            if(id && !id.startsWith('shop_')) {
+            if(id && !String(id).startsWith('shop_')) {
                 const { id: uId, ...uData } = obj;
                 const { error } = await _sb.from('shops').update(uData).eq('id', id);
                 if(error) throw error;
@@ -1220,11 +1264,11 @@
     async function deleteShop() {
         if(!confirm("ဖျက်မှာ သေချာလား?")) return;
         let id = document.getElementById('s-edit-id').value;
-        shops = shops.filter(s => s.id !== id);
+        shops = shops.filter(s => String(s.id) !== String(id));
         localStorage.setItem('ttk_shops', JSON.stringify(shops));
 
         try {
-            if(!id.startsWith('shop_')) {
+            if(!String(id).startsWith('shop_')) {
                 const { error } = await _sb.from('shops').delete().eq('id', id);
                 if(error) throw error;
             }
@@ -1253,7 +1297,7 @@
             if(s.name.toLowerCase().includes(qS) || s.route.toLowerCase().includes(qS)) {
                 if(!routes[s.route]) routes[s.route] = [];
                 
-                let shopSales = allLocalSales.filter(sale => sale.shop_id == s.id || (sale.cust && sale.cust.startsWith(s.name)));
+                let shopSales = allLocalSales.filter(sale => String(sale.shop_id) === String(s.id) || (sale.cust && sale.cust.startsWith(s.name)));
                 let totalDebt = 0;
                 shopSales.forEach(sale => {
                     let pCash = parseFloat(sale.paid_cash) || 0;
@@ -1301,7 +1345,7 @@
     }
 
     function editProduct(id) {
-        const p = products.find(x => x.id === id);
+        const p = products.find(x => String(x.id) === String(id));
         if (!p) return;
         document.getElementById('modal-title').innerText = "ပစ္စည်းအချက်အလက် ပြင်ဆင်ရန်";
         document.getElementById('edit-id').value = p.id;
@@ -1342,7 +1386,7 @@
             currentQty += newQty;
         }
 
-        const targetId = id ? (id.startsWith && id.startsWith('temp_') ? id : (isNaN(id) ? id : parseInt(id))) : ('temp_' + Date.now());
+        const targetId = id ? (String(id).startsWith('temp_') ? id : (isNaN(id) ? id : parseInt(id))) : ('temp_' + Date.now());
         
         const prodObj = {
             id: targetId,
@@ -1355,7 +1399,7 @@
         };
 
         if (id) {
-            const idx = products.findIndex(p => p.id == id);
+            const idx = products.findIndex(p => String(p.id) === String(id));
             if (idx > -1) products[idx] = prodObj;
         } else {
             products.push(prodObj);
@@ -1398,7 +1442,7 @@
     async function deleteProduct() {
         if (!confirm("ဤပစ္စည်းကို ဖျက်မှာ သေချာပါသလား?")) return;
         let id = document.getElementById('edit-id').value;
-        products = products.filter(p => p.id != id);
+        products = products.filter(p => String(p.id) !== String(id));
         localStorage.setItem('ttk_products', JSON.stringify(products));
 
         try {
@@ -1417,7 +1461,7 @@
     // --- EDIT & RETURN VOUCHER LOGIC ---
     function editEntireSale(id) {
         closeOverlay('detail-overlay');
-        const sale = salesData.find(s => s.id === id);
+        const sale = salesData.find(s => String(s.id) === String(id)) || (JSON.parse(localStorage.getItem('ttk_sales')) || []).find(s => String(s.id) === String(id));
         if (!sale) return;
 
         editingSaleId = sale.id;
@@ -1492,7 +1536,7 @@
 
     async function processPartialReturn(id) {
         if(!confirm("ဤပြင်ဆင်မှုကို အတည်ပြုပြီး လက်ကျန်ပစ္စည်းများကို စနစ်သို့ ပြန်လည်ထည့်သွင်းမည်လား?")) return;
-        const sale = salesData.find(s => s.id === id);
+        const sale = salesData.find(s => String(s.id) === String(id)) || (JSON.parse(localStorage.getItem('ttk_sales')) || []).find(s => String(s.id) === String(id));
         if(!sale) return;
 
         const items = Array.isArray(sale.items) ? sale.items : JSON.parse(sale.items || '[]');
@@ -1565,7 +1609,7 @@
         }
 
         let allLocalSales = JSON.parse(localStorage.getItem('ttk_sales')) || [];
-        let mIdx = allLocalSales.findIndex(s => s.id === sale.id);
+        let mIdx = allLocalSales.findIndex(s => String(s.id) === String(sale.id));
         if(mIdx > -1) {
             allLocalSales[mIdx] = sale;
             localStorage.setItem('ttk_sales', JSON.stringify(allLocalSales));
