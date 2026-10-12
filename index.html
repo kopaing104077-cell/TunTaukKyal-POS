@@ -495,8 +495,10 @@
     }  
 
     function setStatus(state, text) {  
-        document.getElementById('status-dot').className = `dot ${state}`;  
-        document.getElementById('status-text').innerText = text;  
+        const dot = document.getElementById('status-dot');
+        const txt = document.getElementById('status-text');
+        if(dot) dot.className = `dot ${state}`;  
+        if(txt) txt.innerText = text;  
     }  
 
     // --- SHARED VIEW HANDLERS ---  
@@ -585,7 +587,6 @@
         XLSX.writeFile(wb, `TTK_Stock_Report_${sheetName}_${new Date().toISOString().split('T')[0]}.xlsx`);  
     };  
 
-    // --- SHARE LINK GENERATORS ---  
     function shareVoucherLink(id) {  
         if (typeof id === 'string' && id.startsWith('temp_')) return alert('အင်တာနက်မရှိချိန်တွင် Share ၍မရပါ။');  
         const shareUrl = `${window.location.origin}${window.location.pathname}?v=${id}`;  
@@ -607,7 +608,6 @@
         alert(msg);  
     }  
 
-    // --- CORE FUNCTIONS ---  
     function formatVoucher(id) {   
         if(typeof id === 'string' && id.startsWith('temp_')) return "OFFLINE";  
         return id.toString().padStart(7, '0');   
@@ -683,9 +683,9 @@
     }  
 
     function addToCart(id) {  
-        const p = products.find(x => x.id === id);  
+        const p = products.find(x => x.id == id);  
         if(!p) return;  
-        const ex = cart.find(x => x.id === id);  
+        const ex = cart.find(x => x.id == id);  
         if(ex) { ex.cQty = Number((parseFloat(ex.cQty) + 1).toFixed(3)); } else { cart.push({...p, cQty: 1}); }  
         renderCart();  
     }  
@@ -746,24 +746,13 @@
 
     function removeItem(id) { cart = cart.filter(x => x.id != id); renderCart(); }  
 
+    // ဘောင်ချာတွင် ကျသင့်ငွေ (Total) သာပါရှိစေရန် (အကြွေးစာရင်း လုံးဝမပြပါ)
     function generateReceiptHTML(data, isReprint = false) {  
         let rows = "";  
         const items = Array.isArray(data.items) ? data.items : JSON.parse(data.items || '[]');  
         items.forEach(i => {  
             rows += `<tr><td class="c-name">${i.name}</td><td class="c-qty">${parseFloat(i.qty).toString()} ${i.unit||''}</td><td class="c-price">${parseFloat(i.sell).toLocaleString()}</td><td class="c-amt">${Math.round(i.sell * i.qty).toLocaleString()}</td></tr>`;  
         });  
-
-        let totalPaid = (parseFloat(data.paid_cash) || 0) + (parseFloat(data.paid_kpay) || 0) + (parseFloat(data.paid_wave) || 0);
-        let debt = data.rev - totalPaid;
-        let paymentHTML = "";
-        
-        if (totalPaid > 0 || debt > 0) {
-            paymentHTML = `<div style="border-top: 1px dashed #000; margin-top: 5px; padding-top: 5px; font-size:12px;">`;
-            if(data.paid_cash) paymentHTML += `<div class="r-row"><span class="r-label">Cash</span><span class="r-val">${data.paid_cash.toLocaleString()}</span></div>`;
-            if(data.paid_kpay) paymentHTML += `<div class="r-row"><span class="r-label">KPay</span><span class="r-val">${data.paid_kpay.toLocaleString()}</span></div>`;
-            if(data.paid_wave) paymentHTML += `<div class="r-row"><span class="r-label">Wave</span><span class="r-val">${data.paid_wave.toLocaleString()}</span></div>`;
-            paymentHTML += `<div class="r-row"><span class="r-label"><b>Debt (ကြွေးကျန်)</b></span><span class="r-val" style="color:red;"><b>${debt.toLocaleString()}</b></span></div></div>`;
-        }
 
         return `<div class="r-center">  
             <div class="r-header-title">ထွန်းတောက်ကြယ်</div>  
@@ -773,7 +762,6 @@
             <div class="r-info">${isReprint ? '[RE-PRINT/EDITED]<br>' : ''}VOUCHER# ${formatVoucher(data.id)}<br>Date: ${data.date}<br>Cust: ${data.cust}</div>  
             <table class="r-table"><thead><tr><th class="c-name">Item</th><th class="c-qty">Qty</th><th class="c-price">Price</th><th class="c-amt">Amount</th></tr></thead><tbody>${rows}</tbody></table>  
             <div class="r-summary"><div class="r-row"><span class="r-label">Total</span><span class="r-val">${data.rev.toLocaleString()} Ks</span></div></div>  
-            ${paymentHTML}
             <div class="r-footer">*** ဝယ်ယူအားပေးမှုကို ကျေးဇူးတင်ပါသည်။ ***</div></div>`;  
     }  
 
@@ -885,7 +873,6 @@
         }, 500);  
     }  
 
-    // REPORT LOGIC
     async function runReport() {  
         const dt = document.getElementById('rep-date').value;  
         const ty = document.getElementById('rep-type').value;  
@@ -968,7 +955,6 @@
         document.getElementById('rep-body').innerHTML = rows || '<tr><td colspan="5" style="text-align:center;">စာရင်းမရှိပါ</td></tr>';  
     }  
 
-    // EXCEL EXPORTS
     window.exportGroupedExcel = function() {  
         if(!salesData || salesData.length === 0) return alert("ထုတ်ရန် ဒေတာမရှိပါ");  
           
@@ -1118,7 +1104,6 @@
         runReport();  
     }  
 
-    // DETAIL VIEW & PARTIAL RETURN & EDIT
     window.updateDetailRowTotal = function(index) {  
         const price = parseFloat(document.getElementById(`edit-price-${index}`).value) || 0;  
         const returnQty = parseFloat(document.getElementById(`return-qty-${index}`).value) || 0;  
@@ -1323,7 +1308,6 @@
         runReport();  
     }  
 
-    // --- PAYMENT LOGIC ---
     window.openPaymentModal = function(id) {
         closeOverlay('detail-overlay');
         const sale = salesData.find(s => s.id == id);  
@@ -1390,7 +1374,6 @@
         alert("ငွေပေးချေမှု စာရင်းသိမ်းဆည်းပြီးပါပြီ။");
     }
 
-    // --- SHOP LEDGER LOGIC ---
     window.openShopModal = function() {
         document.getElementById('s-edit-id').value = "";
         document.getElementById('s-name').value = "";
@@ -1432,7 +1415,7 @@
         localStorage.setItem('ttk_shops', JSON.stringify(shops));
 
         try {
-            if(id && !id.startsWith('shop_')) {
+            if(id && !id.toString().startsWith('shop_')) {
                 const { id: uId, ...uData } = obj;
                 await _sb.from('shops').update(uData).eq('id', id);
             } else {
@@ -1456,7 +1439,7 @@
         localStorage.setItem('ttk_shops', JSON.stringify(shops));
 
         try {
-            if(!id.startsWith('shop_')) {
+            if(!id.toString().startsWith('shop_')) {
                 await _sb.from('shops').delete().eq('id', id);
             }
         } catch(e) {
@@ -1512,7 +1495,6 @@
         tbody.innerHTML = html || '<tr><td colspan="3" style="text-align:center;">ဆိုင်စာရင်းမရှိပါ</td></tr>';
     }
 
-    // PRODUCT MODALS & UTILS
     window.openAddModal = function() {   
         document.getElementById('edit-id').value = ""; document.getElementById('p-name').value = ""; document.getElementById('p-unit').value = "";  
         document.getElementById('p-buy').value = ""; document.getElementById('p-sell').value = ""; document.getElementById('p-qty').value = "";  
